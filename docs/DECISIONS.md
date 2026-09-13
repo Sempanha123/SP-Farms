@@ -11,3 +11,7 @@ The import package lives directly under `sp_farms/` to keep the Windows bootstra
 ## Composition and lifecycle
 
 `sp_farms.bootstrap` is the composition root and the only layer that constructs concrete infrastructure. The UI receives an `ApplicationContext`; its idempotent `close()` method runs registered shutdown hooks in reverse order so resources unwind predictably.
+
+## Configuration and diagnostics safety
+
+Local TOML configuration is allowlisted to non-secret runtime settings; environment values override file values. Diagnostics bundles include runtime metadata and a second-pass redacted log copy, never environment variables, config files, vault content, or database content.
