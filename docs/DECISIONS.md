@@ -31,3 +31,7 @@ Shared widgets consume semantic light/dark palette tokens. Controls remain compa
 ## Main shell ownership
 
 The shell is a thin presentation container: top navigation, resizable device/content/queue columns, and compact status. `QSettings` owns local geometry and visibility preferences. Feature workspaces replace placeholders incrementally; the shell never opens database sessions or performs long-running work.
+
+## Operator command registry
+
+Navigation, palette entries, and global shortcuts share one command registry so all invocation paths run identical handlers. Registration rejects duplicate IDs and normalized shortcut collisions. Progress UI remains non-modal; notifications use a model that future persistent job events can feed.

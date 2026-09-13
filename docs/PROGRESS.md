@@ -69,3 +69,13 @@ Status: complete
 - Added persisted window geometry, theme, and queue visibility through `QSettings`.
 - Connected the real PySide6 event loop and clean application-context shutdown.
 - Added offscreen shell rendering, navigation, splitter, queue, and geometry persistence tests.
+
+## Phase 08 — Navigation, Command Palette, Shortcuts, Notifications
+
+Status: complete
+
+- Added a central command/navigation registry with duplicate ID and shortcut collision checks.
+- Added searchable keyboard-first command palette and shortcut help dialog.
+- Added Alt+1–9 route shortcuts plus Ctrl+K and Ctrl+/ global actions.
+- Added notification-center model, dismissible toasts, and non-modal progress overlay.
+- Added route execution, filtering, collision, notification, and overlay tests.

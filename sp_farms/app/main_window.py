@@ -10,6 +10,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from sp_farms.app.command_palette import CommandPalette
+from sp_farms.app.navigation import Command, NavigationService
+from sp_farms.app.notifications import NotificationCenterModel
+from sp_farms.app.shortcut_help import ShortcutHelpDialog
 from sp_farms.app.theme import ThemeMode, style_sheet
 from sp_farms.app.workspaces import WorkspaceLayout
 from sp_farms.application.context import ApplicationContext
@@ -40,12 +44,16 @@ class MainWindow(QMainWindow):
         self._pages = QStackedWidget()
         self._nav_buttons: dict[str, QPushButton] = {}
         self._theme = ThemeMode.DARK
+        self.navigation = NavigationService(self.navigate)
+        self.notifications = NotificationCenterModel()
         self.setObjectName("mainWindow")
         self.setWindowTitle("SP-Farms")
         self.setMinimumSize(1024, 680)
         self.resize(1440, 900)
         self._build_shell()
         self._create_actions()
+        self.command_palette = CommandPalette(self.navigation, self)
+        self.shortcut_help = ShortcutHelpDialog(self.navigation, self)
         self.set_theme(self._load_theme())
         self._restore_geometry()
 
@@ -114,12 +122,34 @@ class MainWindow(QMainWindow):
         self.navigate("Accounts")
 
     def _create_actions(self) -> None:
+        route_shortcuts = tuple(
+            (section, f"Alt+{index + 1}") for index, section in enumerate(NAVIGATION)
+        )
+        self.navigation.register_routes(route_shortcuts)
+        self.navigation.register(
+            Command("palette.open", "Open command palette", "Ctrl+K", self._open_palette)
+        )
+        self.navigation.register(
+            Command("shortcuts.open", "Show keyboard shortcuts", "Ctrl+/", self._open_shortcuts)
+        )
+        for command in self.navigation.commands:
+            action = QAction(command.title, self)
+            action.setShortcut(command.shortcut)
+            action.triggered.connect(command.handler)
+            self.addAction(action)
+
         self.toggle_queue_action = QAction("Show Job Queue", self)
         self.toggle_queue_action.setCheckable(True)
         visible = bool(self._settings.value("window/jobQueueVisible", True, bool))
         self.toggle_queue_action.triggered.connect(self.set_job_queue_visible)
         self.addAction(self.toggle_queue_action)
         self.set_job_queue_visible(visible)
+
+    def _open_palette(self) -> None:
+        self.command_palette.open()
+
+    def _open_shortcuts(self) -> None:
+        self.shortcut_help.open()
 
     def _load_theme(self) -> ThemeMode:
         stored = str(self._settings.value("appearance/theme", ThemeMode.DARK.value, str))
