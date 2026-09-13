@@ -49,3 +49,13 @@ Status: complete
 - Added explicit AES-256-GCM secret archive transfer using scrypt-derived operator passphrases.
 - Added a clipboard reveal helper that clears unchanged secrets after a timeout.
 - Added fake-keyring, SQLite exclusion, safe export, encrypted round-trip, and clipboard tests.
+
+## Phase 06 — SP-Farms Cute Design System
+
+Status: complete
+
+- Added semantic light/dark palettes and a compact PySide6 application style sheet.
+- Added shared panel, primary button, status chip, empty-state, compact-table, and metric components.
+- Added the offscreen-capable design-system preview for both themes.
+- Added focus, selection, typography, density, radius, and status-color standards.
+- Added offscreen render and component semantic tests.

@@ -23,3 +23,7 @@ SQLite connections always use WAL, foreign keys, normal synchronous mode, and a 
 ## Secret boundary
 
 Sensitive values live only behind the vault port; Windows deployments use Credential Manager through `keyring`. SQLite and normal exports retain opaque random references plus metadata. Explicit transfer uses authenticated AES-256-GCM encryption with a scrypt-derived key and never persists the passphrase.
+
+## Visual semantics
+
+Shared widgets consume semantic light/dark palette tokens. Controls remain compact—30 px inputs and buttons, 34 px table rows, 8–10 px radii—with visible focus borders and textual state labels. This preserves the reference image’s dense desktop hierarchy without glow, glass, or generic dashboard spacing.
