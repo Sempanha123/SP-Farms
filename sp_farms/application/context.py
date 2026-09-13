@@ -2,6 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from sp_farms.application.ports import Clock
+from sp_farms.application.unit_of_work import UnitOfWork
 
 ShutdownHook = Callable[[], None]
 
@@ -9,6 +10,7 @@ ShutdownHook = Callable[[], None]
 @dataclass(slots=True)
 class ApplicationContext:
     clock: Clock
+    unit_of_work: Callable[[], UnitOfWork] | None = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

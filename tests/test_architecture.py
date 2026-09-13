@@ -5,6 +5,7 @@ from pathlib import Path
 from sp_farms.application.context import ApplicationContext
 from sp_farms.bootstrap import create_application
 from sp_farms.domain.result import AppError, Result
+from sp_farms.infrastructure.clock import SystemClock
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES = ("app", "domain", "application", "infrastructure", "modules", "plugins")
@@ -15,15 +16,24 @@ def test_top_level_packages_import() -> None:
         importlib.import_module(f"sp_farms.{package}")
 
 
-def test_bootstrap_creates_application_context() -> None:
-    context = create_application()
+def test_bootstrap_creates_application_context(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        "[sp_farms]\n"
+        f'database_path = "{(tmp_path / "data.db").as_posix()}"\n'
+        f'log_path = "{(tmp_path / "app.log").as_posix()}"\n',
+        encoding="utf-8",
+    )
+    context = create_application(config_path)
     assert isinstance(context, ApplicationContext)
     assert context.clock.now().tzinfo is not None
+    assert context.unit_of_work is not None
+    context.close()
 
 
 def test_shutdown_hooks_run_once_in_reverse_order() -> None:
     calls: list[int] = []
-    context = create_application()
+    context = ApplicationContext(clock=SystemClock())
     context.add_shutdown_hook(lambda: calls.append(1))
     context.add_shutdown_hook(lambda: calls.append(2))
 

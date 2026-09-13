@@ -15,3 +15,7 @@ The import package lives directly under `sp_farms/` to keep the Windows bootstra
 ## Configuration and diagnostics safety
 
 Local TOML configuration is allowlisted to non-secret runtime settings; environment values override file values. Diagnostics bundles include runtime metadata and a second-pass redacted log copy, never environment variables, config files, vault content, or database content.
+
+## Persistence and migrations
+
+SQLite connections always use WAL, foreign keys, normal synchronous mode, and a busy timeout. Application services receive a unit-of-work factory rather than sessions. Startup runs Alembic to head; an existing database is copied before any revision-changing upgrade, while clean and current databases avoid redundant backups.

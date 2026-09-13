@@ -29,3 +29,13 @@ Status: complete
 - Added runtime diagnostics and redacted ZIP support bundles without configuration, vault, or database contents.
 - Wired log lifecycle into application composition and documented support workflows.
 - Added tests for configuration precedence, rotation, structured output, redaction, and bundle safety.
+
+## Phase 04 — SQLite SQLAlchemy and Alembic
+
+Status: complete
+
+- Added SQLAlchemy 2.x engine/session composition with SQLite WAL, foreign keys, safe sync, and busy timeout pragmas.
+- Added UUID and lifecycle timestamp entity mapping plus an initial metadata table migration.
+- Added application unit-of-work protocol and infrastructure transaction implementation.
+- Added startup Alembic migration execution and pre-upgrade database backup behavior.
+- Added clean-install, idempotent migration, WAL, commit, and rollback tests.
