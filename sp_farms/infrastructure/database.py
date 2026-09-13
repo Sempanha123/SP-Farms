@@ -15,6 +15,8 @@ from sqlalchemy import DateTime, Engine, String, create_engine, event
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
+from sp_farms.domain.secrets import SecretReference, SecretType
+
 
 class Base(DeclarativeBase):
     pass
@@ -39,6 +41,35 @@ class SystemMetadata(EntityMixin, Base):
 
     key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     value: Mapped[str] = mapped_column(String(500), nullable=False)
+
+
+class SecretMetadata(EntityMixin, Base):
+    __tablename__ = "secret_metadata"
+
+    secret_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    owner_id: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
+    vault_ref: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)
+
+    @classmethod
+    def from_reference(cls, reference: SecretReference) -> "SecretMetadata":
+        return cls(
+            id=reference.id,
+            secret_type=reference.secret_type.value,
+            owner_id=reference.owner_id,
+            vault_ref=reference.vault_ref,
+            created_at=reference.created_at,
+            updated_at=reference.updated_at,
+        )
+
+    def to_reference(self) -> SecretReference:
+        return SecretReference(
+            id=self.id,
+            secret_type=SecretType(self.secret_type),
+            owner_id=self.owner_id,
+            vault_ref=self.vault_ref,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
 
 
 class Database:

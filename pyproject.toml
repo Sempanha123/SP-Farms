@@ -12,6 +12,7 @@ license = "LicenseRef-Proprietary"
 authors = [{ name = "SP-Farms" }]
 dependencies = [
     "alembic>=1.14,<2",
+    "cryptography>=44,<47",
     "httpx>=0.28,<1",
     "keyring>=25,<26",
     "platformdirs>=4.3,<5",

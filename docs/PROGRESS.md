@@ -39,3 +39,13 @@ Status: complete
 - Added application unit-of-work protocol and infrastructure transaction implementation.
 - Added startup Alembic migration execution and pre-upgrade database backup behavior.
 - Added clean-install, idempotent migration, WAL, commit, and rollback tests.
+
+## Phase 05 — Secure Vault and Secret References
+
+Status: complete
+
+- Added a vault port and Windows Credential Manager-compatible keyring adapter.
+- Added secret types, references, metadata-only persistence, and a migration with no plaintext columns.
+- Added explicit AES-256-GCM secret archive transfer using scrypt-derived operator passphrases.
+- Added a clipboard reveal helper that clears unchanged secrets after a timeout.
+- Added fake-keyring, SQLite exclusion, safe export, encrypted round-trip, and clipboard tests.
