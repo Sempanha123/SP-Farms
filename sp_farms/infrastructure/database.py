@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,10 +11,23 @@ from alembic import command
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import DateTime, Engine, String, create_engine, event
+from sqlalchemy import (
+    DateTime,
+    Engine,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    create_engine,
+    event,
+)
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
+from sp_farms.application.jobs import JobRepository
+from sp_farms.application.unit_of_work import UnitOfWork
+from sp_farms.domain.jobs import Job, JobEvent, JobState
 from sp_farms.domain.secrets import SecretReference, SecretType
 
 
@@ -70,6 +83,160 @@ class SecretMetadata(EntityMixin, Base):
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
+
+
+class JobModel(EntityMixin, Base):
+    __tablename__ = "jobs"
+    __table_args__ = (Index("ix_jobs_target", "target_type", "target_id"),)
+
+    job_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    state: Mapped[str] = mapped_column(String(30), index=True, nullable=False)
+    progress: Mapped[int] = mapped_column(Integer, nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_attempts: Mapped[int] = mapped_column(Integer, nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(120), unique=True)
+    error_code: Mapped[str | None] = mapped_column(String(100))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @classmethod
+    def from_job(cls, job: Job) -> "JobModel":
+        return cls(
+            id=job.id,
+            job_type=job.job_type,
+            target_type=job.target_type,
+            target_id=job.target_id,
+            state=job.state.value,
+            progress=job.progress,
+            attempt_count=job.attempt_count,
+            max_attempts=job.max_attempts,
+            idempotency_key=job.idempotency_key,
+            error_code=job.error_code,
+            error_message=job.error_message,
+            next_retry_at=job.next_retry_at,
+            created_at=job.created_at,
+            updated_at=job.updated_at,
+        )
+
+    def update_from_job(self, job: Job) -> None:
+        self.job_type = job.job_type
+        self.target_type = job.target_type
+        self.target_id = job.target_id
+        self.state = job.state.value
+        self.progress = job.progress
+        self.attempt_count = job.attempt_count
+        self.max_attempts = job.max_attempts
+        self.idempotency_key = job.idempotency_key
+        self.error_code = job.error_code
+        self.error_message = job.error_message
+        self.next_retry_at = job.next_retry_at
+        self.updated_at = job.updated_at
+
+    def to_job(self) -> Job:
+        return Job(
+            id=self.id,
+            job_type=self.job_type,
+            target_type=self.target_type,
+            target_id=self.target_id,
+            state=JobState(self.state),
+            progress=self.progress,
+            attempt_count=self.attempt_count,
+            max_attempts=self.max_attempts,
+            idempotency_key=self.idempotency_key,
+            error_code=self.error_code,
+            error_message=self.error_message,
+            next_retry_at=_optional_as_utc(self.next_retry_at),
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
+        )
+
+
+class JobEventModel(EntityMixin, Base):
+    __tablename__ = "job_events"
+
+    job_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("jobs.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    from_state: Mapped[str | None] = mapped_column(String(30))
+    to_state: Mapped[str] = mapped_column(String(30), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+
+    @classmethod
+    def from_event(cls, job_event: JobEvent) -> "JobEventModel":
+        return cls(
+            id=job_event.id,
+            job_id=job_event.job_id,
+            from_state=job_event.from_state.value if job_event.from_state else None,
+            to_state=job_event.to_state.value,
+            message=job_event.message,
+            created_at=job_event.created_at,
+            updated_at=job_event.created_at,
+        )
+
+    def to_event(self) -> JobEvent:
+        return JobEvent(
+            id=self.id,
+            job_id=self.job_id,
+            from_state=JobState(self.from_state) if self.from_state else None,
+            to_state=JobState(self.to_state),
+            message=self.message,
+            created_at=_as_utc(self.created_at),
+        )
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value
+
+
+def _optional_as_utc(value: datetime | None) -> datetime | None:
+    return _as_utc(value) if value is not None else None
+
+
+class SqlAlchemyJobRepository(JobRepository):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyJobRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def add(self, job: Job) -> None:
+        session = self._session
+        model = session.get(JobModel, job.id)
+        if model is None:
+            session.add(JobModel.from_job(job))
+        else:
+            model.update_from_job(job)
+
+    def get(self, job_id: str) -> Job | None:
+        model = self._session.get(JobModel, job_id)
+        return model.to_job() if model else None
+
+    def find_by_idempotency_key(self, key: str) -> Job | None:
+        model = self._session.query(JobModel).filter_by(idempotency_key=key).one_or_none()
+        return model.to_job() if model else None
+
+    def list_active(self) -> Sequence[Job]:
+        terminal = tuple(state.value for state in JobState if state.is_terminal)
+        models = self._session.query(JobModel).filter(JobModel.state.not_in(terminal)).all()
+        return tuple(model.to_job() for model in models)
+
+    def add_event(self, job_event: JobEvent) -> None:
+        self._session.flush()
+        self._session.add(JobEventModel.from_event(job_event))
+
+    def list_events(self, job_id: str) -> Sequence[JobEvent]:
+        models = (
+            self._session.query(JobEventModel)
+            .filter_by(job_id=job_id)
+            .order_by(JobEventModel.created_at, JobEventModel.id)
+            .all()
+        )
+        return tuple(model.to_event() for model in models)
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
 
 
 class Database:

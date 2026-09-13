@@ -79,3 +79,13 @@ Status: complete
 - Added Alt+1–9 route shortcuts plus Ctrl+K and Ctrl+/ global actions.
 - Added notification-center model, dismissible toasts, and non-modal progress overlay.
 - Added route execution, filtering, collision, notification, and overlay tests.
+
+## Phase 09 — Persistent Job Domain and Schema
+
+Status: complete
+
+- Added durable job and append-only event domain entities with validated state transitions and progress bounds.
+- Added application repository ports and transactional job creation, transition, idempotency, and restart-recovery services.
+- Added SQLAlchemy mappings, repository adapter, indexed SQLite schema, and Alembic migration.
+- Added persistence, transition audit, idempotency, database reopen, and interrupted-job recovery tests.
+- Documented job lifecycle and recovery behavior in `docs/JOBS.md`.

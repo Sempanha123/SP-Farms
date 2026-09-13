@@ -35,3 +35,7 @@ The shell is a thin presentation container: top navigation, resizable device/con
 ## Operator command registry
 
 Navigation, palette entries, and global shortcuts share one command registry so all invocation paths run identical handlers. Registration rejects duplicate IDs and normalized shortcut collisions. Progress UI remains non-modal; notifications use a model that future persistent job events can feed.
+
+## Durable job lifecycle
+
+Long-running work is persisted as a current-state job plus append-only transition events. Domain code owns transition validity; application services own transactional orchestration; infrastructure owns mapping only. Optional unique idempotency keys collapse duplicate requests. Startup converts interrupted running work to retrying when attempts remain or failed otherwise, preserving explicit recovery markers and audit history.
