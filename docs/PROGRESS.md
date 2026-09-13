@@ -59,3 +59,13 @@ Status: complete
 - Added the offscreen-capable design-system preview for both themes.
 - Added focus, selection, typography, density, radius, and status-color standards.
 - Added offscreen render and component semantic tests.
+
+## Phase 07 — Main Shell and Demo-Style Workspace Layout
+
+Status: complete
+
+- Added the responsive main window with compact top navigation and nine primary workspaces.
+- Added the reference-style Device Manager rail, dense central management workspace, optional Job Queue drawer, and bottom status row.
+- Added persisted window geometry, theme, and queue visibility through `QSettings`.
+- Connected the real PySide6 event loop and clean application-context shutdown.
+- Added offscreen shell rendering, navigation, splitter, queue, and geometry persistence tests.

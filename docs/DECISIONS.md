@@ -27,3 +27,7 @@ Sensitive values live only behind the vault port; Windows deployments use Creden
 ## Visual semantics
 
 Shared widgets consume semantic light/dark palette tokens. Controls remain compact—30 px inputs and buttons, 34 px table rows, 8–10 px radii—with visible focus borders and textual state labels. This preserves the reference image’s dense desktop hierarchy without glow, glass, or generic dashboard spacing.
+
+## Main shell ownership
+
+The shell is a thin presentation container: top navigation, resizable device/content/queue columns, and compact status. `QSettings` owns local geometry and visibility preferences. Feature workspaces replace placeholders incrementally; the shell never opens database sessions or performs long-running work.

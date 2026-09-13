@@ -1,17 +1,12 @@
 from pathlib import Path
 
 import sp_farms
-from sp_farms.app.main import main
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_package_import() -> None:
     assert sp_farms.__version__ == "0.1.0"
-
-
-def test_application_entry_point_import() -> None:
-    assert main([]) == 0
 
 
 def test_bootstrap_script_is_idempotent_by_design() -> None:
