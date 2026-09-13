@@ -6,4 +6,8 @@ The package requires Python 3.12 or newer and Ruff and mypy target Python 3.12 s
 
 ## Source layout
 
-The import package lives directly under `sp_farms/` to keep the Windows bootstrap and entry-point setup simple. Architectural layers will remain separate subpackages as they are introduced.
+The import package lives directly under `sp_farms/` to keep the Windows bootstrap and entry-point setup simple. Architectural layers remain separate subpackages.
+
+## Composition and lifecycle
+
+`sp_farms.bootstrap` is the composition root and the only layer that constructs concrete infrastructure. The UI receives an `ApplicationContext`; its idempotent `close()` method runs registered shutdown hooks in reverse order so resources unwind predictably.

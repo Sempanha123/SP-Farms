@@ -9,3 +9,13 @@ Status: complete
 - Added idempotent PowerShell workflows for bootstrap, development, tests, linting, formatting, and packaging.
 - Added package, entry-point, bootstrap, and virtual-environment exclusion tests.
 - Reused the working repository-local `.venv`; Python 3.12 was detected by the launcher but its installation is unavailable, so local validation uses Python 3.14 while the project targets Python 3.12+.
+
+## Phase 02 — Architecture Boundaries and Application Bootstrap
+
+Status: complete
+
+- Added domain, application, infrastructure, module, plugin, and application packages.
+- Added shared result/error types and repository, service, provider, and clock protocols.
+- Added the composition root, minimal application context, and idempotent clean shutdown hooks.
+- Added architecture boundary, package import, result, bootstrap, and lifecycle tests.
+- Documented allowed dependency directions in `docs/ARCHITECTURE.md`.
