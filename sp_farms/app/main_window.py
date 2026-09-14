@@ -72,6 +72,7 @@ class MainWindow(QMainWindow):
             self._context.restore_workspace_service,
             self._context.device_pool_service,
             self._context.snapshot_service,
+            self._context.account_exchange_service,
         )
         self._workspace = WorkspaceLayout(
             self.device_manager_view.rail_model,

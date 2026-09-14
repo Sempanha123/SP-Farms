@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from sp_farms.application.account_exchange_service import AccountExchangeService
 from sp_farms.application.account_onboarding_service import AccountOnboardingService
 from sp_farms.application.account_service import AccountService
 from sp_farms.application.context import ApplicationContext
@@ -8,6 +9,7 @@ from sp_farms.application.device_service import DeviceService
 from sp_farms.application.job_service import JobService
 from sp_farms.application.qa_profile_service import QAProfileService
 from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
+from sp_farms.application.secret_service import SecretService
 from sp_farms.application.snapshot_service import SnapshotService
 from sp_farms.application.worker import FakeStressJobHandler, WorkerSupervisor
 from sp_farms.infrastructure.adb import SubprocessAdbClient
@@ -20,6 +22,7 @@ from sp_farms.infrastructure.database import (
     SqlAlchemyDeviceProfileRepository,
     SqlAlchemyJobRepository,
     SqlAlchemyQAProfileRepository,
+    SqlAlchemySecretRepository,
     run_migrations,
 )
 from sp_farms.infrastructure.logging import configure_logging
@@ -27,6 +30,7 @@ from sp_farms.infrastructure.providers.ldplayer import LdPlayerProvider
 from sp_farms.infrastructure.providers.mumu import MuMuProvider
 from sp_farms.infrastructure.providers.physical import PhysicalAndroidProvider
 from sp_farms.infrastructure.qa_bridge import AdbQAProfileReloadBridge
+from sp_farms.infrastructure.vault import KeyringVault
 
 
 def create_application(config_path: Path | None = None) -> ApplicationContext:
@@ -93,6 +97,15 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         clock,
     )
 
+    vault = KeyringVault()
+    secret_service = SecretService(vault)
+    account_exchange_service = AccountExchangeService(
+        accounts=account_service,
+        unit_of_work=database.unit_of_work,
+        secrets=secret_service,
+        secret_repository_factory=SqlAlchemySecretRepository,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -106,6 +119,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         qa_profile_service=qa_profile_service,
         account_service=account_service,
         account_onboarding_service=account_onboarding_service,
+        account_exchange_service=account_exchange_service,
         restore_workspace_service=restore_workspace_service,
         device_pool_service=device_pool_service,
         snapshot_service=snapshot_service,

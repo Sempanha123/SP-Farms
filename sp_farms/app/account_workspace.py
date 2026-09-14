@@ -30,6 +30,10 @@ from sp_farms.app.account_dialogs import (
     BulkTagDialog,
     ColumnPickerDialog,
 )
+from sp_farms.app.account_exchange_dialogs import (
+    AccountExportDialog,
+    AccountImportDialog,
+)
 from sp_farms.app.account_onboarding import AccountOnboardingPanel
 from sp_farms.app.batch_restore_dialog import BatchRestoreDialog
 from sp_farms.app.widgets import (
@@ -53,6 +57,7 @@ from sp_farms.domain.accounts import (
 from sp_farms.domain.device_restore import RestoreWorkspaceResult
 
 if TYPE_CHECKING:
+    from sp_farms.application.account_exchange_service import AccountExchangeService
     from sp_farms.application.device_pool_service import DevicePoolService
     from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
     from sp_farms.application.snapshot_service import SnapshotService
@@ -117,6 +122,8 @@ class AccountWorkspace(QWidget):
         restore_service: "RestoreWorkspaceService | None" = None,
         pool_service: "DevicePoolService | None" = None,
         snapshot_service: "SnapshotService | None" = None,
+        exchange_service: "AccountExchangeService | None" = None,
+        settings: QSettings | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -125,9 +132,12 @@ class AccountWorkspace(QWidget):
         self._restore_service = restore_service
         self._pool_service = pool_service
         self._snapshot_service = snapshot_service
+        self._exchange_service = exchange_service
         self._workers: set[_Worker] = set()
         self._pool = QThreadPool.globalInstance()
-        self._settings = QSettings("sp_farms", "account_workspace")
+        self._settings = (
+            settings if settings is not None else QSettings("sp_farms", "account_workspace")
+        )
         self._build_ui(onboarding)
         self._load_column_visibility()
         self.refresh()
@@ -277,6 +287,8 @@ class AccountWorkspace(QWidget):
         self.bulk_archive_action.triggered.connect(self.bulk_archive_selected)
         self.bulk_export_action = self.bulk_menu.addAction("Export Metadata...")
         self.bulk_export_action.triggered.connect(self.open_export_metadata_dialog)
+        self.bulk_import_action = self.bulk_menu.addAction("Import Metadata...")
+        self.bulk_import_action.triggered.connect(self.open_import_metadata_dialog)
         self.bulk_btn.setMenu(self.bulk_menu)
 
         toolbar_layout.addWidget(self.search_input, stretch=1)
@@ -561,6 +573,10 @@ class AccountWorkspace(QWidget):
         act_export.triggered.connect(self.open_export_metadata_dialog)
         menu.addAction(act_export)
 
+        act_import = QAction("Import Metadata...", self)
+        act_import.triggered.connect(self.open_import_metadata_dialog)
+        menu.addAction(act_import)
+
         menu.exec(self.table.viewport().mapToGlobal(pos))
 
     def open_bulk_category_dialog(self) -> None:
@@ -690,6 +706,16 @@ class AccountWorkspace(QWidget):
             QMessageBox.information(self, "No Accounts", "No accounts to export.")
             return
 
+        if self._exchange_service is not None:
+            dlg = AccountExportDialog(
+                exchange_service=self._exchange_service,
+                selected_account_ids=target_ids,
+                total_account_count=self.model.rowCount(),
+                parent=self,
+            )
+            dlg.exec()
+            return
+
         file_path, selected_filter = QFileDialog.getSaveFileName(
             self,
             "Export Safe Metadata",
@@ -704,6 +730,20 @@ class AccountWorkspace(QWidget):
         self.status_chip.update_state(
             "success", f"Exported {count} accounts metadata to {fmt.upper()}."
         )
+
+    def open_import_metadata_dialog(self) -> None:
+        if self._exchange_service is None:
+            QMessageBox.warning(
+                self,
+                "Import Unavailable",
+                "Account exchange service is not configured.",
+            )
+            return
+
+        dlg = AccountImportDialog(self._exchange_service, parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.refresh()
+            self.status_chip.update_state("success", "Accounts imported successfully.")
 
     @property
     def selected_account_id(self) -> str | None:
@@ -822,21 +862,14 @@ class AccountWorkspace(QWidget):
         avail_count = 0
         waiting_count = 0
         restoring_count = 0
-        ready_count = 0
-        failed_count = 0
         if self._pool_service:
             avail_count = len(self._pool_service.get_available_devices())
             q = self._pool_service.list_queue()
             waiting_count = sum(1 for item in q if item.status == "queued")
             restoring_count = sum(1 for item in q if item.status == "restoring")
-            failed_count = sum(1 for item in q if item.status == "failed")
 
-        if self._accounts:
-            for acct in self._accounts.list_accounts():
-                if acct.status is AccountStatus.ACTIVE and acct.assigned_device:
-                    ready_count += 1
-                elif acct.status is AccountStatus.DISABLED:
-                    failed_count += 1
+        ready_count = getattr(self, "_cached_ready_count", 0)
+        failed_count = getattr(self, "_cached_failed_count", 0)
 
         self.bottom_strip.setText(
             f"Selected: {count} | Available Devices: {avail_count} | "
@@ -1043,6 +1076,13 @@ class AccountWorkspace(QWidget):
 
         assigned = sum(account.assigned_device is not None for account in accounts)
         attention = sum(account.status is not AccountStatus.ACTIVE for account in accounts)
+        self._cached_ready_count = sum(
+            account.status is AccountStatus.ACTIVE and account.assigned_device is not None
+            for account in accounts
+        )
+        self._cached_failed_count = sum(
+            account.status is AccountStatus.DISABLED for account in accounts
+        )
         queue = tuple(self._pool_service.list_queue()) if self._pool_service else ()
         running = sum(item.status == "restoring" for item in queue)
         self.heading.setText(f"Accounts Management ({len(accounts)})")

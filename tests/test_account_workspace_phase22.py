@@ -64,9 +64,13 @@ def account_services(
 def test_column_picker_and_optional_columns(
     qapp: QApplication,
     account_services: tuple[AccountService, AccountOnboardingService, Database],
+    tmp_path: Path,
 ) -> None:
+    from PySide6.QtCore import QSettings
+
     accounts, onboarding, _ = account_services
-    workspace = AccountWorkspace(accounts, onboarding)
+    test_settings = QSettings(str(tmp_path / "test_settings.ini"), QSettings.Format.IniFormat)
+    workspace = AccountWorkspace(accounts, onboarding, settings=test_settings)
 
     # 24 defined columns
     assert len(COLUMNS) == 24

@@ -6,6 +6,7 @@ from sp_farms.application.ports import Clock
 from sp_farms.application.unit_of_work import UnitOfWork
 
 if TYPE_CHECKING:
+    from sp_farms.application.account_exchange_service import AccountExchangeService
     from sp_farms.application.account_onboarding_service import AccountOnboardingService
     from sp_farms.application.account_service import AccountService
     from sp_farms.application.adb import AdbPort
@@ -35,6 +36,7 @@ class ApplicationContext:
     qa_profile_service: "QAProfileService | None" = None
     account_service: "AccountService | None" = None
     account_onboarding_service: "AccountOnboardingService | None" = None
+    account_exchange_service: "AccountExchangeService | None" = None
     restore_workspace_service: "RestoreWorkspaceService | None" = None
     device_pool_service: "DevicePoolService | None" = None
     snapshot_service: "SnapshotService | None" = None

@@ -35,6 +35,7 @@ from sp_farms.application.device_pool import DevicePoolRepository
 from sp_farms.application.device_profiles import DeviceProfileRepository
 from sp_farms.application.jobs import JobRepository
 from sp_farms.application.qa_profiles import QAProfileRepository
+from sp_farms.application.secrets import SecretRepository
 from sp_farms.application.unit_of_work import UnitOfWork
 from sp_farms.domain.accounts import (
     Account,
@@ -1272,6 +1273,44 @@ class SqlAlchemyDevicePoolRepository(DevicePoolRepository):
             model.is_active = policy.is_active
             model.updated_at = _as_utc(policy.updated_at)
         session.flush()
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class SqlAlchemySecretRepository(SecretRepository):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemySecretRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def list_by_owner_ids(
+        self, owner_ids: Sequence[str] | None = None
+    ) -> Sequence[SecretReference]:
+        query = self._session.query(SecretMetadata)
+        if owner_ids is not None:
+            query = query.filter(SecretMetadata.owner_id.in_(owner_ids))
+        models = query.all()
+        return tuple(m.to_reference() for m in models)
+
+    def save(self, reference: SecretReference) -> None:
+        session = self._session
+        model = session.get(SecretMetadata, reference.id)
+        if model is None:
+            session.add(SecretMetadata.from_reference(reference))
+        else:
+            model.secret_type = reference.secret_type.value
+            model.owner_id = reference.owner_id
+            model.vault_ref = reference.vault_ref
+            model.updated_at = reference.updated_at
+        session.flush()
+
+    def delete(self, reference_id: str) -> None:
+        model = self._session.get(SecretMetadata, reference_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
 
     @property
     def _session(self) -> Session:
