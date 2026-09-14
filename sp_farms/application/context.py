@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     from sp_farms.application.adb import AdbPort
     from sp_farms.application.asset_sync_service import AssetSyncService
     from sp_farms.application.audit_service import AuditService
+    from sp_farms.application.caption_ai_service import CaptionAIService
+    from sp_farms.application.composer_service import ComposerService
     from sp_farms.application.content_service import ContentService
     from sp_farms.application.device_pool_service import DevicePoolService
     from sp_farms.application.device_service import DeviceService
@@ -52,6 +54,8 @@ class ApplicationContext:
     security_service: "SecurityService | None" = None
     audit_service: "AuditService | None" = None
     content_service: "ContentService | None" = None
+    composer_service: "ComposerService | None" = None
+    caption_ai_service: "CaptionAIService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

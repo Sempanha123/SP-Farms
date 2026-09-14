@@ -5,6 +5,8 @@ from sp_farms.application.account_onboarding_service import AccountOnboardingSer
 from sp_farms.application.account_service import AccountService
 from sp_farms.application.asset_sync_service import AssetSyncService
 from sp_farms.application.audit_service import AuditService
+from sp_farms.application.caption_ai_service import CaptionAIService
+from sp_farms.application.composer_service import ComposerService
 from sp_farms.application.content_service import ContentService
 from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_pool_service import DevicePoolService
@@ -37,6 +39,7 @@ from sp_farms.infrastructure.database import (
     SqlAlchemySecretRepository,
     run_migrations,
 )
+from sp_farms.infrastructure.fake_ai_provider import FakeMultilingualAIProvider
 from sp_farms.infrastructure.logging import configure_logging
 from sp_farms.infrastructure.meta.client import MetaHttpClient
 from sp_farms.infrastructure.meta.fake_client import FakeMetaApiClient
@@ -176,6 +179,22 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         storage_dir=config.database_path.parent / "content",
     )
 
+    composer_service = ComposerService(
+        unit_of_work=database.unit_of_work,
+        content_repo_factory=SqlAlchemyContentRepository,
+        asset_repo_factory=SqlAlchemyAssetRepository,
+        clock=clock,
+    )
+
+    fake_ai_provider = FakeMultilingualAIProvider(configured=True)
+    caption_ai_service = CaptionAIService(
+        unit_of_work=database.unit_of_work,
+        content_repo_factory=SqlAlchemyContentRepository,
+        secret_service=secret_service,
+        secret_repo_factory=SqlAlchemySecretRepository,
+        ai_provider=fake_ai_provider,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -199,6 +218,8 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         security_service=security_service,
         audit_service=audit_service,
         content_service=content_service,
+        composer_service=composer_service,
+        caption_ai_service=caption_ai_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

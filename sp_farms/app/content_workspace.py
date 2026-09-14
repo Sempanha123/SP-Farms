@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from sp_farms.app.composer_dialog import ComposerDialog
 from sp_farms.app.media_preview import MediaPreviewDialog
 from sp_farms.app.widgets import (
     CompactTable,
@@ -40,6 +41,7 @@ from sp_farms.app.widgets import (
     SecondaryButton,
     StatusChip,
 )
+from sp_farms.application.composer_service import ComposerService
 from sp_farms.application.media_prep_service import (
     MediaInspectionService,
     MediaPreparationService,
@@ -52,6 +54,7 @@ from sp_farms.domain.content import (
 )
 
 if TYPE_CHECKING:
+    from sp_farms.application.caption_ai_service import CaptionAIService
     from sp_farms.application.content_service import ContentService
 
 
@@ -445,10 +448,17 @@ class ContentWorkspace(QWidget):
     def __init__(
         self,
         content_service: "ContentService",
+        composer_service: ComposerService | None = None,
+        caption_ai_service: "CaptionAIService | None" = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._content_service = content_service
+        self._composer_service = composer_service or ComposerService(
+            unit_of_work=content_service._uow,
+            content_repo_factory=content_service._repo_factory,
+        )
+        self._caption_ai_service = caption_ai_service
         self.setAcceptDrops(True)
         self._build_ui()
         self.reload_data()
@@ -472,9 +482,13 @@ class ContentWorkspace(QWidget):
         top_bar.addLayout(header_box)
         top_bar.addStretch()
 
-        self.import_btn = PrimaryButton("+ Import Media")
+        self.import_btn = SecondaryButton("+ Import Media")
         self.import_btn.clicked.connect(self._on_import_dialog)
         top_bar.addWidget(self.import_btn)
+
+        self.composer_btn = PrimaryButton("✨ Compose Post/Reel")
+        self.composer_btn.clicked.connect(self._on_open_composer)
+        top_bar.addWidget(self.composer_btn)
 
         layout.addLayout(top_bar)
 
@@ -868,3 +882,13 @@ class ContentWorkspace(QWidget):
         self.item_title_input.clear()
         self.item_body_input.clear()
         self._reload_items()
+
+    def _on_open_composer(self) -> None:
+        dialog = ComposerDialog(
+            composer_service=self._composer_service,
+            content_service=self._content_service,
+            caption_ai_service=self._caption_ai_service,
+            parent=self,
+        )
+        dialog.draft_saved.connect(lambda _: self._reload_items())
+        dialog.exec()

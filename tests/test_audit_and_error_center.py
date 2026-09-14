@@ -1,4 +1,5 @@
 import json
+from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -30,7 +31,7 @@ from sp_farms.infrastructure.database import (
 
 
 @pytest.fixture
-def temp_db() -> tuple[Database, Path]:
+def temp_db() -> Generator[tuple[Database, Path], None, None]:
     temp_dir = TemporaryDirectory()
     db_path = Path(temp_dir.name) / "test_audit.db"
     db = Database(db_path)

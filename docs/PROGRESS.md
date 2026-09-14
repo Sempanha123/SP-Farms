@@ -341,6 +341,36 @@ Status: complete
 - Implemented `MediaPrepJobHandler` for background async media normalization and transcoding via `WorkerSupervisor`.
 - Added 8 focused tests in `tests/test_media_prep.py` covering FFmpeg detection, media inspection, non-destructive safety, job execution, cancellation, and dialog UI.
 
+## Phase 31 — Post and Reel Composer
+
+Status: complete
+
+- Built publishing composition workflow and interactive dialog for Posts, Reels, and Stories (`ComposerDialog`).
+- Implemented authorized destination selector querying `AssetRepository` and mapping Page/Group capabilities (`can_publish_reels`, `supports_first_comment`, `supports_location`).
+- Implemented post type selector (`FEED`, `REEL`, `STORY`) with dynamic capability validation and media constraints (Reels require single video, Stories require media).
+- Implemented caption editing with live character counts, hashtag insertion helper, media asset attachments, and thumbnail selection.
+- Added live interactive social card preview reflecting author, post type chip, attached media, caption, location tag, and first comment in real time.
+- Built fuzzy duplicate caption detection (`difflib.SequenceMatcher` > 0.85) warning operators against repetitive spam.
+- Supported draft post saving and loading using structured `ContentItem` metadata and tags.
+- Integrated Composer into `ContentWorkspace` via `✨ Compose Post/Reel` header action and context menu.
+- Added 7 comprehensive unit, domain validation, and UI lifecycle tests in `tests/test_composer.py`.
+
+## Phase 32 — Caption Templates and Multilingual AI Assist
+
+Status: complete
+
+- Implemented multilingual caption domain with Unicode NFC-safe normalization and rendering for Khmer (`km`), English (`en`), Thai (`th`), and Vietnamese (`vi`).
+- Built dominant script detector prioritizing combining diacritics and native Unicode codepoint ranges.
+- Built reusable caption template variable substitution engine and hashtag set combiner.
+- Implemented `AIProviderPort` protocol and deterministic offline `FakeMultilingualAIProvider` supporting rewrite, translation, spelling cleanup, tone variants (Casual, Professional, Promotional, Friendly, Urgent), and hashtag generation.
+- Enforced strict credential security: AI provider API keys are stored exclusively in the OS Keyring via `SecretService` and `Vault` (`SecretType.API_KEY`, owner ID `system:multilingual_ai`), never in SQLite or plaintext configuration.
+- Enforced human-in-the-loop review: AI assistance generates draft suggestions and variant proposals; publishing actions always require explicit operator confirmation.
+- Built split-pane `AiAssistDialog` operator review modal with side-by-side proposal preview, diff review, tone selection, and direct insertion into `ComposerDialog`.
+- Integrated AI assist and template injection into `ComposerDialog` and wired `CaptionAIService` into `ApplicationContext`.
+- Added 6 comprehensive automated tests in `tests/test_ai_assist.py` covering Unicode NFC handling, template rendering, offline AI generation, vault credentials, and UI dialog workflows.
+
+
+
 
 
 
