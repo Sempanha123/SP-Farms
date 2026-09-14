@@ -89,3 +89,14 @@ Status: complete
 - Added SQLAlchemy mappings, repository adapter, indexed SQLite schema, and Alembic migration.
 - Added persistence, transition audit, idempotency, database reopen, and interrupted-job recovery tests.
 - Documented job lifecycle and recovery behavior in `docs/JOBS.md`.
+
+## Phase 10 — Worker Supervisor and Execution Runtime
+
+Status: complete
+
+- Added bounded thread pool worker supervisor with thread-safe cancellation tokens and execution contexts.
+- Added per-provider and per-target concurrency limit enforcement with tick-based deterministic dispatch.
+- Added exponential backoff calculations, automatic retry scheduling, and max-attempt failure transitions.
+- Added worker heartbeat tracking, synthetic fake/stress handlers, exception containment, and graceful shutdown.
+- Wired startup recovery and supervisor shutdown hooks into `create_application`.
+- Added tests for execution progress, cancellation, retry/backoff, concurrency limits, exception containment, and graceful shutdown.

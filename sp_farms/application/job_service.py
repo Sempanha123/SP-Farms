@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from uuid import uuid4
 
@@ -72,6 +72,7 @@ class JobService:
         error_code: str | None = None,
         error_message: str | None = None,
         next_retry_at: datetime | None = None,
+        attempt_count: int | None = None,
     ) -> Job:
         now = self._clock.now()
         with self._unit_of_work() as unit:
@@ -86,11 +87,52 @@ class JobService:
                 error_code=error_code,
                 error_message=error_message,
                 next_retry_at=next_retry_at,
+                attempt_count=attempt_count,
             )
             repository.add(job)
             repository.add_event(event)
             unit.commit()
             return job
+
+    def get_job(self, job_id: str) -> Job | None:
+        with self._unit_of_work() as unit:
+            repository = self._repository_factory(unit)
+            return repository.get(job_id)
+
+    def list_active_jobs(self) -> Sequence[Job]:
+        with self._unit_of_work() as unit:
+            repository = self._repository_factory(unit)
+            return repository.list_active()
+
+    def list_runnable_jobs(self) -> Sequence[Job]:
+        now = self._clock.now()
+        with self._unit_of_work() as unit:
+            repository = self._repository_factory(unit)
+            return tuple(job for job in repository.list_active() if job.is_runnable(now))
+
+    def list_events(self, job_id: str) -> Sequence[JobEvent]:
+        with self._unit_of_work() as unit:
+            repository = self._repository_factory(unit)
+            return repository.list_events(job_id)
+
+    def record_progress(self, job_id: str, progress: int) -> Job:
+        now = self._clock.now()
+        with self._unit_of_work() as unit:
+            repository = self._repository_factory(unit)
+            job = repository.get(job_id)
+            if job is None:
+                raise KeyError(f"Job not found: {job_id}")
+            job.record_progress(progress, now)
+            repository.add(job)
+            unit.commit()
+            return job
+
+    def cancel_job(self, job_id: str, reason: str = "Cancelled by operator") -> Job:
+        return self.transition_job(
+            job_id=job_id,
+            new_state=JobState.CANCELLED,
+            message=reason,
+        )
 
     def recover_interrupted_jobs(self) -> int:
         now = self._clock.now()

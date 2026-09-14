@@ -39,3 +39,7 @@ Navigation, palette entries, and global shortcuts share one command registry so 
 ## Durable job lifecycle
 
 Long-running work is persisted as a current-state job plus append-only transition events. Domain code owns transition validity; application services own transactional orchestration; infrastructure owns mapping only. Optional unique idempotency keys collapse duplicate requests. Startup converts interrupted running work to retrying when attempts remain or failed otherwise, preserving explicit recovery markers and audit history.
+
+## Worker supervisor concurrency and backoff
+
+Background jobs run on a bounded worker pool behind an application supervisor. Concurrency limits protect both provider gateways and target accounts/devices from saturation. Execution handlers receive a cooperative cancellation token and progress reporter; unhandled exceptions are contained without crashing the supervisor. Failed attempts trigger exponential backoff with a UTC-based next retry timestamp until max attempts are exhausted.

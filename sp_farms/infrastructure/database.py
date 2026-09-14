@@ -21,6 +21,7 @@ from sqlalchemy import (
     Text,
     create_engine,
     event,
+    text,
 )
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
@@ -229,7 +230,7 @@ class SqlAlchemyJobRepository(JobRepository):
         models = (
             self._session.query(JobEventModel)
             .filter_by(job_id=job_id)
-            .order_by(JobEventModel.created_at, JobEventModel.id)
+            .order_by(JobEventModel.created_at, text("job_events.rowid"))
             .all()
         )
         return tuple(model.to_event() for model in models)
