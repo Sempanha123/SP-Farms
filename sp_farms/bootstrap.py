@@ -9,19 +9,27 @@ from sp_farms.application.asset_sync_service import AssetSyncService
 from sp_farms.application.audit_service import AuditService
 from sp_farms.application.automation.appium_session_manager import AppiumSessionManager
 from sp_farms.application.automation.job_handler import AppiumJobExecutor
+from sp_farms.application.backup_restore_service import BackupRestoreService
 from sp_farms.application.campaign_service import CampaignService
 from sp_farms.application.caption_ai_service import CaptionAIService
 from sp_farms.application.composer_service import ComposerService
 from sp_farms.application.content_service import ContentService
 from sp_farms.application.context import ApplicationContext
+from sp_farms.application.device_analytics_service import DeviceAnalyticsService
 from sp_farms.application.device_pool_service import DevicePoolService
 from sp_farms.application.device_service import DeviceService
 from sp_farms.application.hybrid_publishing_service import HybridPublishingService
 from sp_farms.application.job_service import JobService
+from sp_farms.application.licensing_service import LicensingService
 from sp_farms.application.media_prep_job import MediaPrepJobHandler
 from sp_farms.application.media_prep_service import MediaPreparationService
 from sp_farms.application.meta_client import MetaClientPort
 from sp_farms.application.meta_service import MetaIntegrationService
+from sp_farms.application.plugin_service import (
+    PluginService,
+    SampleAnalyticsExporterPlugin,
+    SampleNotificationPlugin,
+)
 from sp_farms.application.publishing_service import PublishingService
 from sp_farms.application.qa_profile_service import QAProfileService
 from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
@@ -43,6 +51,7 @@ from sp_farms.infrastructure.database import (
     SqlAlchemyAuditRepository,
     SqlAlchemyCampaignRepository,
     SqlAlchemyContentRepository,
+    SqlAlchemyDeviceAnalyticsRepository,
     SqlAlchemyDevicePoolRepository,
     SqlAlchemyDeviceProfileRepository,
     SqlAlchemyJobRepository,
@@ -263,6 +272,31 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         audit_service=audit_service,
     )
 
+    device_analytics_service = DeviceAnalyticsService(
+        unit_of_work=database.unit_of_work,
+        repo_factory=SqlAlchemyDeviceAnalyticsRepository,
+        clock=clock,
+    )
+
+    backup_restore_service = BackupRestoreService(
+        database_path=config.database_path,
+        settings_path=config.database_path.parent / "settings.json",
+        workspace_dir=config.database_path.parent,
+        backup_dir=config.database_path.parent / "backups",
+        vault=vault,
+        clock=clock,
+    )
+
+    licensing_service = LicensingService()
+
+    plugins_dir = config.database_path.parent / "plugins"
+    plugins_dir.mkdir(parents=True, exist_ok=True)
+    plugin_service = PluginService(plugins_dir=plugins_dir)
+    # Register reference built-in plugins
+    plugin_service.register_instance(SampleAnalyticsExporterPlugin())
+    plugin_service.register_instance(SampleNotificationPlugin())
+    plugin_service.discover_and_load_all()
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -294,6 +328,10 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         publishing_service=publishing_service,
         hybrid_publishing_service=hybrid_publishing_service,
         analytics_service=analytics_service,
+        device_analytics_service=device_analytics_service,
+        backup_restore_service=backup_restore_service,
+        plugin_service=plugin_service,
+        licensing_service=licensing_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

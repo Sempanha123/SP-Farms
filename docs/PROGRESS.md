@@ -456,6 +456,65 @@ Status: complete
 - Wired `AnalyticsService`, `PublishingService`, and `HybridPublishingService` into `ApplicationContext` and dependency injection in `bootstrap.py`.
 - Added 4 automated tests in `tests/test_analytics.py` (total test suite at 238/238 passing).
 
+## Phase 41 — Device Reliability Analytics & Fleet Diagnostics
+
+Status: complete
+
+- Defined domain models `DeviceReliabilityStats`, `DeviceReliabilityRating`, `FleetReliabilityReport`, and operational event tracking for device fleets.
+- Implemented weighted reliability scoring based on uptime, job success rate, disconnect counts, and provider crash rates.
+- Created Alembic migration `0017_device_analytics.py` and `SqlAlchemyDeviceAnalyticsRepository` mapping table `device_analytics_events`.
+- Built `DeviceAnalyticsService` orchestrating real-time event recording, metric computation, time-window filtering, and diagnostics CSV/JSON exports.
+- Enhanced `AnalyticsWorkspace` with a dedicated "Fleet Diagnostics" tab featuring high-level fleet metric cards, compact table, and detailed device inspector.
+- Added 7 comprehensive tests in `tests/test_device_reliability.py`.
+
+## Phase 42 — Disaster Recovery & Full Workspace Backup/Restore
+
+Status: complete
+
+- Implemented comprehensive disaster recovery engine in `BackupRestoreService` handling automated backups, manual exports, and full workspace recovery.
+- Added encrypted, authenticated archive creation using AES-256-GCM and PBKDF2/HMAC-SHA256 with checksum manifest validation.
+- Added snapshot retention policies with automated pruning of expired archives.
+- Implemented SQLite WAL checkpointing and database file integrity checking before archiving.
+- Built interactive PySide6 `DisasterRecoveryWorkspace` UI supporting backup creation, archive inspection, verified restores, and export downloads.
+- Added 7 automated tests in `tests/test_disaster_recovery.py`.
+
+## Phase 43 — Settings Center UI with 14 Sections, Validation, and Search
+
+Status: complete
+
+- Built complete `SettingsWorkspace` implementing all 14 required sections: General, Appearance, Accounts, Devices, Meta Integration, Storage, Security, Scheduler, Network, Notifications, Backup, Plugins, Updates, Diagnostics.
+- Added live search filtering across section fields, keywords, and descriptions.
+- Added pre-save validation for Meta App IDs, redirect URLs, proxies, and binary paths.
+- Added visual restart-required indicator badges and section-level reset to factory defaults.
+- Enforced secret masking for credentials and keys (never plaintext).
+- Added comprehensive test suite in `tests/test_settings_center.py`.
+
+## Phase 44 — Plugin and Provider SDK
+
+Status: complete
+
+- Defined extensible plugin types: `device_provider`, `media_processor`, `analytics_exporter`, and `notification_provider`.
+- Implemented `PluginManifest` with semantic version compatibility checks and granular capability declarations.
+- Built `PluginService` providing manifest discovery, dynamic safe loading, lifecycle management, and strict failure isolation via `execute_safe(...)`.
+- Implemented built-in reference plugins (`SampleAnalyticsExporterPlugin`, `SampleNotificationPlugin`).
+- Created developer guide in `docs/PLUGINS.md` detailing plugin architecture, manifests, and error boundaries.
+- Added 6 automated tests in `tests/test_plugins_sdk.py` (total test suite at 263/263 passing).
+
+## Phase 45 — Licensing and Edition Framework
+
+Status: complete
+
+- Implemented cryptographic asymmetric licensing engine via Ed25519 digital signatures.
+- Defined product editions (`FREE`, `PRO`, `VIP`, `DEV`) and feature gating flags (`UNLIMITED_ACCOUNTS`, `UNLIMITED_DEVICES`, `ADVANCED_ANALYTICS`, `AI_CAPTIONS`, `AUTOMATION_APPIUM`, `PLUGINS_RUNTIME`, `HYBRID_PUBLISHING`, `DISASTER_RECOVERY_SCHEDULE`).
+- Implemented `LicensingService` verifying base64 payload and signature pairs against embedded Ed25519 public key.
+- Embedded only Ed25519 public key in client source — zero private signing keys exist in the repository.
+- Built offline expiration handling with automatic 7-day grace period (`GRACE_PERIOD`) before locking (`EXPIRED`).
+- Added developer override mode via `SP_FARMS_DEV_MODE=1` unlocking all features and unbounded account/device capacities.
+- Wired `LicensingService` into `ApplicationContext` and `bootstrap.py`.
+- Added 5 automated tests in `tests/test_licensing.py` (total test suite at 268/268 passing).
+
+
+
 
 
 

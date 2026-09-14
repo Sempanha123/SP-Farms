@@ -115,27 +115,45 @@ class CompactTable(QTableView):
 class MetricRow(QWidget):
     def __init__(
         self,
-        metrics: Sequence[tuple[str, str]],
+        metrics: Sequence[tuple[str, str]] = (),
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        self._layout = QHBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(8)
         self.value_labels: list[QLabel] = []
-        for label, value in metrics:
-            panel = Panel()
-            panel.setProperty("metric", True)
-            panel_layout = QVBoxLayout(panel)
-            panel_layout.setContentsMargins(12, 8, 12, 8)
-            value_label = QLabel(value)
-            value_label.setProperty("metricValue", True)
-            self.value_labels.append(value_label)
-            name_label = QLabel(label)
-            name_label.setProperty("muted", True)
-            panel_layout.addWidget(value_label)
-            panel_layout.addWidget(name_label)
-            layout.addWidget(panel)
+        self.name_labels: list[QLabel] = []
+        if metrics:
+            self.set_metrics(metrics)
+
+    def set_metrics(self, metrics: Sequence[tuple[str, str]]) -> None:
+        if not self.value_labels or len(self.value_labels) != len(metrics):
+            while self._layout.count():
+                item = self._layout.takeAt(0)
+                w = item.widget()
+                if w:
+                    w.deleteLater()
+            self.value_labels.clear()
+            self.name_labels.clear()
+            for label, value in metrics:
+                panel = Panel()
+                panel.setProperty("metric", True)
+                panel_layout = QVBoxLayout(panel)
+                panel_layout.setContentsMargins(12, 8, 12, 8)
+                value_label = QLabel(value)
+                value_label.setProperty("metricValue", True)
+                self.value_labels.append(value_label)
+                name_label = QLabel(label)
+                name_label.setProperty("muted", True)
+                self.name_labels.append(name_label)
+                panel_layout.addWidget(value_label)
+                panel_layout.addWidget(name_label)
+                self._layout.addWidget(panel)
+        else:
+            for idx, (label, value) in enumerate(metrics):
+                self.value_labels[idx].setText(value)
+                self.name_labels[idx].setText(label)
 
 
 def apply_icon_tint(widget: QWidget, mode: ThemeMode) -> None:

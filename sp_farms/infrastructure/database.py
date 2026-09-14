@@ -36,6 +36,7 @@ from sp_farms.application.approval_repository import ApprovalRepositoryPort
 from sp_farms.application.audit_repository import AuditRepository
 from sp_farms.application.campaign_repository import CampaignRepositoryPort
 from sp_farms.application.content_repository import ContentRepositoryPort
+from sp_farms.application.device_analytics_repository import DeviceAnalyticsRepositoryPort
 from sp_farms.application.device_pool import DevicePoolRepository
 from sp_farms.application.device_profiles import DeviceProfileRepository
 from sp_farms.application.jobs import JobRepository
@@ -82,6 +83,10 @@ from sp_farms.domain.content import (
     MediaAsset,
     MediaMetadata,
     MediaType,
+)
+from sp_farms.domain.device_analytics import (
+    DeviceOperationalEvent,
+    OperationalEventType,
 )
 from sp_farms.domain.device_management import DeviceProfile
 from sp_farms.domain.device_pool import (
@@ -2976,6 +2981,96 @@ class SqlAlchemyAnalyticsRepository(AnalyticsRepositoryPort):
             total_impressions=sum(m.impressions_count for m in models),
             total_reach=sum(m.reach_count for m in models),
         )
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class DeviceOperationalEventModel(Base):
+    __tablename__ = "device_operational_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    device_key: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    duration_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
+
+    @classmethod
+    def from_event(cls, ev: DeviceOperationalEvent) -> "DeviceOperationalEventModel":
+        return cls(
+            id=ev.id,
+            device_key=ev.device_key,
+            provider=ev.provider,
+            event_type=ev.event_type.value,
+            duration_seconds=ev.duration_seconds,
+            error_code=ev.error_code,
+            error_message=ev.error_message,
+            metadata_json=json.dumps(ev.metadata),
+            created_at=_as_utc(ev.created_at),
+        )
+
+    def to_event(self) -> DeviceOperationalEvent:
+        try:
+            meta = json.loads(self.metadata_json)
+        except Exception:
+            meta = {}
+        ev_type = (
+            OperationalEventType(self.event_type)
+            if self.event_type in OperationalEventType._value2member_map_
+            else OperationalEventType.HEARTBEAT
+        )
+        return DeviceOperationalEvent(
+            id=self.id,
+            device_key=self.device_key,
+            provider=self.provider,
+            event_type=ev_type,
+            duration_seconds=self.duration_seconds,
+            error_code=self.error_code,
+            error_message=self.error_message,
+            metadata=meta,
+            created_at=_as_utc(self.created_at),
+        )
+
+
+class SqlAlchemyDeviceAnalyticsRepository(DeviceAnalyticsRepositoryPort):
+    def __init__(self, unit_of_work: "SqlAlchemyUnitOfWork") -> None:
+        self._unit_of_work = unit_of_work
+
+    def record_event(self, event: DeviceOperationalEvent) -> None:
+        model = DeviceOperationalEventModel.from_event(event)
+        self._session.add(model)
+        self._session.flush()
+
+    def record_events(self, events: Sequence[DeviceOperationalEvent]) -> None:
+        for ev in events:
+            self._session.add(DeviceOperationalEventModel.from_event(ev))
+        self._session.flush()
+
+    def list_events(
+        self,
+        device_key: str | None = None,
+        provider: str | None = None,
+        since: datetime | None = None,
+        limit: int = 1000,
+    ) -> Sequence[DeviceOperationalEvent]:
+        query = self._session.query(DeviceOperationalEventModel)
+        if device_key is not None:
+            query = query.filter(DeviceOperationalEventModel.device_key == device_key)
+        if provider is not None:
+            query = query.filter(DeviceOperationalEventModel.provider == provider)
+        if since is not None:
+            query = query.filter(DeviceOperationalEventModel.created_at >= _as_utc(since))
+        models = (
+            query.order_by(DeviceOperationalEventModel.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return tuple(m.to_event() for m in models)
 
     @property
     def _session(self) -> Session:
