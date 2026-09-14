@@ -14,7 +14,9 @@ from PySide6.QtWidgets import (
 from sp_farms.app.account_workspace import AccountWorkspace
 from sp_farms.app.asset_workspace import PagesGroupsWorkspace
 from sp_farms.app.command_palette import CommandPalette
+from sp_farms.app.content_workspace import ContentWorkspace
 from sp_farms.app.device_manager import DeviceManagerView
+from sp_farms.app.error_center import ErrorCenterWorkspace
 from sp_farms.app.home_dashboard import HomeDashboard
 from sp_farms.app.job_queue import JobQueueView
 from sp_farms.app.navigation import Command, NavigationService
@@ -109,6 +111,18 @@ class MainWindow(QMainWindow):
         )
         self.groups_workspace.set_tab("Groups")
         self.groups_workspace.route_requested.connect(self.navigate)
+        self.content_workspace: ContentWorkspace | None = (
+            ContentWorkspace(self._context.content_service)
+            if self._context.content_service
+            else None
+        )
+        self.error_center_workspace: ErrorCenterWorkspace | None = (
+            ErrorCenterWorkspace(self._context.audit_service)
+            if self._context.audit_service
+            else None
+        )
+        if self.error_center_workspace:
+            self.error_center_workspace.route_requested.connect(self.navigate)
         self.setObjectName("mainWindow")
         self.setWindowTitle("SP-Farms")
         self.setMinimumSize(1024, 680)
@@ -128,6 +142,17 @@ class MainWindow(QMainWindow):
         if section in ("Security", "Security Center"):
             self.navigate("Accounts")
             self.account_workspace.show_security_center()
+            return
+        if section in ("Error Center", "Errors", "Audit", "Audit Trail"):
+            if self.error_center_workspace is not None:
+                self._pages.setCurrentWidget(self.error_center_workspace)
+                for button in self._nav_buttons.values():
+                    button.setChecked(False)
+                if section in ("Audit", "Audit Trail"):
+                    self.error_center_workspace.tabs.setCurrentIndex(1)
+                else:
+                    self.error_center_workspace.tabs.setCurrentIndex(0)
+                self.error_center_workspace.refresh()
             return
         index = NAVIGATION.index(section)
         self._pages.setCurrentIndex(index)
@@ -236,14 +261,17 @@ class MainWindow(QMainWindow):
             elif section == "Groups":
                 self._pages.addWidget(self.groups_workspace)
             elif section == "Content":
-                workspace = UnavailableWorkspace(
-                    "Content",
-                    "Phases 29–38",
-                    "content library, composer, campaigns, and publishing services",
-                    "Automation",
-                )
-                workspace.route_requested.connect(self.navigate)
-                self._pages.addWidget(workspace)
+                if self.content_workspace is not None:
+                    self._pages.addWidget(self.content_workspace)
+                else:
+                    workspace = UnavailableWorkspace(
+                        "Content",
+                        "Phases 29–38",
+                        "content library, composer, campaigns, and publishing services",
+                        "Automation",
+                    )
+                    workspace.route_requested.connect(self.navigate)
+                    self._pages.addWidget(workspace)
             elif section == "Analytics":
                 self.analytics_workspace = AnalyticsWorkspace(self._context)
                 self._pages.addWidget(self.analytics_workspace)
@@ -256,6 +284,8 @@ class MainWindow(QMainWindow):
                     self.set_job_queue_visible
                 )
                 self._pages.addWidget(self.settings_workspace)
+        if self.error_center_workspace is not None:
+            self._pages.addWidget(self.error_center_workspace)
         shell_layout.addWidget(self._pages, stretch=1)
         self.setCentralWidget(shell)
         self.navigate("Home")
@@ -278,6 +308,15 @@ class MainWindow(QMainWindow):
                 "Ctrl+Alt+S",
                 self._open_security_center,
                 keywords=("security", "audit", "2fa", "token", "credentials"),
+            )
+        )
+        self.navigation.register(
+            Command(
+                "errors.open",
+                "Open Error Center & Audit Trail",
+                "Ctrl+Alt+E",
+                lambda: self.navigate("Error Center"),
+                keywords=("error", "errors", "diagnostic", "audit", "retries", "failure"),
             )
         )
         for command in self.navigation.commands:

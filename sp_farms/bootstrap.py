@@ -4,6 +4,8 @@ from sp_farms.application.account_exchange_service import AccountExchangeService
 from sp_farms.application.account_onboarding_service import AccountOnboardingService
 from sp_farms.application.account_service import AccountService
 from sp_farms.application.asset_sync_service import AssetSyncService
+from sp_farms.application.audit_service import AuditService
+from sp_farms.application.content_service import ContentService
 from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_pool_service import DevicePoolService
 from sp_farms.application.device_service import DeviceService
@@ -24,6 +26,8 @@ from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import (
     Database,
     SqlAlchemyAccountRepository,
+    SqlAlchemyAuditRepository,
+    SqlAlchemyContentRepository,
     SqlAlchemyDevicePoolRepository,
     SqlAlchemyDeviceProfileRepository,
     SqlAlchemyJobRepository,
@@ -152,6 +156,20 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         clock=clock,
     )
 
+    audit_service = AuditService(
+        unit_of_work=database.unit_of_work,
+        audit_repository_factory=SqlAlchemyAuditRepository,
+        clock=clock,
+        job_service=job_service,
+    )
+
+    content_service = ContentService(
+        unit_of_work=database.unit_of_work,
+        content_repository_factory=SqlAlchemyContentRepository,
+        clock=clock,
+        storage_dir=config.database_path.parent / "content",
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -173,6 +191,8 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         meta_service=meta_service,
         asset_sync_service=asset_sync_service,
         security_service=security_service,
+        audit_service=audit_service,
+        content_service=content_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

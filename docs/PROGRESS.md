@@ -308,6 +308,29 @@ Status: complete
 - Added CSV security audit report export and integrated workspace into `AccountWorkspace`, `MainWindow` (`Ctrl+Alt+S`), and `HomeDashboard`.
 - Added unit and UI tests in `tests/test_security_center.py` verifying scoring, audits, system report aggregation, proxy filtering, and inspector behavior.
 
+## Phase 28 — Audit Trail and Error Center
+
+Status: complete
+
+- Built `AuditEvent` and `SecurityEvent` domain records with structured metadata: initiator, action, target, result, error code, retry count, job id.
+- Implemented `redact_text` and `redact_data` utilities ensuring sensitive tokens, passwords, cookies, and secret keys never leak into audit records.
+- Added Alembic migration `0010_audit_events.py` and `SqlAlchemyAuditRepository` for persistent storage and configurable retention pruning.
+- Created `ErrorCenterWorkspace` with friendly failure summaries, copyable technical diagnostics, immediate retry routing, and operator recovery suggestions.
+- Integrated Error Center into navigation, `HomeDashboard`, and context action handlers.
+- Added comprehensive test suite in `tests/test_audit_and_error_center.py`.
+
+## Phase 29 — Content Library and Media Asset Storage
+
+Status: complete
+
+- Implemented `MediaAsset`, `MediaMetadata`, `CaptionTemplate`, `HashtagSet`, and `ContentItem` domain entities.
+- Created Alembic migration `0011_content_library.py` and `SqlAlchemyContentRepository`.
+- Built `ContentService` with SHA-256 deduplication, automatic file storage layout, aspect ratio calculation, thumbnail generation, and caption template variable rendering.
+- Developed `ContentWorkspace` UI with real-time asset metrics, table/grid filter proxy, preview/inspector panel, caption/hashtag/item tabs, and drag-and-drop file import.
+- Replaced placeholder content workspace in `MainWindow` with full `ContentWorkspace`.
+- Added 10 tests in `tests/test_content_library.py` covering deduplication, filters, metadata, and UI lifecycle.
+
+
 
 
 

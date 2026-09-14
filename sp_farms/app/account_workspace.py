@@ -193,7 +193,9 @@ class AccountWorkspace(QWidget):
         local_nav_layout.setContentsMargins(4, 3, 4, 3)
         local_nav_layout.setSpacing(2)
         self.local_nav_buttons: dict[str, QPushButton] = {}
-        for index, label in enumerate(("Local Accounts", "Security Center", "Pages", "Groups")):
+        for index, label in enumerate(
+            ("Local Accounts", "Security Center", "Error Center", "Pages", "Groups")
+        ):
             button = QPushButton(label)
             button.setObjectName(f"local{label.replace(' ', '')}Button")
             button.setProperty("localNav", True)
@@ -204,6 +206,8 @@ class AccountWorkspace(QWidget):
                 route = "Accounts"
             elif label == "Security Center":
                 route = "Security"
+            elif label == "Error Center":
+                route = "Error Center"
             else:
                 route = label
             button.clicked.connect(

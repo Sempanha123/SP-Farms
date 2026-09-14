@@ -70,6 +70,7 @@ class HomeDashboard(QWidget):
         for label, route in (
             ("Manage Accounts", "Accounts"),
             ("Security Center", "Security"),
+            ("Error Center", "Error Center"),
             ("Manage Devices", "Devices"),
             ("Open Automation Queue", "Automation"),
             ("Open Settings", "Settings"),
