@@ -112,3 +112,17 @@ Status: complete
 - Added bottom status counters for active, queued, failed, and completed workloads.
 - Embedded `JobQueueView` in `MainWindow` under the Automation workspace.
 - Added tests for table model sorting/filtering, selection action enablement, inspector updates, and large queue (1,500 items) responsiveness.
+
+## Phase 12 — ADB Abstraction and Device Discovery
+
+Status: complete
+
+- Added `DeviceInfo` and `DeviceState` domain entities for physical and virtual Android endpoints.
+- Added `AdbPort` application protocol and typed exceptions: `AdbTimeoutError`, `AdbDeviceNotFoundError`, `AdbUnauthorizedError`, and `AdbOfflineError`.
+- Added Windows and cross-platform ADB executable locator with environment variable, user configuration, Android SDK, and PATH discovery.
+- Added robust output parsing for `adb devices -l`, Android system properties (`ro.build.version.release`, `ro.build.version.sdk`), and display metrics (`wm size`).
+- Implemented `SubprocessAdbClient` with timeout enforcement, process management, and error string categorization.
+- Implemented `FakeAdbAdapter` with configurable `SimulatedDevice` fixtures for offline, unauthorized, timeout, and error state testing without hardware.
+- Integrated ADB client into application bootstrap context with non-secret `adb_path` configuration support.
+- Added comprehensive tests for device parsing, timeout mapping, unauthorized/offline states, locator precedence, and fake fixtures.
+

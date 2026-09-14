@@ -15,6 +15,7 @@ _ENVIRONMENT_KEYS = {
     "SP_FARMS_LOG_PATH": "log_path",
     "SP_FARMS_LOG_MAX_BYTES": "log_max_bytes",
     "SP_FARMS_LOG_BACKUP_COUNT": "log_backup_count",
+    "SP_FARMS_ADB_PATH": "adb_path",
 }
 _ALLOWED_FILE_KEYS = frozenset(_ENVIRONMENT_KEYS.values())
 _SECRET_MARKERS = ("authorization", "cookie", "password", "secret", "token")
@@ -51,6 +52,10 @@ def load_config(
     values["log_path"] = Path(values["log_path"])
     values["log_max_bytes"] = int(values["log_max_bytes"])
     values["log_backup_count"] = int(values["log_backup_count"])
+    if "adb_path" in values and values["adb_path"] is not None:
+        values["adb_path"] = Path(values["adb_path"])
+    else:
+        values["adb_path"] = None
     return AppConfig(**values)
 
 

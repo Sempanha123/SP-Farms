@@ -6,6 +6,7 @@ from sp_farms.application.ports import Clock
 from sp_farms.application.unit_of_work import UnitOfWork
 
 if TYPE_CHECKING:
+    from sp_farms.application.adb import AdbPort
     from sp_farms.application.job_service import JobService
     from sp_farms.application.worker import WorkerSupervisor
 
@@ -18,6 +19,7 @@ class ApplicationContext:
     unit_of_work: Callable[[], UnitOfWork] | None = None
     job_service: "JobService | None" = None
     worker_supervisor: "WorkerSupervisor | None" = None
+    adb: "AdbPort | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

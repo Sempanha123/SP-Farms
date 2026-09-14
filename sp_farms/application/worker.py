@@ -80,7 +80,7 @@ class JobExecutionContext:
 
 
 class JobHandler(Protocol):
-    def __call__(self, context: JobExecutionContext) -> None: ...
+    def __call__(self, context: JobExecutionContext, /) -> None: ...
 
 
 class FakeStressJobHandler:
