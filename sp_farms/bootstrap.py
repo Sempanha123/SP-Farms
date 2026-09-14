@@ -7,9 +7,9 @@ from sp_farms.application.analytics_service import AnalyticsService
 from sp_farms.application.approval_service import ApprovalService
 from sp_farms.application.asset_sync_service import AssetSyncService
 from sp_farms.application.audit_service import AuditService
-from sp_farms.application.backup_restore_service import BackupRestoreService
 from sp_farms.application.automation.appium_session_manager import AppiumSessionManager
 from sp_farms.application.automation.job_handler import AppiumJobExecutor
+from sp_farms.application.backup_restore_service import BackupRestoreService
 from sp_farms.application.campaign_service import CampaignService
 from sp_farms.application.caption_ai_service import CaptionAIService
 from sp_farms.application.composer_service import ComposerService
@@ -24,6 +24,11 @@ from sp_farms.application.media_prep_job import MediaPrepJobHandler
 from sp_farms.application.media_prep_service import MediaPreparationService
 from sp_farms.application.meta_client import MetaClientPort
 from sp_farms.application.meta_service import MetaIntegrationService
+from sp_farms.application.plugin_service import (
+    PluginService,
+    SampleAnalyticsExporterPlugin,
+    SampleNotificationPlugin,
+)
 from sp_farms.application.publishing_service import PublishingService
 from sp_farms.application.qa_profile_service import QAProfileService
 from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
@@ -45,6 +50,7 @@ from sp_farms.infrastructure.database import (
     SqlAlchemyAuditRepository,
     SqlAlchemyCampaignRepository,
     SqlAlchemyContentRepository,
+    SqlAlchemyDeviceAnalyticsRepository,
     SqlAlchemyDevicePoolRepository,
     SqlAlchemyDeviceProfileRepository,
     SqlAlchemyJobRepository,
@@ -52,7 +58,6 @@ from sp_farms.infrastructure.database import (
     SqlAlchemyQAProfileRepository,
     SqlAlchemySchedulerRepository,
     SqlAlchemySecretRepository,
-    SqlAlchemyDeviceAnalyticsRepository,
     run_migrations,
 )
 from sp_farms.infrastructure.fake_ai_provider import FakeMultilingualAIProvider
@@ -281,6 +286,14 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         clock=clock,
     )
 
+    plugins_dir = config.database_path.parent / "plugins"
+    plugins_dir.mkdir(parents=True, exist_ok=True)
+    plugin_service = PluginService(plugins_dir=plugins_dir)
+    # Register reference built-in plugins
+    plugin_service.register_instance(SampleAnalyticsExporterPlugin())
+    plugin_service.register_instance(SampleNotificationPlugin())
+    plugin_service.discover_and_load_all()
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -314,6 +327,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         analytics_service=analytics_service,
         device_analytics_service=device_analytics_service,
         backup_restore_service=backup_restore_service,
+        plugin_service=plugin_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)
