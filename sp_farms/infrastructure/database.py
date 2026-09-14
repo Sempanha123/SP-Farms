@@ -31,6 +31,7 @@ from sqlalchemy.engine import URL
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from sp_farms.application.accounts import AccountRepository
+from sp_farms.application.analytics_repository import AnalyticsRepositoryPort
 from sp_farms.application.approval_repository import ApprovalRepositoryPort
 from sp_farms.application.audit_repository import AuditRepository
 from sp_farms.application.campaign_repository import CampaignRepositoryPort
@@ -38,6 +39,7 @@ from sp_farms.application.content_repository import ContentRepositoryPort
 from sp_farms.application.device_pool import DevicePoolRepository
 from sp_farms.application.device_profiles import DeviceProfileRepository
 from sp_farms.application.jobs import JobRepository
+from sp_farms.application.publish_repository import PublishRepositoryPort
 from sp_farms.application.qa_profiles import QAProfileRepository
 from sp_farms.application.scheduler_repository import ScheduledItemRepositoryPort
 from sp_farms.application.secrets import SecretRepository
@@ -53,6 +55,7 @@ from sp_farms.domain.accounts import (
     PreferredApp,
     SecurityState,
 )
+from sp_farms.domain.analytics import AggregatedMetrics, PostAnalyticsSnapshot
 from sp_farms.domain.approvals import (
     ApprovalActionType,
     ApprovalPolicyRule,
@@ -90,6 +93,11 @@ from sp_farms.domain.device_pool import (
 from sp_farms.domain.device_restore import AccountDeviceBinding, BindingStatus
 from sp_farms.domain.jobs import Job, JobEvent, JobState
 from sp_farms.domain.providers import DeviceProviderType
+from sp_farms.domain.publishing import (
+    PublishAttempt,
+    PublishErrorCode,
+    PublishStatus,
+)
 from sp_farms.domain.qa_profiles import (
     QADeviceAssignment,
     QAProfile,
@@ -2645,6 +2653,329 @@ class SqlAlchemyApprovalRepository(ApprovalRepositoryPort):
         if model is not None:
             self._session.delete(model)
             self._session.flush()
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class PublishAttemptModel(Base, EntityMixin):
+    __tablename__ = "publish_attempts"
+
+    destination_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    destination_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    destination_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    post_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    method_used: Mapped[str] = mapped_column(String(16), nullable=False, default="api")
+    scheduled_item_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    campaign_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    external_post_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_retryable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True)
+
+    @classmethod
+    def from_attempt(cls, attempt: PublishAttempt) -> "PublishAttemptModel":
+        return cls(
+            id=attempt.id,
+            destination_type=attempt.destination_type.value,
+            destination_id=attempt.destination_id,
+            destination_name=attempt.destination_name,
+            post_type=attempt.post_type.value,
+            payload=json.dumps(dict(attempt.payload)),
+            status=attempt.status.value,
+            method_used=attempt.method_used.value,
+            scheduled_item_id=attempt.scheduled_item_id,
+            campaign_id=attempt.campaign_id,
+            job_id=attempt.job_id,
+            external_post_id=attempt.external_post_id,
+            error_code=attempt.error_code.value if attempt.error_code else None,
+            error_message=attempt.error_message,
+            is_retryable=attempt.is_retryable,
+            retry_count=attempt.retry_count,
+            duration_ms=attempt.duration_ms,
+            idempotency_key=attempt.idempotency_key,
+            created_at=_as_utc(attempt.created_at),
+            updated_at=_as_utc(attempt.updated_at),
+        )
+
+    def to_attempt(self) -> PublishAttempt:
+        try:
+            dest_type = PublishDestinationType(self.destination_type)
+        except Exception:
+            dest_type = PublishDestinationType.PAGE
+
+        try:
+            p_type = PostType(self.post_type)
+        except Exception:
+            p_type = PostType.FEED
+
+        try:
+            stat = PublishStatus(self.status)
+        except Exception:
+            stat = PublishStatus.FAILED
+
+        try:
+            from sp_farms.domain.publishing import PublishMethod
+            method_u = PublishMethod(self.method_used)
+        except Exception:
+            method_u = PublishMethod.API
+
+        err_code = None
+        if self.error_code:
+            try:
+                err_code = PublishErrorCode(self.error_code)
+            except Exception:
+                err_code = PublishErrorCode.UNKNOWN
+
+        try:
+            payload_dict = json.loads(self.payload)
+        except Exception:
+            payload_dict = {}
+
+        return PublishAttempt(
+            id=self.id,
+            destination_type=dest_type,
+            destination_id=self.destination_id,
+            destination_name=self.destination_name,
+            post_type=p_type,
+            payload=payload_dict,
+            status=stat,
+            method_used=method_u,
+            scheduled_item_id=self.scheduled_item_id,
+            campaign_id=self.campaign_id,
+            job_id=self.job_id,
+            external_post_id=self.external_post_id,
+            error_code=err_code,
+            error_message=self.error_message,
+            is_retryable=self.is_retryable,
+            retry_count=self.retry_count,
+            duration_ms=self.duration_ms,
+            idempotency_key=self.idempotency_key,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
+        )
+
+
+class SqlAlchemyPublishRepository(PublishRepositoryPort):
+    def __init__(self, unit_of_work: "SqlAlchemyUnitOfWork") -> None:
+        self._unit_of_work = unit_of_work
+
+    def save(self, attempt: PublishAttempt) -> None:
+        model = self._session.get(PublishAttemptModel, attempt.id)
+        if model is None:
+            model = PublishAttemptModel.from_attempt(attempt)
+            self._session.add(model)
+        else:
+            model.destination_type = attempt.destination_type.value
+            model.destination_id = attempt.destination_id
+            model.destination_name = attempt.destination_name
+            model.post_type = attempt.post_type.value
+            model.payload = json.dumps(dict(attempt.payload))
+            model.status = attempt.status.value
+            model.scheduled_item_id = attempt.scheduled_item_id
+            model.campaign_id = attempt.campaign_id
+            model.job_id = attempt.job_id
+            model.external_post_id = attempt.external_post_id
+            model.error_code = attempt.error_code.value if attempt.error_code else None
+            model.error_message = attempt.error_message
+            model.is_retryable = attempt.is_retryable
+            model.retry_count = attempt.retry_count
+            model.duration_ms = attempt.duration_ms
+            model.idempotency_key = attempt.idempotency_key
+            model.updated_at = _as_utc(attempt.updated_at)
+        self._session.flush()
+
+    def get(self, attempt_id: str) -> PublishAttempt | None:
+        model = self._session.get(PublishAttemptModel, attempt_id)
+        return model.to_attempt() if model is not None else None
+
+    def get_by_idempotency_key(self, key: str) -> PublishAttempt | None:
+        model = (
+            self._session.query(PublishAttemptModel)
+            .filter_by(idempotency_key=key)
+            .one_or_none()
+        )
+        return model.to_attempt() if model is not None else None
+
+    def list_recent(
+        self,
+        limit: int = 50,
+        status: PublishStatus | None = None,
+        destination_id: str | None = None,
+        campaign_id: str | None = None,
+    ) -> Sequence[PublishAttempt]:
+        query = self._session.query(PublishAttemptModel)
+        if status is not None:
+            query = query.filter(PublishAttemptModel.status == status.value)
+        if destination_id is not None:
+            query = query.filter(PublishAttemptModel.destination_id == destination_id)
+        if campaign_id is not None:
+            query = query.filter(PublishAttemptModel.campaign_id == campaign_id)
+        models = (
+            query.order_by(PublishAttemptModel.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return tuple(m.to_attempt() for m in models)
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class AnalyticsSnapshotModel(Base, EntityMixin):
+    __tablename__ = "analytics_snapshots"
+
+    external_post_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    account_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    destination_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    destination_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    post_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    publish_attempt_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    likes_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    comments_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    shares_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    views_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    impressions_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    reach_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+
+    @classmethod
+    def from_snapshot(cls, snapshot: PostAnalyticsSnapshot) -> "AnalyticsSnapshotModel":
+        return cls(
+            id=snapshot.id,
+            external_post_id=snapshot.external_post_id,
+            account_id=snapshot.account_id,
+            destination_id=snapshot.destination_id,
+            destination_name=snapshot.destination_name,
+            post_type=snapshot.post_type.value,
+            publish_attempt_id=snapshot.publish_attempt_id,
+            likes_count=snapshot.likes_count,
+            comments_count=snapshot.comments_count,
+            shares_count=snapshot.shares_count,
+            views_count=snapshot.views_count,
+            impressions_count=snapshot.impressions_count,
+            reach_count=snapshot.reach_count,
+            synced_at=_as_utc(snapshot.synced_at),
+        )
+
+    def to_snapshot(self) -> PostAnalyticsSnapshot:
+        try:
+            p_type = PostType(self.post_type)
+        except Exception:
+            p_type = PostType.FEED
+        return PostAnalyticsSnapshot(
+            id=self.id,
+            external_post_id=self.external_post_id,
+            account_id=self.account_id,
+            destination_id=self.destination_id,
+            destination_name=self.destination_name,
+            post_type=p_type,
+            publish_attempt_id=self.publish_attempt_id,
+            likes_count=self.likes_count,
+            comments_count=self.comments_count,
+            shares_count=self.shares_count,
+            views_count=self.views_count,
+            impressions_count=self.impressions_count,
+            reach_count=self.reach_count,
+            synced_at=_as_utc(self.synced_at),
+        )
+
+
+class SqlAlchemyAnalyticsRepository(AnalyticsRepositoryPort):
+    def __init__(self, unit_of_work: "SqlAlchemyUnitOfWork") -> None:
+        self._unit_of_work = unit_of_work
+
+    def save_snapshot(self, snapshot: PostAnalyticsSnapshot) -> None:
+        model = self._session.get(AnalyticsSnapshotModel, snapshot.id)
+        if model is None:
+            model = AnalyticsSnapshotModel.from_snapshot(snapshot)
+            self._session.add(model)
+        else:
+            model.external_post_id = snapshot.external_post_id
+            model.account_id = snapshot.account_id
+            model.destination_id = snapshot.destination_id
+            model.destination_name = snapshot.destination_name
+            model.post_type = snapshot.post_type.value
+            model.publish_attempt_id = snapshot.publish_attempt_id
+            model.likes_count = snapshot.likes_count
+            model.comments_count = snapshot.comments_count
+            model.shares_count = snapshot.shares_count
+            model.views_count = snapshot.views_count
+            model.impressions_count = snapshot.impressions_count
+            model.reach_count = snapshot.reach_count
+            model.synced_at = _as_utc(snapshot.synced_at)
+        self._session.flush()
+
+    def get_snapshot(self, snapshot_id: str) -> PostAnalyticsSnapshot | None:
+        model = self._session.get(AnalyticsSnapshotModel, snapshot_id)
+        return model.to_snapshot() if model is not None else None
+
+    def get_latest_by_post(self, external_post_id: str) -> PostAnalyticsSnapshot | None:
+        model = (
+            self._session.query(AnalyticsSnapshotModel)
+            .filter_by(external_post_id=external_post_id)
+            .order_by(AnalyticsSnapshotModel.synced_at.desc())
+            .first()
+        )
+        return model.to_snapshot() if model is not None else None
+
+    def list_snapshots(
+        self,
+        destination_id: str | None = None,
+        account_id: str | None = None,
+        post_type: PostType | None = None,
+        since: datetime | None = None,
+        limit: int = 100,
+    ) -> Sequence[PostAnalyticsSnapshot]:
+        query = self._session.query(AnalyticsSnapshotModel)
+        if destination_id is not None:
+            query = query.filter(AnalyticsSnapshotModel.destination_id == destination_id)
+        if account_id is not None:
+            query = query.filter(AnalyticsSnapshotModel.account_id == account_id)
+        if post_type is not None:
+            query = query.filter(AnalyticsSnapshotModel.post_type == post_type.value)
+        if since is not None:
+            query = query.filter(AnalyticsSnapshotModel.synced_at >= _as_utc(since))
+
+        models = (
+            query.order_by(AnalyticsSnapshotModel.synced_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return tuple(m.to_snapshot() for m in models)
+
+    def get_aggregated_metrics(
+        self,
+        destination_id: str | None = None,
+        account_id: str | None = None,
+        since: datetime | None = None,
+    ) -> AggregatedMetrics:
+        query = self._session.query(AnalyticsSnapshotModel)
+        if destination_id is not None:
+            query = query.filter(AnalyticsSnapshotModel.destination_id == destination_id)
+        if account_id is not None:
+            query = query.filter(AnalyticsSnapshotModel.account_id == account_id)
+        if since is not None:
+            query = query.filter(AnalyticsSnapshotModel.synced_at >= _as_utc(since))
+
+        models = query.all()
+        return AggregatedMetrics(
+            total_posts=len(models),
+            total_likes=sum(m.likes_count for m in models),
+            total_comments=sum(m.comments_count for m in models),
+            total_shares=sum(m.shares_count for m in models),
+            total_views=sum(m.views_count for m in models),
+            total_impressions=sum(m.impressions_count for m in models),
+            total_reach=sum(m.reach_count for m in models),
+        )
 
     @property
     def _session(self) -> Session:

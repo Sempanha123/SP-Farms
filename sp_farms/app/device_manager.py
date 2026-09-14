@@ -44,7 +44,7 @@ COLUMNS = (
     "Provider",
     "Device",
     "ADB Serial",
-    "State",
+    "ADB Status",
     "Android",
     "Assigned Account",
     "App Version",
@@ -52,6 +52,9 @@ COLUMNS = (
     "Network",
     "Resolution",
     "Heartbeat",
+    "Appium Status",
+    "Appium Session",
+    "Active Job",
 )
 _ROOT_INDEX = QModelIndex()
 
@@ -102,11 +105,16 @@ class DeviceTableModel(QAbstractTableModel):
             cpu = f"{device.cpu_usage:.0f}%" if device.cpu_usage is not None else "—"
             ram = f"{device.ram_usage_mb} MB" if device.ram_usage_mb is not None else "—"
             cpu_ram = f"{cpu} / {ram}"
+        adb_status = "Connected" if device.is_online else "Disconnected"
+        appium_status = getattr(device, "appium_status", "Ready")
+        appium_session = getattr(device, "appium_session_state", "Idle")
+        active_job = getattr(device, "current_job_id", "—") or "—"
+
         values = (
             device.provider.value,
             device.display_name,
             device.adb_serial,
-            "Online" if device.is_online else device.state.name.capitalize(),
+            adb_status,
             device.android_version or "—",
             device.assigned_account or "Unassigned",
             device.app_version or "—",
@@ -114,6 +122,9 @@ class DeviceTableModel(QAbstractTableModel):
             device.network_state or "—",
             f"{device.resolution[0]}x{device.resolution[1]}" if device.resolution else "—",
             _format_heartbeat(device.last_heartbeat),
+            appium_status,
+            appium_session,
+            active_job,
         )
         return values[index.column()] if 0 <= index.column() < len(values) else None
 
@@ -318,9 +329,15 @@ class DeviceManagerView(QWidget):
         self.notes_input = QTextEdit()
         self.notes_input.setMaximumHeight(100)
         self.package_input = QLineEdit("com.facebook.katana")
+        self.appium_status_lbl = QLabel("Appium: Ready")
+        self.session_state_lbl = QLabel("Session: Idle")
+        self.active_job_lbl = QLabel("Job: None")
         form.addRow("Alias", self.alias_input)
         form.addRow("Notes", self.notes_input)
         form.addRow("Package", self.package_input)
+        form.addRow("Appium State", self.appium_status_lbl)
+        form.addRow("Session State", self.session_state_lbl)
+        form.addRow("Active Job", self.active_job_lbl)
         inspector_layout.addLayout(form)
         self.save_profile_btn = PrimaryButton("Save Alias & Notes")
         inspector_layout.addWidget(self.save_profile_btn)
@@ -428,11 +445,18 @@ class DeviceManagerView(QWidget):
     def _selection_changed(self) -> None:
         selected = self._selected_devices()
         if len(selected) == 1:
-            self.alias_input.setText(selected[0].alias)
-            self.notes_input.setPlainText(selected[0].notes)
+            dev = selected[0]
+            self.alias_input.setText(dev.alias)
+            self.notes_input.setPlainText(dev.notes)
+            self.appium_status_lbl.setText(f"Appium: {getattr(dev, 'appium_status', 'Ready')}")
+            self.session_state_lbl.setText(f"Session: {getattr(dev, 'appium_session_state', 'Idle')}")
+            self.active_job_lbl.setText(f"Job: {getattr(dev, 'current_job_id', 'None') or 'None'}")
         else:
             self.alias_input.clear()
             self.notes_input.clear()
+            self.appium_status_lbl.setText("Appium: Ready")
+            self.session_state_lbl.setText("Session: Idle")
+            self.active_job_lbl.setText("Job: None")
         self._update_action_states()
 
     def _update_action_states(self) -> None:

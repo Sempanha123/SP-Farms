@@ -327,6 +327,54 @@ class SchedulerService:
             uow.commit()
             return Result.success(saved)
 
+    def update_item_status(
+        self,
+        item_id: str,
+        status: ScheduledItemStatus,
+        error_message: str | None = None,
+    ) -> Result[ScheduledItem]:
+        """Update status of a scheduled item."""
+        with self._uow() as uow:
+            repo = self._repo_factory(uow)
+            item = repo.get_item(item_id)
+            if item is None:
+                return Result.failure(
+                    AppError(code="NOT_FOUND", message=f"Scheduled item {item_id} not found")
+                )
+
+            now = self._clock.now()
+            executed_at = (
+                now
+                if status in (ScheduledItemStatus.COMPLETED, ScheduledItemStatus.FAILED)
+                else item.executed_at
+            )
+            updated = ScheduledItem(
+                id=item.id,
+                title=item.title,
+                campaign_id=item.campaign_id,
+                content_item_id=item.content_item_id,
+                destination_type=item.destination_type,
+                destination_id=item.destination_id,
+                destination_name=item.destination_name,
+                scheduled_at=item.scheduled_at,
+                post_type=item.post_type,
+                caption=item.caption,
+                media_asset_ids=item.media_asset_ids,
+                status=status,
+                priority=item.priority,
+                timezone_name=item.timezone_name,
+                retry_count=item.retry_count,
+                max_retries=item.max_retries,
+                error_message=error_message or item.error_message,
+                executed_at=executed_at,
+                tags=item.tags,
+                created_at=item.created_at,
+                updated_at=now,
+            )
+            saved = repo.save_item(updated)
+            uow.commit()
+            return Result.success(saved)
+
     def get_next_run(self) -> ScheduledItem | None:
         """Get the earliest queued item scheduled to run."""
         with self._uow() as uow:

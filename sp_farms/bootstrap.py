@@ -3,9 +3,12 @@ from pathlib import Path
 from sp_farms.application.account_exchange_service import AccountExchangeService
 from sp_farms.application.account_onboarding_service import AccountOnboardingService
 from sp_farms.application.account_service import AccountService
+from sp_farms.application.analytics_service import AnalyticsService
 from sp_farms.application.approval_service import ApprovalService
 from sp_farms.application.asset_sync_service import AssetSyncService
 from sp_farms.application.audit_service import AuditService
+from sp_farms.application.automation.appium_session_manager import AppiumSessionManager
+from sp_farms.application.automation.job_handler import AppiumJobExecutor
 from sp_farms.application.campaign_service import CampaignService
 from sp_farms.application.caption_ai_service import CaptionAIService
 from sp_farms.application.composer_service import ComposerService
@@ -13,11 +16,13 @@ from sp_farms.application.content_service import ContentService
 from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_pool_service import DevicePoolService
 from sp_farms.application.device_service import DeviceService
+from sp_farms.application.hybrid_publishing_service import HybridPublishingService
 from sp_farms.application.job_service import JobService
 from sp_farms.application.media_prep_job import MediaPrepJobHandler
 from sp_farms.application.media_prep_service import MediaPreparationService
 from sp_farms.application.meta_client import MetaClientPort
 from sp_farms.application.meta_service import MetaIntegrationService
+from sp_farms.application.publishing_service import PublishingService
 from sp_farms.application.qa_profile_service import QAProfileService
 from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
 from sp_farms.application.scheduler_service import SchedulerService
@@ -33,6 +38,7 @@ from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import (
     Database,
     SqlAlchemyAccountRepository,
+    SqlAlchemyAnalyticsRepository,
     SqlAlchemyApprovalRepository,
     SqlAlchemyAuditRepository,
     SqlAlchemyCampaignRepository,
@@ -40,6 +46,7 @@ from sp_farms.infrastructure.database import (
     SqlAlchemyDevicePoolRepository,
     SqlAlchemyDeviceProfileRepository,
     SqlAlchemyJobRepository,
+    SqlAlchemyPublishRepository,
     SqlAlchemyQAProfileRepository,
     SqlAlchemySchedulerRepository,
     SqlAlchemySecretRepository,
@@ -47,8 +54,10 @@ from sp_farms.infrastructure.database import (
 )
 from sp_farms.infrastructure.fake_ai_provider import FakeMultilingualAIProvider
 from sp_farms.infrastructure.logging import configure_logging
+from sp_farms.infrastructure.meta.analytics_adapter import FakeAnalyticsAdapter
 from sp_farms.infrastructure.meta.client import MetaHttpClient
 from sp_farms.infrastructure.meta.fake_client import FakeMetaApiClient
+from sp_farms.infrastructure.meta.publishing_adapter import FakePublishingAdapter
 from sp_farms.infrastructure.providers.ldplayer import LdPlayerProvider
 from sp_farms.infrastructure.providers.mumu import MuMuProvider
 from sp_farms.infrastructure.providers.physical import PhysicalAndroidProvider
@@ -221,6 +230,39 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         job_service=job_service,
     )
 
+    fake_publisher = FakePublishingAdapter()
+    publishing_service = PublishingService(
+        publishing_port=fake_publisher,
+        unit_of_work=database.unit_of_work,
+        publish_repo_factory=SqlAlchemyPublishRepository,
+        audit_service=audit_service,
+        schedule_service=scheduler_service,
+        campaign_service=campaign_service,
+        job_service=job_service,
+    )
+
+    appium_session = AppiumSessionManager(driver_port=None)
+    appium_executor = AppiumJobExecutor(
+        session_manager=appium_session,
+        device_pool_service=device_pool_service,
+    )
+
+    hybrid_publishing_service = HybridPublishingService(
+        publishing_service=publishing_service,
+        appium_executor=appium_executor,
+        device_pool_service=device_pool_service,
+        audit_service=audit_service,
+    )
+
+    fake_analytics_adapter = FakeAnalyticsAdapter()
+    analytics_service = AnalyticsService(
+        analytics_port=fake_analytics_adapter,
+        unit_of_work=database.unit_of_work,
+        analytics_repo_factory=SqlAlchemyAnalyticsRepository,
+        publish_repo_factory=SqlAlchemyPublishRepository,
+        audit_service=audit_service,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -249,6 +291,9 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         campaign_service=campaign_service,
         scheduler_service=scheduler_service,
         approval_service=approval_service,
+        publishing_service=publishing_service,
+        hybrid_publishing_service=hybrid_publishing_service,
+        analytics_service=analytics_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

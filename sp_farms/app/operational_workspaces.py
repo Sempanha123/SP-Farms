@@ -7,10 +7,12 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from sp_farms.app.analytics_workspace import AnalyticsWorkspace as PostAnalyticsView
 from sp_farms.app.theme import ThemeMode
 from sp_farms.app.widgets import EmptyState, MetricRow, Panel, PrimaryButton, StatusChip
 from sp_farms.application.context import ApplicationContext
@@ -63,15 +65,30 @@ class AnalyticsWorkspace(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(8)
+
+        self.tabs = QTabWidget()
+
+        # Tab 1: Live Post & Engagement Insights
+        if self._context.analytics_service is not None:
+            self.post_analytics_view = PostAnalyticsView(self._context.analytics_service)
+            self.tabs.addTab(self.post_analytics_view, "Social Post Performance")
+
+        # Tab 2: Operational Infrastructure Metrics
+        infra_tab = QWidget()
+        infra_layout = QVBoxLayout(infra_tab)
+        infra_layout.setContentsMargins(8, 8, 8, 8)
+        infra_layout.setSpacing(8)
+
         header = QHBoxLayout()
-        heading = QLabel("Operational Analytics")
+        heading = QLabel("Operational Infrastructure Analytics")
         heading.setProperty("heading", True)
         header.addWidget(heading)
         header.addStretch()
         refresh = PrimaryButton("Refresh")
         refresh.clicked.connect(self.refresh)
         header.addWidget(refresh)
-        root.addLayout(header)
+        infra_layout.addLayout(header)
+
         self.metrics = MetricRow(
             (
                 ("Accounts", "0"),
@@ -81,21 +98,11 @@ class AnalyticsWorkspace(QWidget):
                 ("Queued", "0"),
             )
         )
-        root.addWidget(self.metrics)
-        notice = Panel()
-        notice_layout = QVBoxLayout(notice)
-        title = QLabel("Local runtime data")
-        title.setProperty("heading", True)
-        notice_layout.addWidget(title)
-        text = QLabel(
-            "These values come from the local account and job services. Publishing and "
-            "campaign metrics require the Phase 40 analytics service."
-        )
-        text.setProperty("muted", True)
-        text.setWordWrap(True)
-        notice_layout.addWidget(text)
-        notice_layout.addStretch()
-        root.addWidget(notice, stretch=1)
+        infra_layout.addWidget(self.metrics)
+        infra_layout.addStretch()
+        self.tabs.addTab(infra_tab, "Device & Job System Metrics")
+
+        root.addWidget(self.tabs)
         self.refresh()
 
     def refresh(self) -> None:

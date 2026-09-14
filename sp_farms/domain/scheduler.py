@@ -40,10 +40,13 @@ class PublishingWindow:
 
     def is_within_window(self, dt: datetime) -> bool:
         """Check if datetime falls within allowed publishing window and outside quiet hours."""
-        try:
-            tz = ZoneInfo(self.timezone_name)
-        except Exception:
-            tz = ZoneInfo("UTC")
+        if self.timezone_name in ("UTC", "Etc/UTC", "Z", ""):
+            tz = UTC
+        else:
+            try:
+                tz = ZoneInfo(self.timezone_name)
+            except Exception:
+                tz = UTC
 
         local_dt = dt.astimezone(tz)
         if local_dt.weekday() not in self.days_of_week:
