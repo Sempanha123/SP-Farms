@@ -28,6 +28,14 @@ class SimulatedDevice:
     fail_on_commands: bool = False
     remote_files: dict[str, str] = field(default_factory=dict)
     qa_bridge_loaded: bool = False
+    installed_packages: set[str] = field(
+        default_factory=lambda: {
+            "com.facebook.katana",
+            "com.facebook.lite",
+            "com.android.chrome",
+            "com.android.browser",
+        }
+    )
 
 
 class FakeAdbAdapter(AdbPort):
@@ -145,6 +153,18 @@ class FakeAdbAdapter(AdbPort):
 
         if command.strip() == "echo 1":
             return "1\n"
+
+        if command.startswith("pm list packages"):
+            parts = command.strip().split()
+            filter_pkg = parts[3] if len(parts) >= 4 else ""
+            matches = [pkg for pkg in dev.installed_packages if not filter_pkg or filter_pkg in pkg]
+            return "".join(f"package:{pkg}\n" for pkg in sorted(matches))
+
+        if command.startswith("setprop "):
+            parts = command.split(" ", 2)
+            if len(parts) == 3:
+                dev.properties[parts[1]] = parts[2]
+            return ""
 
         if command.startswith("mkdir -p ") or command.startswith("chmod 600 "):
             return ""

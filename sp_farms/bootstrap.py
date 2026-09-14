@@ -6,6 +6,7 @@ from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_service import DeviceService
 from sp_farms.application.job_service import JobService
 from sp_farms.application.qa_profile_service import QAProfileService
+from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
 from sp_farms.application.worker import FakeStressJobHandler, WorkerSupervisor
 from sp_farms.infrastructure.adb import SubprocessAdbClient
 from sp_farms.infrastructure.clock import SystemClock
@@ -62,6 +63,15 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         clock,
     )
     account_onboarding_service = AccountOnboardingService(account_service)
+    restore_workspace_service = RestoreWorkspaceService(
+        database.unit_of_work,
+        SqlAlchemyDeviceProfileRepository,
+        account_service,
+        device_service,
+        adb,
+        clock,
+        providers=(ldplayer, mumu, physical),
+    )
 
     context = ApplicationContext(
         clock=clock,
@@ -76,6 +86,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         qa_profile_service=qa_profile_service,
         account_service=account_service,
         account_onboarding_service=account_onboarding_service,
+        restore_workspace_service=restore_workspace_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

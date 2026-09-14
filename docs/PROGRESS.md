@@ -212,3 +212,24 @@ Status: complete
 - Added persistent-mailbox guidance, supported preferred-app choices, success actions, and navigation routing to existing workspaces/placeholders.
 - Added service, validation, import/export, masking, UI smoke, immediate availability, and success-routing coverage.
 
+## Phase 20 — Account Device Profiles and Restore Workspace
+
+Status: complete
+
+- Enhanced `DeviceProfile` domain model with remembered device identities: provider, emulator instance, ADB serial, Android version, model, resolution, DPI, language, locale, timezone, keyboard config, app versions, preferred app, network profile ref, and heartbeat.
+- Added `AccountDeviceBinding` domain model linking accounts to their designated device environment, tracking preferred app and last-used timestamp.
+- Created migration `0007_account_device_profiles_and_restore.py` adding extended environment columns to `device_profiles` and introducing `account_device_bindings`.
+- Implemented `RestoreWorkspaceService` orchestrating the 9-step restore sequence:
+  1. Resolve binding and profile.
+  2. Start assigned emulator if offline (gracefully failing on disconnected physical devices).
+  3. Wait for and verify ADB connectivity.
+  4. Validate target app availability (Facebook katana, Facebook lite, Chrome/AOSP browser).
+  5. Apply harmless saved preferences where supported (e.g. system timezone).
+  6. Launch selected app via provider CLI or ADB monkey launcher.
+  7. Show auth and security state.
+  8. Request supported re-authentication if account state is review required, compromised, or revoked.
+  9. Update `last_used_at`, device heartbeat, and account login time.
+- Integrated "Restore Workspace" trigger, status chip, and non-blocking background `_Worker` in `AccountWorkspace` UI and wired it through `ApplicationContext` and `bootstrap.py`.
+- Added unit and UI tests covering binding persistence, successful restore workflow, offline emulator startup, disconnected physical device handling, missing app detection, reauth flagging, and UI status updates.
+
+

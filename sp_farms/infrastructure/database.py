@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from datetime import UTC, date, datetime
@@ -46,6 +47,7 @@ from sp_farms.domain.accounts import (
     SecurityState,
 )
 from sp_farms.domain.device_management import DeviceProfile
+from sp_farms.domain.device_restore import AccountDeviceBinding, BindingStatus
 from sp_farms.domain.jobs import Job, JobEvent, JobState
 from sp_farms.domain.providers import DeviceProviderType
 from sp_farms.domain.qa_profiles import (
@@ -113,21 +115,90 @@ class SecretMetadata(EntityMixin, Base):
 
 class DeviceProfileModel(EntityMixin, Base):
     __tablename__ = "device_profiles"
-    __table_args__ = (
-        Index("ux_device_profiles_identity", "provider", "external_id", unique=True),
-    )
+    __table_args__ = (Index("ux_device_profiles_identity", "provider", "external_id", unique=True),)
 
     provider: Mapped[str] = mapped_column(String(30), nullable=False)
     external_id: Mapped[str] = mapped_column(String(255), nullable=False)
     alias: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    friendly_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    emulator_instance: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    adb_serial: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    android_version: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    model: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    resolution: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    dpi: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    language: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    locale: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    timezone: Mapped[str] = mapped_column(String(100), nullable=False, default="UTC")
+    keyboard_config: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    app_versions: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    preferred_app: Mapped[str] = mapped_column(String(30), nullable=False, default="browser")
+    network_profile_ref: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    last_heartbeat: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def to_profile(self) -> DeviceProfile:
+        try:
+            apps = json.loads(self.app_versions)
+            if not isinstance(apps, dict):
+                apps = {}
+        except Exception:
+            apps = {}
         return DeviceProfile(
             provider=DeviceProviderType(self.provider),
             external_id=self.external_id,
+            id=self.id,
+            friendly_name=self.friendly_name,
+            emulator_instance=self.emulator_instance,
+            adb_serial=self.adb_serial,
+            android_version=self.android_version,
+            model=self.model,
+            resolution=self.resolution,
+            dpi=self.dpi,
+            language=self.language,
+            locale=self.locale,
+            timezone=self.timezone,
+            keyboard_config=self.keyboard_config,
+            app_versions=apps,
+            preferred_app=PreferredApp(self.preferred_app)
+            if self.preferred_app in PreferredApp._value2member_map_
+            else PreferredApp.BROWSER,
+            network_profile_ref=self.network_profile_ref,
+            last_heartbeat=_optional_utc(self.last_heartbeat),
             alias=self.alias,
             notes=self.notes,
+            created_at=_optional_utc(self.created_at),
+            updated_at=_optional_utc(self.updated_at),
+        )
+
+
+class AccountDeviceBindingModel(EntityMixin, Base):
+    __tablename__ = "account_device_bindings"
+
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("accounts.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    device_profile_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("device_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    preferred_app: Mapped[str] = mapped_column(String(30), nullable=False, default="browser")
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="active")
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    def to_binding(self) -> AccountDeviceBinding:
+        return AccountDeviceBinding(
+            id=self.id,
+            account_id=self.account_id,
+            device_profile_id=self.device_profile_id,
+            preferred_app=PreferredApp(self.preferred_app)
+            if self.preferred_app in PreferredApp._value2member_map_
+            else PreferredApp.BROWSER,
+            status=BindingStatus(self.status)
+            if self.status in BindingStatus._value2member_map_
+            else BindingStatus.ACTIVE,
+            last_used_at=_optional_utc(self.last_used_at),
+            created_at=_optional_utc(self.created_at),
+            updated_at=_optional_utc(self.updated_at),
         )
 
 
@@ -446,9 +517,7 @@ def _account_values(account: Account) -> dict[str, object]:
 
 def _qa_profile_values(profile: QAProfile) -> dict[str, object]:
     return {
-        key: getattr(profile, key)
-        for key in QAProfile.__dataclass_fields__
-        if key != "updated_at"
+        key: getattr(profile, key) for key in QAProfile.__dataclass_fields__ if key != "updated_at"
     } | {"updated_at": profile.updated_at}
 
 
@@ -478,28 +547,107 @@ class SqlAlchemyDeviceProfileRepository(DeviceProfileRepository):
         )
         return model.to_profile() if model else None
 
+    def get_by_id(self, profile_id: str) -> DeviceProfile | None:
+        model = self._session.get(DeviceProfileModel, profile_id)
+        return model.to_profile() if model else None
+
     def list_all(self) -> Sequence[DeviceProfile]:
         models = self._session.query(DeviceProfileModel).order_by(DeviceProfileModel.id).all()
         return tuple(model.to_profile() for model in models)
 
     def save(self, profile: DeviceProfile) -> None:
+        model = None
+        if profile.id:
+            model = self._session.get(DeviceProfileModel, profile.id)
+        if model is None:
+            model = (
+                self._session.query(DeviceProfileModel)
+                .filter_by(provider=profile.provider.value, external_id=profile.external_id)
+                .one_or_none()
+            )
+
+        apps_json = json.dumps(profile.app_versions)
+        if model is None:
+            kwargs: dict[str, object] = {
+                "id": profile.id or str(uuid4()),
+                "provider": profile.provider.value,
+                "external_id": profile.external_id,
+                "alias": profile.alias or profile.friendly_name,
+                "notes": profile.notes,
+                "friendly_name": profile.friendly_name or profile.alias,
+                "emulator_instance": profile.emulator_instance,
+                "adb_serial": profile.adb_serial,
+                "android_version": profile.android_version,
+                "model": profile.model,
+                "resolution": profile.resolution,
+                "dpi": profile.dpi,
+                "language": profile.language,
+                "locale": profile.locale,
+                "timezone": profile.timezone,
+                "keyboard_config": profile.keyboard_config,
+                "app_versions": apps_json,
+                "preferred_app": profile.preferred_app.value,
+                "network_profile_ref": profile.network_profile_ref,
+                "last_heartbeat": profile.last_heartbeat,
+            }
+            self._session.add(DeviceProfileModel(**kwargs))
+        else:
+            model.alias = profile.alias or profile.friendly_name
+            model.notes = profile.notes
+            model.friendly_name = profile.friendly_name or profile.alias
+            model.emulator_instance = profile.emulator_instance
+            model.adb_serial = profile.adb_serial
+            model.android_version = profile.android_version
+            model.model = profile.model
+            model.resolution = profile.resolution
+            model.dpi = profile.dpi
+            model.language = profile.language
+            model.locale = profile.locale
+            model.timezone = profile.timezone
+            model.keyboard_config = profile.keyboard_config
+            model.app_versions = apps_json
+            model.preferred_app = profile.preferred_app.value
+            model.network_profile_ref = profile.network_profile_ref
+            model.last_heartbeat = profile.last_heartbeat
+
+    def get_binding(self, account_id: str) -> AccountDeviceBinding | None:
         model = (
-            self._session.query(DeviceProfileModel)
-            .filter_by(provider=profile.provider.value, external_id=profile.external_id)
+            self._session.query(AccountDeviceBindingModel)
+            .filter_by(account_id=account_id)
+            .one_or_none()
+        )
+        return model.to_binding() if model else None
+
+    def save_binding(self, binding: AccountDeviceBinding) -> None:
+        model = (
+            self._session.query(AccountDeviceBindingModel)
+            .filter_by(account_id=binding.account_id)
             .one_or_none()
         )
         if model is None:
-            self._session.add(
-                DeviceProfileModel(
-                    provider=profile.provider.value,
-                    external_id=profile.external_id,
-                    alias=profile.alias,
-                    notes=profile.notes,
-                )
-            )
+            kwargs: dict[str, object] = {
+                "account_id": binding.account_id,
+                "device_profile_id": binding.device_profile_id,
+                "preferred_app": binding.preferred_app.value,
+                "status": binding.status.value,
+                "last_used_at": binding.last_used_at,
+            }
+            if binding.id:
+                kwargs["id"] = binding.id
+            self._session.add(AccountDeviceBindingModel(**kwargs))
         else:
-            model.alias = profile.alias
-            model.notes = profile.notes
+            model.device_profile_id = binding.device_profile_id
+            model.preferred_app = binding.preferred_app.value
+            model.status = binding.status.value
+            model.last_used_at = binding.last_used_at
+
+    def list_bindings(self) -> Sequence[AccountDeviceBinding]:
+        models = (
+            self._session.query(AccountDeviceBindingModel)
+            .order_by(AccountDeviceBindingModel.created_at)
+            .all()
+        )
+        return tuple(model.to_binding() for model in models)
 
     @property
     def _session(self) -> Session:

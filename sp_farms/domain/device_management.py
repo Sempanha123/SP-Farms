@@ -1,6 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from uuid import uuid4
 
+from sp_farms.domain.accounts import PreferredApp
 from sp_farms.domain.devices import DeviceState
 from sp_farms.domain.providers import DeviceProviderType, ProviderCapabilities
 
@@ -9,8 +11,30 @@ from sp_farms.domain.providers import DeviceProviderType, ProviderCapabilities
 class DeviceProfile:
     provider: DeviceProviderType
     external_id: str
+    id: str = field(default_factory=lambda: str(uuid4()))
+    friendly_name: str = ""
+    emulator_instance: str = ""
+    adb_serial: str = ""
+    android_version: str = ""
+    model: str = ""
+    resolution: str = ""
+    dpi: int | None = None
+    language: str = ""
+    locale: str = ""
+    timezone: str = "UTC"
+    keyboard_config: str = ""
+    app_versions: dict[str, str] = field(default_factory=dict)
+    preferred_app: PreferredApp = PreferredApp.BROWSER
+    network_profile_ref: str | None = None
+    last_heartbeat: datetime | None = None
     alias: str = ""
     notes: str = ""
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    @property
+    def display_name(self) -> str:
+        return self.friendly_name or self.alias or f"{self.provider.value}:{self.external_id}"
 
 
 @dataclass(frozen=True, slots=True)

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from sp_farms.application.job_service import JobService
     from sp_farms.application.providers import DeviceProviderPort
     from sp_farms.application.qa_profile_service import QAProfileService
+    from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
     from sp_farms.application.worker import WorkerSupervisor
 
 ShutdownHook = Callable[[], None]
@@ -32,6 +33,7 @@ class ApplicationContext:
     qa_profile_service: "QAProfileService | None" = None
     account_service: "AccountService | None" = None
     account_onboarding_service: "AccountOnboardingService | None" = None
+    restore_workspace_service: "RestoreWorkspaceService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

@@ -63,6 +63,7 @@ class MainWindow(QMainWindow):
         self.account_workspace = AccountWorkspace(
             self._context.account_service,
             self._context.account_onboarding_service,
+            self._context.restore_workspace_service,
         )
         self._workspace = WorkspaceLayout(
             self.device_manager_view.rail_model,
