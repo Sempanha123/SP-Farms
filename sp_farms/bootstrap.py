@@ -7,6 +7,7 @@ from sp_farms.application.analytics_service import AnalyticsService
 from sp_farms.application.approval_service import ApprovalService
 from sp_farms.application.asset_sync_service import AssetSyncService
 from sp_farms.application.audit_service import AuditService
+from sp_farms.application.backup_restore_service import BackupRestoreService
 from sp_farms.application.automation.appium_session_manager import AppiumSessionManager
 from sp_farms.application.automation.job_handler import AppiumJobExecutor
 from sp_farms.application.campaign_service import CampaignService
@@ -271,6 +272,15 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         clock=clock,
     )
 
+    backup_restore_service = BackupRestoreService(
+        database_path=config.database_path,
+        settings_path=config.database_path.parent / "settings.json",
+        workspace_dir=config.database_path.parent,
+        backup_dir=config.database_path.parent / "backups",
+        vault=vault,
+        clock=clock,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -303,6 +313,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         hybrid_publishing_service=hybrid_publishing_service,
         analytics_service=analytics_service,
         device_analytics_service=device_analytics_service,
+        backup_restore_service=backup_restore_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

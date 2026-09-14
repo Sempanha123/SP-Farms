@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from sp_farms.application.approval_service import ApprovalService
     from sp_farms.application.asset_sync_service import AssetSyncService
     from sp_farms.application.audit_service import AuditService
+    from sp_farms.application.backup_restore_service import BackupRestoreService
     from sp_farms.application.campaign_service import CampaignService
     from sp_farms.application.caption_ai_service import CaptionAIService
     from sp_farms.application.composer_service import ComposerService
@@ -67,6 +68,7 @@ class ApplicationContext:
     hybrid_publishing_service: "HybridPublishingService | None" = None
     analytics_service: "AnalyticsService | None" = None
     device_analytics_service: "DeviceAnalyticsService | None" = None
+    backup_restore_service: "BackupRestoreService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 
