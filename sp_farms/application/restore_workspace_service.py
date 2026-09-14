@@ -143,7 +143,9 @@ class RestoreWorkspaceService:
 
         return binding
 
-    def restore_workspace(self, account_id: str) -> RestoreWorkspaceResult:
+    def restore_workspace(
+        self, account_id: str, target_device_key: str | None = None
+    ) -> RestoreWorkspaceResult:
         # Step 1: Resolve account and binding
         try:
             account = self._accounts.get_account(account_id)
@@ -156,7 +158,17 @@ class RestoreWorkspaceService:
             )
 
         binding = self.get_binding(account_id)
-        if binding is None:
+        if target_device_key:
+            parts = target_device_key.split(":", 1)
+            if len(parts) == 2:
+                provider_type = DeviceProviderType(parts[0])
+                binding = self.bind_device(
+                    account_id,
+                    provider_type,
+                    parts[1],
+                    account.preferred_app,
+                )
+        elif binding is None:
             # Check if account has an assigned device from AccountService
             if account.assigned_device is not None:
                 provider_type = DeviceProviderType(account.assigned_device.provider)
@@ -174,6 +186,15 @@ class RestoreWorkspaceService:
                     message="No device profile is bound to this account.",
                     security_state=account.security_state.value,
                 )
+
+        if binding is None:
+            return RestoreWorkspaceResult(
+                success=False,
+                account_id=account_id,
+                status="unassigned",
+                message="No device profile is bound to this account.",
+                security_state=account.security_state.value,
+            )
 
         profile = self.get_profile(binding.device_profile_id)
         if profile is None:

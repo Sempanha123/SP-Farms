@@ -1,7 +1,7 @@
 import json
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from shutil import copy2
 from types import TracebackType
@@ -31,9 +31,13 @@ from sqlalchemy.engine import URL
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from sp_farms.application.accounts import AccountRepository
+from sp_farms.application.audit_repository import AuditRepository
+from sp_farms.application.content_repository import ContentRepositoryPort
+from sp_farms.application.device_pool import DevicePoolRepository
 from sp_farms.application.device_profiles import DeviceProfileRepository
 from sp_farms.application.jobs import JobRepository
 from sp_farms.application.qa_profiles import QAProfileRepository
+from sp_farms.application.secrets import SecretRepository
 from sp_farms.application.unit_of_work import UnitOfWork
 from sp_farms.domain.accounts import (
     Account,
@@ -46,7 +50,23 @@ from sp_farms.domain.accounts import (
     PreferredApp,
     SecurityState,
 )
+from sp_farms.domain.audit import AuditEvent, AuditResult
+from sp_farms.domain.content import (
+    CaptionTemplate,
+    ContentItem,
+    ContentStatus,
+    HashtagSet,
+    MediaAsset,
+    MediaMetadata,
+    MediaType,
+)
 from sp_farms.domain.device_management import DeviceProfile
+from sp_farms.domain.device_pool import (
+    AccountWorkspaceLock,
+    DevicePoolPolicy,
+    SchedulingPolicy,
+    SnapshotMetadataRecord,
+)
 from sp_farms.domain.device_restore import AccountDeviceBinding, BindingStatus
 from sp_farms.domain.jobs import Job, JobEvent, JobState
 from sp_farms.domain.providers import DeviceProviderType
@@ -199,6 +219,98 @@ class AccountDeviceBindingModel(EntityMixin, Base):
             last_used_at=_optional_utc(self.last_used_at),
             created_at=_optional_utc(self.created_at),
             updated_at=_optional_utc(self.updated_at),
+        )
+
+
+class AccountWorkspaceLockModel(Base):
+    __tablename__ = "account_workspace_locks"
+
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True
+    )
+    device_key: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    acquired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), index=True, nullable=False
+    )
+    heartbeat: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    def to_lock(self) -> AccountWorkspaceLock:
+        return AccountWorkspaceLock(
+            account_id=self.account_id,
+            device_key=self.device_key,
+            job_id=self.job_id,
+            acquired_at=_as_utc(self.acquired_at),
+            expires_at=_as_utc(self.expires_at),
+            heartbeat=_as_utc(self.heartbeat),
+        )
+
+
+class AccountWorkspaceSnapshotModel(Base):
+    __tablename__ = "account_workspace_snapshots"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("accounts.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    path: Mapped[str] = mapped_column(String(500), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(20), nullable=False, default="1.0")
+    checksum: Mapped[str] = mapped_column(String(64), nullable=False)
+    device_profile_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    preferred_app: Mapped[str] = mapped_column(String(30), nullable=False, default="browser")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_restored_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    def to_record(self) -> SnapshotMetadataRecord:
+        return SnapshotMetadataRecord(
+            id=self.id,
+            account_id=self.account_id,
+            path=self.path,
+            size_bytes=self.size_bytes,
+            schema_version=self.schema_version,
+            checksum=self.checksum,
+            device_profile_id=self.device_profile_id,
+            preferred_app=self.preferred_app,
+            notes=self.notes,
+            created_at=_as_utc(self.created_at),
+            last_restored_at=_optional_utc(self.last_restored_at),
+        )
+
+
+class DevicePoolPolicyModel(Base):
+    __tablename__ = "device_pool_policies"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    policy: Mapped[str] = mapped_column(String(50), nullable=False, default="bound_device_first")
+    preferred_provider_order: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="ldplayer,mumu,physical"
+    )
+    allow_fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    max_concurrent_restores: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    def to_policy(self) -> DevicePoolPolicy:
+        providers = tuple(p.strip() for p in self.preferred_provider_order.split(",") if p.strip())
+        return DevicePoolPolicy(
+            id=self.id,
+            name=self.name,
+            policy=SchedulingPolicy(self.policy)
+            if self.policy in SchedulingPolicy._value2member_map_
+            else SchedulingPolicy.BOUND_DEVICE_FIRST,
+            preferred_provider_order=providers or ("ldplayer", "mumu", "physical"),
+            allow_fallback=self.allow_fallback,
+            max_concurrent_restores=self.max_concurrent_restores,
+            is_active=self.is_active,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
         )
 
 
@@ -478,6 +590,283 @@ class JobEventModel(EntityMixin, Base):
             to_state=JobState(self.to_state),
             message=self.message,
             created_at=_as_utc(self.created_at),
+        )
+
+
+class AuditEventModel(EntityMixin, Base):
+    __tablename__ = "audit_events"
+
+    initiator: Mapped[str] = mapped_column(String(50), nullable=False)
+    action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    target_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    result: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    error_code: Mapped[str | None] = mapped_column(String(50))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    job_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    details: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+    __table_args__ = (
+        Index("ix_audit_events_target", "target_type", "target_id"),
+    )
+
+    @classmethod
+    def from_event(cls, event: AuditEvent) -> "AuditEventModel":
+        return cls(
+            id=event.id,
+            initiator=event.initiator,
+            action=event.action,
+            target_type=event.target_type,
+            target_id=event.target_id,
+            timestamp=_as_utc(event.timestamp),
+            result=event.result.value,
+            error_code=event.error_code,
+            error_message=event.error_message,
+            retry_count=event.retry_count,
+            job_id=event.job_id,
+            details=json.dumps(event.details, ensure_ascii=False),
+            created_at=_as_utc(event.timestamp),
+            updated_at=_as_utc(event.timestamp),
+        )
+
+    def to_event(self) -> AuditEvent:
+        parsed_details = {}
+        if self.details:
+            try:
+                parsed_details = json.loads(self.details)
+            except Exception:
+                parsed_details = {}
+        return AuditEvent(
+            id=self.id,
+            initiator=self.initiator,
+            action=self.action,
+            target_type=self.target_type,
+            target_id=self.target_id,
+            timestamp=_as_utc(self.timestamp),
+            result=AuditResult(self.result),
+            error_code=self.error_code,
+            error_message=self.error_message,
+            retry_count=self.retry_count,
+            job_id=self.job_id,
+            details=parsed_details,
+        )
+
+
+class MediaAssetModel(EntityMixin, Base):
+    __tablename__ = "media_assets"
+
+    file_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    media_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    thumbnail_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    folder: Mapped[str] = mapped_column(String(100), nullable=False, default="default", index=True)
+    tags_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+
+    mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    aspect_ratio: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    @classmethod
+    def from_asset(cls, asset: MediaAsset) -> "MediaAssetModel":
+        return cls(
+            id=asset.id,
+            file_path=asset.file_path,
+            file_name=asset.file_name,
+            media_type=asset.media_type.value,
+            thumbnail_path=asset.thumbnail_path,
+            folder=asset.folder,
+            tags_json=json.dumps(list(asset.tags)),
+            is_favorite=asset.is_favorite,
+            is_archived=asset.is_archived,
+            mime_type=asset.metadata.mime_type,
+            file_size_bytes=asset.metadata.file_size_bytes,
+            sha256_hash=asset.metadata.sha256_hash,
+            width=asset.metadata.width,
+            height=asset.metadata.height,
+            duration_seconds=asset.metadata.duration_seconds,
+            aspect_ratio=asset.metadata.aspect_ratio,
+            created_at=_as_utc(asset.created_at),
+            updated_at=_as_utc(asset.updated_at),
+        )
+
+    def to_asset(self) -> MediaAsset:
+        try:
+            tags = tuple(json.loads(self.tags_json))
+        except Exception:
+            tags = ()
+        meta = MediaMetadata(
+            mime_type=self.mime_type,
+            file_size_bytes=self.file_size_bytes,
+            sha256_hash=self.sha256_hash,
+            width=self.width,
+            height=self.height,
+            duration_seconds=self.duration_seconds,
+            aspect_ratio=self.aspect_ratio,
+        )
+        return MediaAsset(
+            id=self.id,
+            file_path=self.file_path,
+            file_name=self.file_name,
+            media_type=MediaType(self.media_type),
+            metadata=meta,
+            thumbnail_path=self.thumbnail_path,
+            folder=self.folder,
+            tags=tags,
+            is_favorite=self.is_favorite,
+            is_archived=self.is_archived,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
+        )
+
+
+class CaptionTemplateModel(EntityMixin, Base):
+    __tablename__ = "caption_templates"
+
+    name: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    variables_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    tags_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    @classmethod
+    def from_template(cls, template: CaptionTemplate) -> "CaptionTemplateModel":
+        return cls(
+            id=template.id,
+            name=template.name,
+            content=template.content,
+            variables_json=json.dumps(list(template.variables)),
+            tags_json=json.dumps(list(template.tags)),
+            is_favorite=template.is_favorite,
+            created_at=_as_utc(template.created_at),
+            updated_at=_as_utc(template.updated_at),
+        )
+
+    def to_template(self) -> CaptionTemplate:
+        try:
+            vars_list = tuple(json.loads(self.variables_json))
+        except Exception:
+            vars_list = ()
+        try:
+            tags = tuple(json.loads(self.tags_json))
+        except Exception:
+            tags = ()
+        return CaptionTemplate(
+            id=self.id,
+            name=self.name,
+            content=self.content,
+            variables=vars_list,
+            tags=tags,
+            is_favorite=self.is_favorite,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
+        )
+
+
+class HashtagSetModel(EntityMixin, Base):
+    __tablename__ = "hashtag_sets"
+
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    hashtags_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    category: Mapped[str] = mapped_column(String(50), nullable=False, default="general", index=True)
+    is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    @classmethod
+    def from_set(cls, hashtag_set: HashtagSet) -> "HashtagSetModel":
+        return cls(
+            id=hashtag_set.id,
+            name=hashtag_set.name,
+            hashtags_json=json.dumps(list(hashtag_set.hashtags)),
+            category=hashtag_set.category,
+            is_favorite=hashtag_set.is_favorite,
+            created_at=_as_utc(hashtag_set.created_at),
+            updated_at=_as_utc(hashtag_set.updated_at),
+        )
+
+    def to_set(self) -> HashtagSet:
+        try:
+            tags = tuple(json.loads(self.hashtags_json))
+        except Exception:
+            tags = ()
+        return HashtagSet(
+            id=self.id,
+            name=self.name,
+            hashtags=tags,
+            category=self.category,
+            is_favorite=self.is_favorite,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
+        )
+
+
+class ContentItemModel(EntityMixin, Base):
+    __tablename__ = "content_items"
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    media_asset_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    hashtag_set_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    caption_template_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="DRAFT", index=True)
+    folder: Mapped[str] = mapped_column(String(100), nullable=False, default="default", index=True)
+    tags_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    @classmethod
+    def from_item(cls, item: ContentItem) -> "ContentItemModel":
+        return cls(
+            id=item.id,
+            title=item.title,
+            body=item.body,
+            media_asset_ids_json=json.dumps(list(item.media_asset_ids)),
+            hashtag_set_ids_json=json.dumps(list(item.hashtag_set_ids)),
+            caption_template_id=item.caption_template_id,
+            status=item.status.value,
+            folder=item.folder,
+            tags_json=json.dumps(list(item.tags)),
+            is_favorite=item.is_favorite,
+            is_archived=item.is_archived,
+            created_at=_as_utc(item.created_at),
+            updated_at=_as_utc(item.updated_at),
+        )
+
+    def to_item(self) -> ContentItem:
+        try:
+            media_ids = tuple(json.loads(self.media_asset_ids_json))
+        except Exception:
+            media_ids = ()
+        try:
+            hash_ids = tuple(json.loads(self.hashtag_set_ids_json))
+        except Exception:
+            hash_ids = ()
+        try:
+            tags = tuple(json.loads(self.tags_json))
+        except Exception:
+            tags = ()
+        return ContentItem(
+            id=self.id,
+            title=self.title,
+            body=self.body,
+            media_asset_ids=media_ids,
+            hashtag_set_ids=hash_ids,
+            caption_template_id=self.caption_template_id,
+            status=ContentStatus(self.status),
+            folder=self.folder,
+            tags=tags,
+            is_favorite=self.is_favorite,
+            is_archived=self.is_archived,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
         )
 
 
@@ -923,6 +1312,10 @@ class SqlAlchemyJobRepository(JobRepository):
         model = self._session.query(JobModel).filter_by(idempotency_key=key).one_or_none()
         return model.to_job() if model else None
 
+    def list_all(self) -> Sequence[Job]:
+        models = self._session.query(JobModel).order_by(JobModel.created_at.desc()).all()
+        return tuple(model.to_job() for model in models)
+
     def list_active(self) -> Sequence[Job]:
         terminal = tuple(state.value for state in JobState if state.is_terminal)
         models = self._session.query(JobModel).filter(JobModel.state.not_in(terminal)).all()
@@ -940,6 +1333,624 @@ class SqlAlchemyJobRepository(JobRepository):
             .all()
         )
         return tuple(model.to_event() for model in models)
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class SqlAlchemyDevicePoolRepository(DevicePoolRepository):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyDevicePoolRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def acquire_lock(
+        self,
+        account_id: str,
+        device_key: str,
+        job_id: str | None,
+        now: datetime,
+        ttl_seconds: int = 300,
+    ) -> AccountWorkspaceLock | None:
+        session = self._session
+        utc_now = _as_utc(now)
+        expires_at = utc_now + timedelta(seconds=ttl_seconds)
+
+        existing_device_locks = (
+            session.query(AccountWorkspaceLockModel)
+            .filter(AccountWorkspaceLockModel.device_key == device_key)
+            .all()
+        )
+        for dlock in existing_device_locks:
+            if dlock.account_id != account_id:
+                if _as_utc(dlock.expires_at) > utc_now:
+                    return None
+                else:
+                    session.delete(dlock)
+                    session.flush()
+
+        lock = session.get(AccountWorkspaceLockModel, account_id)
+        if lock is not None:
+            if _as_utc(lock.expires_at) > utc_now and lock.device_key != device_key:
+                return None
+            lock.device_key = device_key
+            lock.job_id = job_id
+            lock.acquired_at = utc_now
+            lock.expires_at = expires_at
+            lock.heartbeat = utc_now
+        else:
+            lock = AccountWorkspaceLockModel(
+                account_id=account_id,
+                device_key=device_key,
+                job_id=job_id,
+                acquired_at=utc_now,
+                expires_at=expires_at,
+                heartbeat=utc_now,
+            )
+            session.add(lock)
+
+        session.flush()
+        return lock.to_lock()
+
+    def get_lock_by_account(self, account_id: str) -> AccountWorkspaceLock | None:
+        model = self._session.get(AccountWorkspaceLockModel, account_id)
+        return model.to_lock() if model else None
+
+    def get_lock_by_device(self, device_key: str) -> AccountWorkspaceLock | None:
+        model = (
+            self._session.query(AccountWorkspaceLockModel).filter_by(device_key=device_key).first()
+        )
+        return model.to_lock() if model else None
+
+    def list_active_locks(self, now: datetime) -> Sequence[AccountWorkspaceLock]:
+        utc_now = _as_utc(now)
+        models = (
+            self._session.query(AccountWorkspaceLockModel)
+            .filter(AccountWorkspaceLockModel.expires_at > utc_now)
+            .order_by(AccountWorkspaceLockModel.acquired_at.desc())
+            .all()
+        )
+        return tuple(m.to_lock() for m in models)
+
+    def release_lock(self, account_id: str) -> bool:
+        model = self._session.get(AccountWorkspaceLockModel, account_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
+
+    def release_stale_locks(self, now: datetime) -> int:
+        utc_now = _as_utc(now)
+        stale = (
+            self._session.query(AccountWorkspaceLockModel)
+            .filter(AccountWorkspaceLockModel.expires_at <= utc_now)
+            .all()
+        )
+        count = len(stale)
+        for m in stale:
+            self._session.delete(m)
+        if count > 0:
+            self._session.flush()
+        return count
+
+    def refresh_lock(
+        self,
+        account_id: str,
+        now: datetime,
+        ttl_seconds: int = 300,
+    ) -> bool:
+        utc_now = _as_utc(now)
+        model = self._session.get(AccountWorkspaceLockModel, account_id)
+        if model is None or _as_utc(model.expires_at) <= utc_now:
+            return False
+        model.heartbeat = utc_now
+        model.expires_at = utc_now + timedelta(seconds=ttl_seconds)
+        self._session.flush()
+        return True
+
+    def save_snapshot_record(self, record: SnapshotMetadataRecord) -> None:
+        session = self._session
+        model = session.get(AccountWorkspaceSnapshotModel, record.id)
+        if model is None:
+            session.add(
+                AccountWorkspaceSnapshotModel(
+                    id=record.id,
+                    account_id=record.account_id,
+                    path=record.path,
+                    size_bytes=record.size_bytes,
+                    schema_version=record.schema_version,
+                    checksum=record.checksum,
+                    device_profile_id=record.device_profile_id,
+                    preferred_app=record.preferred_app,
+                    notes=record.notes,
+                    created_at=_as_utc(record.created_at),
+                    last_restored_at=_optional_utc(record.last_restored_at),
+                )
+            )
+        else:
+            model.path = record.path
+            model.size_bytes = record.size_bytes
+            model.schema_version = record.schema_version
+            model.checksum = record.checksum
+            model.device_profile_id = record.device_profile_id
+            model.preferred_app = record.preferred_app
+            model.notes = record.notes
+            model.last_restored_at = _optional_utc(record.last_restored_at)
+        session.flush()
+
+    def get_snapshot_record(self, snapshot_id: str) -> SnapshotMetadataRecord | None:
+        model = self._session.get(AccountWorkspaceSnapshotModel, snapshot_id)
+        return model.to_record() if model else None
+
+    def list_snapshots_for_account(self, account_id: str) -> Sequence[SnapshotMetadataRecord]:
+        models = (
+            self._session.query(AccountWorkspaceSnapshotModel)
+            .filter_by(account_id=account_id)
+            .order_by(AccountWorkspaceSnapshotModel.created_at.desc())
+            .all()
+        )
+        return tuple(m.to_record() for m in models)
+
+    def list_all_snapshots(self) -> Sequence[SnapshotMetadataRecord]:
+        models = (
+            self._session.query(AccountWorkspaceSnapshotModel)
+            .order_by(AccountWorkspaceSnapshotModel.created_at.desc())
+            .all()
+        )
+        return tuple(m.to_record() for m in models)
+
+    def delete_snapshot_record(self, snapshot_id: str) -> bool:
+        model = self._session.get(AccountWorkspaceSnapshotModel, snapshot_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
+
+    def update_snapshot_last_restored(self, snapshot_id: str, restored_at: datetime) -> None:
+        model = self._session.get(AccountWorkspaceSnapshotModel, snapshot_id)
+        if model is not None:
+            model.last_restored_at = _as_utc(restored_at)
+            self._session.flush()
+
+    def get_policy(self, name: str) -> DevicePoolPolicy | None:
+        model = self._session.query(DevicePoolPolicyModel).filter_by(name=name).one_or_none()
+        return model.to_policy() if model else None
+
+    def get_active_policy(self) -> DevicePoolPolicy | None:
+        model = self._session.query(DevicePoolPolicyModel).filter_by(is_active=True).first()
+        return model.to_policy() if model else None
+
+    def save_policy(self, policy: DevicePoolPolicy) -> None:
+        session = self._session
+        model = session.get(DevicePoolPolicyModel, policy.id)
+        provider_order_str = ",".join(policy.preferred_provider_order)
+        if model is None:
+            session.add(
+                DevicePoolPolicyModel(
+                    id=policy.id,
+                    name=policy.name,
+                    policy=policy.policy.value,
+                    preferred_provider_order=provider_order_str,
+                    allow_fallback=policy.allow_fallback,
+                    max_concurrent_restores=policy.max_concurrent_restores,
+                    is_active=policy.is_active,
+                    created_at=_as_utc(policy.created_at),
+                    updated_at=_as_utc(policy.updated_at),
+                )
+            )
+        else:
+            model.name = policy.name
+            model.policy = policy.policy.value
+            model.preferred_provider_order = provider_order_str
+            model.allow_fallback = policy.allow_fallback
+            model.max_concurrent_restores = policy.max_concurrent_restores
+            model.is_active = policy.is_active
+            model.updated_at = _as_utc(policy.updated_at)
+        session.flush()
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class SqlAlchemySecretRepository(SecretRepository):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemySecretRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def list_by_owner_ids(
+        self, owner_ids: Sequence[str] | None = None
+    ) -> Sequence[SecretReference]:
+        query = self._session.query(SecretMetadata)
+        if owner_ids is not None:
+            query = query.filter(SecretMetadata.owner_id.in_(owner_ids))
+        models = query.all()
+        return tuple(m.to_reference() for m in models)
+
+    def save(self, reference: SecretReference) -> None:
+        session = self._session
+        model = session.get(SecretMetadata, reference.id)
+        if model is None:
+            session.add(SecretMetadata.from_reference(reference))
+        else:
+            model.secret_type = reference.secret_type.value
+            model.owner_id = reference.owner_id
+            model.vault_ref = reference.vault_ref
+            model.updated_at = reference.updated_at
+        session.flush()
+
+    def delete(self, reference_id: str) -> None:
+        model = self._session.get(SecretMetadata, reference_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class SqlAlchemyAuditRepository(AuditRepository):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyAuditRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def add(self, event: AuditEvent) -> None:
+        session = self._session
+        session.add(AuditEventModel.from_event(event))
+        session.flush()
+
+    def get(self, event_id: str) -> AuditEvent | None:
+        model = self._session.get(AuditEventModel, event_id)
+        return model.to_event() if model else None
+
+    def list_events(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        result: AuditResult | None = None,
+        target_type: str | None = None,
+        target_id: str | None = None,
+        action: str | None = None,
+    ) -> Sequence[AuditEvent]:
+        query = self._session.query(AuditEventModel)
+        if result is not None:
+            query = query.filter(AuditEventModel.result == result.value)
+        if target_type is not None:
+            query = query.filter(AuditEventModel.target_type == target_type)
+        if target_id is not None:
+            query = query.filter(AuditEventModel.target_id == target_id)
+        if action is not None:
+            query = query.filter(AuditEventModel.action == action)
+        models = (
+            query.order_by(AuditEventModel.timestamp.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return tuple(m.to_event() for m in models)
+
+    def list_errors(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        target_type: str | None = None,
+        target_id: str | None = None,
+    ) -> Sequence[AuditEvent]:
+        query = self._session.query(AuditEventModel).filter(
+            AuditEventModel.result == AuditResult.FAILURE.value
+        )
+        if target_type is not None:
+            query = query.filter(AuditEventModel.target_type == target_type)
+        if target_id is not None:
+            query = query.filter(AuditEventModel.target_id == target_id)
+        models = (
+            query.order_by(AuditEventModel.timestamp.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return tuple(m.to_event() for m in models)
+
+    def prune(self, older_than: datetime) -> int:
+        utc_cutoff = _as_utc(older_than)
+        deleted_count = (
+            self._session.query(AuditEventModel)
+            .filter(AuditEventModel.timestamp < utc_cutoff)
+            .delete(synchronize_session=False)
+        )
+        self._session.flush()
+        return int(deleted_count)
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class SqlAlchemyContentRepository(ContentRepositoryPort):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyContentRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    # Media Assets
+    def add_asset(self, asset: MediaAsset) -> None:
+        session = self._session
+        session.add(MediaAssetModel.from_asset(asset))
+        session.flush()
+
+    def update_asset(self, asset: MediaAsset) -> None:
+        session = self._session
+        model = session.get(MediaAssetModel, asset.id)
+        if model is not None:
+            model.file_path = asset.file_path
+            model.file_name = asset.file_name
+            model.media_type = asset.media_type.value
+            model.thumbnail_path = asset.thumbnail_path
+            model.folder = asset.folder
+            model.tags_json = json.dumps(list(asset.tags))
+            model.is_favorite = asset.is_favorite
+            model.is_archived = asset.is_archived
+            model.mime_type = asset.metadata.mime_type
+            model.file_size_bytes = asset.metadata.file_size_bytes
+            model.sha256_hash = asset.metadata.sha256_hash
+            model.width = asset.metadata.width
+            model.height = asset.metadata.height
+            model.duration_seconds = asset.metadata.duration_seconds
+            model.aspect_ratio = asset.metadata.aspect_ratio
+            model.updated_at = _as_utc(asset.updated_at)
+            session.flush()
+
+    def get_asset(self, asset_id: str) -> MediaAsset | None:
+        model = self._session.get(MediaAssetModel, asset_id)
+        return model.to_asset() if model else None
+
+    def get_asset_by_hash(self, sha256_hash: str) -> MediaAsset | None:
+        model = (
+            self._session.query(MediaAssetModel)
+            .filter(MediaAssetModel.sha256_hash == sha256_hash)
+            .first()
+        )
+        return model.to_asset() if model else None
+
+    def list_assets(
+        self,
+        folder: str | None = None,
+        media_type: MediaType | None = None,
+        is_favorite: bool | None = None,
+        is_archived: bool | None = False,
+        tag: str | None = None,
+        search_query: str | None = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> Sequence[MediaAsset]:
+        query = self._session.query(MediaAssetModel)
+        if folder is not None:
+            query = query.filter(MediaAssetModel.folder == folder)
+        if media_type is not None:
+            query = query.filter(MediaAssetModel.media_type == media_type.value)
+        if is_favorite is not None:
+            query = query.filter(MediaAssetModel.is_favorite == is_favorite)
+        if is_archived is not None:
+            query = query.filter(MediaAssetModel.is_archived == is_archived)
+        if tag is not None:
+            # Simple JSON contains query
+            query = query.filter(MediaAssetModel.tags_json.contains(f'"{tag}"'))
+        if search_query:
+            pattern = f"%{search_query}%"
+            query = query.filter(
+                (MediaAssetModel.file_name.ilike(pattern))
+                | (MediaAssetModel.tags_json.ilike(pattern))
+            )
+        models = (
+            query.order_by(MediaAssetModel.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return tuple(m.to_asset() for m in models)
+
+    def delete_asset(self, asset_id: str) -> bool:
+        model = self._session.get(MediaAssetModel, asset_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
+
+    def count_assets(
+        self,
+        folder: str | None = None,
+        is_archived: bool | None = False,
+    ) -> int:
+        query = self._session.query(MediaAssetModel)
+        if folder is not None:
+            query = query.filter(MediaAssetModel.folder == folder)
+        if is_archived is not None:
+            query = query.filter(MediaAssetModel.is_archived == is_archived)
+        return int(query.count())
+
+    def list_folders(self) -> Sequence[str]:
+        rows = (
+            self._session.query(MediaAssetModel.folder)
+            .distinct()
+            .order_by(MediaAssetModel.folder)
+            .all()
+        )
+        return tuple(r[0] for r in rows if r[0])
+
+    # Caption Templates
+    def add_caption_template(self, template: CaptionTemplate) -> None:
+        session = self._session
+        session.add(CaptionTemplateModel.from_template(template))
+        session.flush()
+
+    def update_caption_template(self, template: CaptionTemplate) -> None:
+        session = self._session
+        model = session.get(CaptionTemplateModel, template.id)
+        if model is not None:
+            model.name = template.name
+            model.content = template.content
+            model.variables_json = json.dumps(list(template.variables))
+            model.tags_json = json.dumps(list(template.tags))
+            model.is_favorite = template.is_favorite
+            model.updated_at = _as_utc(template.updated_at)
+            session.flush()
+
+    def get_caption_template(self, template_id: str) -> CaptionTemplate | None:
+        model = self._session.get(CaptionTemplateModel, template_id)
+        return model.to_template() if model else None
+
+    def list_caption_templates(
+        self,
+        is_favorite: bool | None = None,
+        tag: str | None = None,
+        search_query: str | None = None,
+    ) -> Sequence[CaptionTemplate]:
+        query = self._session.query(CaptionTemplateModel)
+        if is_favorite is not None:
+            query = query.filter(CaptionTemplateModel.is_favorite == is_favorite)
+        if tag is not None:
+            query = query.filter(CaptionTemplateModel.tags_json.contains(f'"{tag}"'))
+        if search_query:
+            pattern = f"%{search_query}%"
+            query = query.filter(
+                (CaptionTemplateModel.name.ilike(pattern))
+                | (CaptionTemplateModel.content.ilike(pattern))
+            )
+        models = query.order_by(CaptionTemplateModel.name.asc()).all()
+        return tuple(m.to_template() for m in models)
+
+    def delete_caption_template(self, template_id: str) -> bool:
+        model = self._session.get(CaptionTemplateModel, template_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
+
+    # Hashtag Sets
+    def add_hashtag_set(self, hashtag_set: HashtagSet) -> None:
+        session = self._session
+        session.add(HashtagSetModel.from_set(hashtag_set))
+        session.flush()
+
+    def update_hashtag_set(self, hashtag_set: HashtagSet) -> None:
+        session = self._session
+        model = session.get(HashtagSetModel, hashtag_set.id)
+        if model is not None:
+            model.name = hashtag_set.name
+            model.hashtags_json = json.dumps(list(hashtag_set.hashtags))
+            model.category = hashtag_set.category
+            model.is_favorite = hashtag_set.is_favorite
+            model.updated_at = _as_utc(hashtag_set.updated_at)
+            session.flush()
+
+    def get_hashtag_set(self, set_id: str) -> HashtagSet | None:
+        model = self._session.get(HashtagSetModel, set_id)
+        return model.to_set() if model else None
+
+    def list_hashtag_sets(
+        self,
+        category: str | None = None,
+        is_favorite: bool | None = None,
+        search_query: str | None = None,
+    ) -> Sequence[HashtagSet]:
+        query = self._session.query(HashtagSetModel)
+        if category is not None:
+            query = query.filter(HashtagSetModel.category == category)
+        if is_favorite is not None:
+            query = query.filter(HashtagSetModel.is_favorite == is_favorite)
+        if search_query:
+            pattern = f"%{search_query}%"
+            query = query.filter(
+                (HashtagSetModel.name.ilike(pattern))
+                | (HashtagSetModel.hashtags_json.ilike(pattern))
+            )
+        models = query.order_by(HashtagSetModel.name.asc()).all()
+        return tuple(m.to_set() for m in models)
+
+    def delete_hashtag_set(self, set_id: str) -> bool:
+        model = self._session.get(HashtagSetModel, set_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
+
+    # Content Items
+    def add_content_item(self, item: ContentItem) -> None:
+        session = self._session
+        session.add(ContentItemModel.from_item(item))
+        session.flush()
+
+    def update_content_item(self, item: ContentItem) -> None:
+        session = self._session
+        model = session.get(ContentItemModel, item.id)
+        if model is not None:
+            model.title = item.title
+            model.body = item.body
+            model.media_asset_ids_json = json.dumps(list(item.media_asset_ids))
+            model.hashtag_set_ids_json = json.dumps(list(item.hashtag_set_ids))
+            model.caption_template_id = item.caption_template_id
+            model.status = item.status.value
+            model.folder = item.folder
+            model.tags_json = json.dumps(list(item.tags))
+            model.is_favorite = item.is_favorite
+            model.is_archived = item.is_archived
+            model.updated_at = _as_utc(item.updated_at)
+            session.flush()
+
+    def get_content_item(self, item_id: str) -> ContentItem | None:
+        model = self._session.get(ContentItemModel, item_id)
+        return model.to_item() if model else None
+
+    def list_content_items(
+        self,
+        folder: str | None = None,
+        status: str | None = None,
+        is_favorite: bool | None = None,
+        is_archived: bool | None = False,
+        search_query: str | None = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> Sequence[ContentItem]:
+        query = self._session.query(ContentItemModel)
+        if folder is not None:
+            query = query.filter(ContentItemModel.folder == folder)
+        if status is not None:
+            query = query.filter(ContentItemModel.status == status)
+        if is_favorite is not None:
+            query = query.filter(ContentItemModel.is_favorite == is_favorite)
+        if is_archived is not None:
+            query = query.filter(ContentItemModel.is_archived == is_archived)
+        if search_query:
+            pattern = f"%{search_query}%"
+            query = query.filter(
+                (ContentItemModel.title.ilike(pattern))
+                | (ContentItemModel.body.ilike(pattern))
+                | (ContentItemModel.tags_json.ilike(pattern))
+            )
+        models = (
+            query.order_by(ContentItemModel.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return tuple(m.to_item() for m in models)
+
+    def delete_content_item(self, item_id: str) -> bool:
+        model = self._session.get(ContentItemModel, item_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
 
     @property
     def _session(self) -> Session:

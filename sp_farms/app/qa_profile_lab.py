@@ -243,9 +243,7 @@ class QAProfileLab(QWidget):
         if not isinstance(serialized, dict):
             return
         test_values = {
-            key: value
-            for key, value in serialized.items()
-            if key.startswith("test_") and value
+            key: value for key, value in serialized.items() if key.startswith("test_") and value
         }
         from json import dumps
 

@@ -232,4 +232,106 @@ Status: complete
 - Integrated "Restore Workspace" trigger, status chip, and non-blocking background `_Worker` in `AccountWorkspace` UI and wired it through `ApplicationContext` and `bootstrap.py`.
 - Added unit and UI tests covering binding persistence, successful restore workflow, offline emulator startup, disconnected physical device handling, missing app detection, reauth flagging, and UI status updates.
 
+## Phase 21 — Multi-Account Device Pool Restore Queue and Lightweight Workspace Backup
+
+Status: complete
+
+- Created explicit device pool state machine (`DevicePoolState`: Offline, Starting, Available, Reserved, Restoring, InUse, Releasing, Error, Maintenance) and availability tracking.
+- Implemented `DevicePoolService` supporting atomic SQLite device locking, stale lock recovery, and device assignment policies (Bound Device First, Any Available Device, Least Recently Used, Round Robin, Preferred Provider).
+- Created durable `account_workspace_restore` jobs, batch queueing, and automatic next-account dispatch upon device release.
+- Added `SnapshotService` creating tamper-detecting, lightweight, content-addressed `.spws` compressed account workspace archives strictly excluding passwords, private caches, cookies, and tokens.
+- Created Alembic migration `0008_device_pool_and_snapshots.py` mapping `account_workspace_locks`, `account_workspace_snapshots`, and `device_pool_policies`.
+- Implemented `BatchRestoreDialog` and snapshot management UI with backup, restore, verify, import, and export actions.
+- Added comprehensive unit and integration tests for device pool state transitions, concurrency locks, stale recovery, scheduling policies, and snapshot archive security.
+
+## Phase 22 — Accounts Workspace
+
+Status: complete
+
+- Built the production Accounts workspace with a 24-column model, default/optional column visibility, and interactive `ColumnPickerDialog`.
+- Added multi-field search and smart quick filters: Expiring Session, Device Offline, No Device, Permission Issue, Needs Review, Category, and Network status.
+- Added dense context menu and batch actions: assign category, assign tag, reassign device, archive, and safe metadata export (excluding secrets).
+- Implemented the right inspector panel displaying live account metadata, device bindings, network settings, health score, and operator notes.
+- Optimized performance for large datasets (1,500+ accounts) using Qt Model-View-Proxy architecture with instantaneous sorting and filtering.
+- Connected Operations Home Dashboard with system metrics, quick navigation routes, and live device status.
+- Added focused UI and model tests covering column management, smart filters, sorting, bulk dialogs, metadata export, and 1,500-row performance.
+
+## Phase 23 — Account Metadata Import/Export & Encrypted Vault Formats
+
+Status: complete
+
+- Added zero-dependency OpenXML (.xlsx) generation and parsing via standard library `zipfile` and `xml.etree.ElementTree`.
+- Added RFC 4180 CSV with UTF-8 BOM (`\xef\xbb\xbf`) and JSON metadata exchange.
+- Enforced strict secret boundary: normal exports exclude passwords, cookies, tokens, and recovery secrets.
+- Implemented encrypted `.spvault` backup format using Scrypt (N=32768, r=8, p=1) and authenticated AES-256-GCM.
+- Built dry-run import preview pipeline reporting validation errors and supporting conflict policies (SKIP, OVERWRITE, ERROR).
+- Added `AccountExportDialog` and `AccountImportDialog` integrated into `AccountWorkspace`.
+
+## Phase 24 — Meta API Integration Boundary
+
+Status: complete
+
+- Built typed Meta client interface (`MetaClientPort`) and application integration service (`MetaIntegrationService`).
+- Modeled official supported OAuth 2.0 authorization code flow and short-to-long-lived token upgrades (60 days).
+- Implemented scope/permission domain value objects (`MetaScopeSet`, `MetaPermission`).
+- Added token inspection metadata (`MetaTokenMetadata`), expiration evaluation, and health warnings.
+- Secured access tokens in the OS keyring vault (`SecretType.ACCESS_TOKEN`), keeping SQLite free of plaintext credentials.
+- Implemented retry and exponential backoff on transient HTTP 5xx errors and network failures.
+- Added structured Meta rate-limit header parsing (`x-app-usage`, `x-page-usage`).
+- Mapped Graph API error codes (190, 4, 17, 32, 200-299) to domain exceptions (`MetaAuthError`, `MetaRateLimitError`, etc.).
+- Created `FakeMetaApiClient` for offline development, deterministic unit tests, and CI/CD without live credentials.
+- Ensured sensitive tokens and secrets are never logged in URL query parameters or request headers.
+- Documented Meta API setup, configuration, and security rules in `docs/META_API.md` and `.env.example`.
+
+## Phase 26 — Pages and Groups Workspace
+
+Status: complete
+
+- Built `PagesGroupsWorkspace` adhering to SP-Farms compact design tokens with dedicated tabs for Facebook Pages and Groups.
+- Implemented `PageFilterProxyModel` and `GroupFilterProxyModel` for multi-column search, account filtering, permission/role filtering, and publishing eligibility.
+- Built `AssetInspectorPanel` with selection tracking, role/task summary, publishing eligibility chip, follower/member reach metrics, and direct operator notes.
+- Connected operational shortcuts: Recent Content, Content Queue, and Analytics jumping to relevant system workspaces.
+- Added background non-blocking synchronization via `SyncWorker` and `QThreadPool` to prevent UI freezing.
+- Added safe bulk organization features: copy meta asset IDs, mark assets stale, and export assets to CSV.
+- Integrated `PagesGroupsWorkspace` directly into `MainWindow` navigation for `"Pages"` and `"Groups"` routes.
+- Added focused UI and model tests in `tests/test_pages_and_groups_ui.py` covering filtering, inspector rendering, and route signals.
+
+## Phase 27 — Security Center
+
+Status: complete
+
+- Built `SecurityCenterWorkspace` with multi-factor account security health scoring (`calculate_security_score`).
+- Added `SecurityService` auditing account 2FA status, vaulted token integrity, session staleness, and granted Meta scopes.
+- Implemented `SecurityFilterProxyModel` for real-time status filtering (Action Required, Missing 2FA, Token Expiring / Expired, Stale Sessions, Challenge Required).
+- Built `SecurityInspectorPanel` displaying health badges, checklist breakdown, and immediate remediation actions.
+- Added official Meta OAuth re-authorization flow URL generator without bypassing checkpoints, captchas, or platform challenges.
+- Added CSV security audit report export and integrated workspace into `AccountWorkspace`, `MainWindow` (`Ctrl+Alt+S`), and `HomeDashboard`.
+- Added unit and UI tests in `tests/test_security_center.py` verifying scoring, audits, system report aggregation, proxy filtering, and inspector behavior.
+
+## Phase 28 — Audit Trail and Error Center
+
+Status: complete
+
+- Built `AuditEvent` and `SecurityEvent` domain records with structured metadata: initiator, action, target, result, error code, retry count, job id.
+- Implemented `redact_text` and `redact_data` utilities ensuring sensitive tokens, passwords, cookies, and secret keys never leak into audit records.
+- Added Alembic migration `0010_audit_events.py` and `SqlAlchemyAuditRepository` for persistent storage and configurable retention pruning.
+- Created `ErrorCenterWorkspace` with friendly failure summaries, copyable technical diagnostics, immediate retry routing, and operator recovery suggestions.
+- Integrated Error Center into navigation, `HomeDashboard`, and context action handlers.
+- Added comprehensive test suite in `tests/test_audit_and_error_center.py`.
+
+## Phase 29 — Content Library and Media Asset Storage
+
+Status: complete
+
+- Implemented `MediaAsset`, `MediaMetadata`, `CaptionTemplate`, `HashtagSet`, and `ContentItem` domain entities.
+- Created Alembic migration `0011_content_library.py` and `SqlAlchemyContentRepository`.
+- Built `ContentService` with SHA-256 deduplication, automatic file storage layout, aspect ratio calculation, thumbnail generation, and caption template variable rendering.
+- Developed `ContentWorkspace` UI with real-time asset metrics, table/grid filter proxy, preview/inspector panel, caption/hashtag/item tabs, and drag-and-drop file import.
+- Replaced placeholder content workspace in `MainWindow` with full `ContentWorkspace`.
+- Added 10 tests in `tests/test_content_library.py` covering deduplication, filters, metadata, and UI lifecycle.
+
+
+
+
+
 

@@ -133,3 +133,25 @@ def test_main_window_wires_restore_service(
     window = MainWindow(context, settings)
     assert window.account_workspace._restore_service is not None
     window.close()
+
+
+def test_account_workspace_multi_selection_and_inspector(
+    qapp: QApplication,
+    ui_context: UIContext,
+) -> None:
+    accounts, onboarding, restore_service, _ = ui_context
+    acct1 = accounts.create_account("Alice Multi", "uid-m1", "m1@example.com")
+    accounts.create_account("Bob Multi", "uid-m2", "m2@example.com")
+
+    view = AccountWorkspace(accounts, onboarding, restore_service)
+    view.refresh()
+
+    # Select both accounts
+    view.table.selectAll()
+    assert len(view.selected_account_ids) == 2
+
+    # Verify inspector populated for selected
+    view.select_account(acct1.id)
+    assert view.selected_account_id == acct1.id
+    assert view.insp_bound_device.text() == "None"
+    assert "Selected: 1" in view.bottom_strip.text()

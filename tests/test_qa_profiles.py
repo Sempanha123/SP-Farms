@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,7 +25,9 @@ class FixedClock:
 
 
 @pytest.fixture
-def qa_service(tmp_path: Path) -> tuple[QAProfileService, Database, FakeQAProfileReloadBridge]:
+def qa_service(
+    tmp_path: Path,
+) -> Generator[tuple[QAProfileService, Database, FakeQAProfileReloadBridge], None, None]:
     database = Database(tmp_path / "qa.db")
     run_migrations(database, MIGRATIONS)
     bridge = FakeQAProfileReloadBridge()
@@ -115,12 +118,8 @@ def test_authorized_push_reload_verify_and_restore(
         "com.example.ownedapp",
         reload_profile=True,
     )
-    verified = service.verify(
-        "emulator-5554", "ldplayer", "0", "com.example.ownedapp"
-    )
-    restored = service.restore(
-        "emulator-5554", "ldplayer", "0", "com.example.ownedapp"
-    )
+    verified = service.verify("emulator-5554", "ldplayer", "0", "com.example.ownedapp")
+    restored = service.restore("emulator-5554", "ldplayer", "0", "com.example.ownedapp")
 
     assert pushed.is_success and pushed.value.loaded
     assert verified.is_success and verified.value.profile_id == profile.id

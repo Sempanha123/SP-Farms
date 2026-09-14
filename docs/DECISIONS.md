@@ -84,6 +84,34 @@ MuMu Player automation conforms to the unified `DeviceProviderPort` abstraction.
 
 Physical Android devices (connected via USB or Wi-Fi TCP/IP) conform to the identical `DeviceProviderPort` application protocol as virtual emulators. Hardware devices are classified by serial signature (distinguishing physical USB and Wi-Fi devices from emulator ports). Because physical devices cannot be cold-booted or shut down via software commands, remote power operations raise clear domain errors, while warm reboots, package installs, log collection, and screenshots execute uniformly via ADB. Hardware diagnostics capture device properties (`ro.product.model`, `ro.build.version.release`, etc.) and battery levels without hardware identity spoofing or tampering.
 
+## Device Pool and Lightweight Workspace Snapshots
+
+Device scheduling coordinates across available physical and virtual devices using explicit atomic reservations (`account_workspace_locks`) with TTL-based expiration and automatic stale lock reclaiming. Workspace snapshots (`.spws`) store only versioned, non-secret operator preferences and account metadata in compressed JSON archives. Platform disk images, app caches, private app data, raw cookies, and authentication secrets are strictly excluded, enforcing safety and keeping backup archives under 100 KB per account.
+
+## Accounts Workspace and Dense Model-View Design
+
+The accounts workspace follows a strict Model-View-Proxy separation: `QStandardItemModel` retains rich raw metadata across 24 columns, while `QSortFilterProxyModel` evaluates multiple orthogonal predicates (text search, category, device binding, and smart health filters) without re-querying the database. Bulk actions (categorization, tagging, device assignment, archive, and metadata export) operate on selection models in batch transactions, keeping the UI responsive even with 1,500+ accounts loaded.
+
+## Meta API Integration Boundary & Keyring Vault Storage
+
+Meta Graph API integration uses an explicit client port (`MetaClientPort`) with an implementation based on `httpx` (`MetaHttpClient`) and a deterministic test double (`FakeMetaApiClient`). Access tokens are treated as strictly confidential credentials and stored exclusively in the OS Keyring (`KeyringVault` using Windows Credential Manager), never in SQLite or plaintext configuration files. All HTTP request logging redacts sensitive tokens, and the client implements automatic exponential backoff for transient 5xx errors and rate limits (`x-app-usage`).
+
+## Facebook Pages and Groups Asset Synchronization
+
+Authorized Facebook Pages and Groups are modeled as immutable domain entities with explicit eligibility logic based on Meta tasks (`MANAGE`, `CREATE_CONTENT`) and group roles (`ADMIN`, `MODERATOR`). All page-specific access tokens returned by Meta are vaulted in the OS keyring alongside user tokens. Asset synchronization tolerates partial failures (e.g. Rate Limit on Groups preserves Page updates) and marks removed/inaccessible assets as `AssetHealthState.STALE` rather than immediately deleting them, preserving audit trails and operator context.
+
+## Pages & Groups Management Workspace Architecture
+
+The Pages and Groups workspace (`PagesGroupsWorkspace`) uses dual `QSortFilterProxyModel` layers on top of `QStandardItemModel` to handle dense multi-field filtering (text search, account association, health status, and publishing eligibility) entirely in-memory with zero UI thread blocking. Multi-account synchronization runs asynchronously via `QThreadPool` and `QRunnable`, keeping the desktop interface fully interactive during long-running Graph API requests. The right-hand inspector panel coordinates operational shortcuts directly into related workspaces (`Content`, `Automation`, `Analytics`) and maintains quick asset identification tools (clipboard copying of Meta asset IDs, CSV asset exports, and manual staleness tagging).
+
+## Security Center and Anti-Bypass Auditing
+
+The Security Center calculates deterministic account health scores (0–100) based on six weighted security vectors: 2FA enforcement (-25), token validity and expiration (-15 to -40), session staleness (-15), OS Keyring vault presence (-15), standard scope coverage (-5 per missing scope), and security challenge states (-30). The system strictly adheres to ethical anti-bypass principles: neither the background workers nor the desktop interface attempt to solve captchas, bypass two-factor challenges, or circumvent platform checkpoints. Instead, the Security Center generates official Meta OAuth re-authorization URLs with clear operator remediation steps and requires manual checkpoint resolution on approved hardware.
+
+
+
+
+
 
 
 

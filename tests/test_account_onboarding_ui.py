@@ -1,3 +1,5 @@
+from collections.abc import Generator
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,7 +34,9 @@ def qapp() -> QApplication:
 
 
 @pytest.fixture
-def services(tmp_path: Path) -> tuple[AccountService, AccountOnboardingService, Database]:
+def services(
+    tmp_path: Path,
+) -> Generator[tuple[AccountService, AccountOnboardingService, Database], None, None]:
     database = Database(tmp_path / "account-ui.db")
     run_migrations(database, MIGRATIONS)
     accounts = AccountService(
@@ -96,3 +100,50 @@ def test_success_actions_route_through_main_window(
 
     assert window.current_section == "Pages"
     window.close()
+
+
+def test_local_navigation_and_action_pages_are_wired(
+    qapp: QApplication,
+    services: tuple[AccountService, AccountOnboardingService, Database],
+) -> None:
+    accounts, onboarding, _database = services
+    view = AccountWorkspace(accounts, onboarding)
+    routes: list[str] = []
+    view.local_navigation_requested.connect(routes.append)
+
+    view.local_nav_buttons["Pages"].click()
+    assert routes == ["Pages"]
+    assert view.local_nav_buttons["Accounts"].isChecked()
+
+    view.action_nav_buttons[2].click()
+    assert view.action_pages.currentIndex() == 2
+    assert view.backup_btn.parentWidget() is view.action_pages.widget(2)
+
+
+def test_account_filters_include_category_device_and_network(
+    qapp: QApplication,
+    services: tuple[AccountService, AccountOnboardingService, Database],
+) -> None:
+    accounts, onboarding, _database = services
+    category = accounts.create_category("Primary")
+    assigned = accounts.create_account("Assigned", "assigned-1", "assigned@example.com")
+    accounts.save_account(replace(assigned, category_id=category.id))
+    accounts.assign_device(assigned.id, "ldplayer", "device-1")
+    accounts.create_account("Offline", "offline-1", "offline@example.com")
+    view = AccountWorkspace(accounts, onboarding)
+
+    assert view.category_filter.findData(category.id) >= 0
+    view.category_filter.setCurrentIndex(view.category_filter.findData(category.id))
+    assert view.model.rowCount() == 1
+    assert view.model.item(0, 0).text() == "Assigned"
+    assert view.model.item(0, 5).text() == "Primary"
+
+    view.category_filter.setCurrentIndex(0)
+    view.network_filter.setCurrentText("Offline")
+    assert view.model.rowCount() == 1
+    assert view.model.item(0, 0).text() == "Offline"
+
+    view.network_filter.setCurrentText("All Networks")
+    view.device_filter.setCurrentText("Assigned")
+    assert view.model.rowCount() == 1
+    assert view.model.item(0, 0).text() == "Assigned"

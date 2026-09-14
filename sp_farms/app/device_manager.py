@@ -440,8 +440,7 @@ class DeviceManagerView(QWidget):
         self.start_btn.setEnabled(
             bool(selected)
             and all(
-                device.capabilities.can_start_stop and not device.is_online
-                for device in selected
+                device.capabilities.can_start_stop and not device.is_online for device in selected
             )
         )
         self.stop_btn.setEnabled(
@@ -462,27 +461,29 @@ class DeviceManagerView(QWidget):
         )
         self.save_profile_btn.setEnabled(len(selected) == 1 and self._service is not None)
 
-    def _run_action(self, action: str) -> None:
-        if self._service is None:
+    def run_devices(
+        self,
+        action: str,
+        devices: Sequence[ManagedDevice],
+        package_name: str | None = None,
+    ) -> None:
+        if self._service is None or not devices:
             return
-        selected = tuple(self._selected_devices())
-        if not selected:
-            return
+        selected = tuple(devices)
         service = self._service
+        package = package_name if package_name is not None else self.package_input.text()
         operations: dict[str, Callable[[], object]] = {
             "start": lambda: service.start(selected),
             "stop": lambda: service.stop(selected),
             "restart": lambda: service.restart(selected),
-            "launch_app": lambda: service.launch_app(selected, self.package_input.text()),
+            "launch_app": lambda: service.launch_app(selected, package),
         }
         self._submit(operations[action], lambda _result: self.refresh())
 
-    def _run_artifact_action(self, action: str) -> None:
-        if self._service is None:
+    def collect_device_artifacts(self, action: str, devices: Sequence[ManagedDevice]) -> None:
+        if self._service is None or not devices:
             return
-        selected = tuple(self._selected_devices())
-        if not selected:
-            return
+        selected = tuple(devices)
         service = self._service
 
         def operation() -> object:
@@ -491,6 +492,12 @@ class DeviceManagerView(QWidget):
             return tuple(service.collect_logs(device) for device in selected)
 
         self._submit(operation, lambda result: self._artifact_complete(action, result))
+
+    def _run_action(self, action: str) -> None:
+        self.run_devices(action, self._selected_devices())
+
+    def _run_artifact_action(self, action: str) -> None:
+        self.collect_device_artifacts(action, self._selected_devices())
 
     def _artifact_complete(self, action: str, result: object) -> None:
         count = len(result) if isinstance(result, tuple) else 0

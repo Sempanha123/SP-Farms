@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -32,7 +33,7 @@ class FixedClock:
 
 
 @pytest.fixture
-def accounts(tmp_path: Path) -> tuple[AccountService, Database]:
+def accounts(tmp_path: Path) -> Generator[tuple[AccountService, Database], None, None]:
     database = Database(tmp_path / "accounts.db")
     run_migrations(database, MIGRATIONS)
     service = AccountService(
@@ -132,9 +133,7 @@ def test_health_rules_are_deterministic() -> None:
     attention = calculate_account_health(
         replace(account, status=AccountStatus.ATTENTION, two_factor_enabled=False)
     )
-    critical = calculate_account_health(
-        replace(account, security_state=SecurityState.COMPROMISED)
-    )
+    critical = calculate_account_health(replace(account, security_state=SecurityState.COMPROMISED))
 
     assert healthy.score == 95
     assert healthy.state is AccountHealthState.HEALTHY

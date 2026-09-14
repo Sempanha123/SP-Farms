@@ -38,6 +38,8 @@ secrets/
 # Editors and operating systems
 .idea/
 .vscode/
+.claude/
+SP-Farms-FULL-57-PHASES/
 *.swp
 .DS_Store
 Thumbs.db

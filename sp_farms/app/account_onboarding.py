@@ -201,9 +201,7 @@ class AccountOnboardingPanel(Panel):
                         country=self.country_input.text(),
                         locale=self.locale_input.text(),
                         notes=self.notes_input.toPlainText(),
-                        preferred_app=PreferredApp(
-                            str(self.preferred_app_input.currentData())
-                        ),
+                        preferred_app=PreferredApp(str(self.preferred_app_input.currentData())),
                     )
                 )
         except ValueError as exc:
