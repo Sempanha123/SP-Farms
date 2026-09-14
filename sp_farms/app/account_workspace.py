@@ -36,6 +36,7 @@ from sp_farms.app.account_exchange_dialogs import (
 )
 from sp_farms.app.account_onboarding import AccountOnboardingPanel
 from sp_farms.app.batch_restore_dialog import BatchRestoreDialog
+from sp_farms.app.security_center import SecurityCenterWorkspace
 from sp_farms.app.widgets import (
     CompactTable,
     MetricRow,
@@ -60,6 +61,7 @@ if TYPE_CHECKING:
     from sp_farms.application.account_exchange_service import AccountExchangeService
     from sp_farms.application.device_pool_service import DevicePoolService
     from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
+    from sp_farms.application.security_service import SecurityService
     from sp_farms.application.snapshot_service import SnapshotService
 
 
@@ -123,6 +125,7 @@ class AccountWorkspace(QWidget):
         pool_service: "DevicePoolService | None" = None,
         snapshot_service: "SnapshotService | None" = None,
         exchange_service: "AccountExchangeService | None" = None,
+        security_service: "SecurityService | None" = None,
         settings: QSettings | None = None,
         parent: QWidget | None = None,
     ) -> None:
@@ -133,6 +136,7 @@ class AccountWorkspace(QWidget):
         self._pool_service = pool_service
         self._snapshot_service = snapshot_service
         self._exchange_service = exchange_service
+        self._security_service = security_service
         self._workers: set[_Worker] = set()
         self._pool = QThreadPool.globalInstance()
         self._settings = (
@@ -189,14 +193,19 @@ class AccountWorkspace(QWidget):
         local_nav_layout.setContentsMargins(4, 3, 4, 3)
         local_nav_layout.setSpacing(2)
         self.local_nav_buttons: dict[str, QPushButton] = {}
-        for index, label in enumerate(("Local Accounts", "Pages", "Groups")):
+        for index, label in enumerate(("Local Accounts", "Security Center", "Pages", "Groups")):
             button = QPushButton(label)
             button.setObjectName(f"local{label.replace(' ', '')}Button")
             button.setProperty("localNav", True)
             button.setCheckable(True)
             button.setAutoExclusive(True)
             button.setChecked(index == 0)
-            route = "Accounts" if label == "Local Accounts" else label
+            if label == "Local Accounts":
+                route = "Accounts"
+            elif label == "Security Center":
+                route = "Security"
+            else:
+                route = label
             button.clicked.connect(
                 lambda checked=False, name=route: self._request_local_navigation(name)
             )
@@ -467,6 +476,9 @@ class AccountWorkspace(QWidget):
         self.onboarding_panel.success_action_requested.connect(self.success_action_requested.emit)
         self.pages.addWidget(self.onboarding_panel)
 
+        self.security_workspace = SecurityCenterWorkspace(self._security_service)
+        self.pages.addWidget(self.security_workspace)
+
     @staticmethod
     def _action_page(
         title: str,
@@ -492,8 +504,17 @@ class AccountWorkspace(QWidget):
         if route == "Accounts":
             self.pages.setCurrentIndex(0)
             return
+        if route == "Security":
+            self.pages.setCurrentIndex(2)
+            self.security_workspace.refresh()
+            return
         self.local_nav_buttons["Accounts"].setChecked(True)
         self.local_navigation_requested.emit(route)
+
+    def show_security_center(self) -> None:
+        if "Security" in self.local_nav_buttons:
+            self.local_nav_buttons["Security"].setChecked(True)
+        self._request_local_navigation("Security")
 
     def _load_column_visibility(self) -> None:
         raw = self._settings.value("columns_visible")

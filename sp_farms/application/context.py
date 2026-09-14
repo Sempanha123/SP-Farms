@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from sp_farms.application.providers import DeviceProviderPort
     from sp_farms.application.qa_profile_service import QAProfileService
     from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
+    from sp_farms.application.security_service import SecurityService
     from sp_farms.application.snapshot_service import SnapshotService
     from sp_farms.application.worker import WorkerSupervisor
 
@@ -46,6 +47,7 @@ class ApplicationContext:
     meta_client: "MetaClientPort | None" = None
     meta_service: "MetaIntegrationService | None" = None
     asset_sync_service: "AssetSyncService | None" = None
+    security_service: "SecurityService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

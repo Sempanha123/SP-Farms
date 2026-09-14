@@ -104,6 +104,11 @@ Authorized Facebook Pages and Groups are modeled as immutable domain entities wi
 
 The Pages and Groups workspace (`PagesGroupsWorkspace`) uses dual `QSortFilterProxyModel` layers on top of `QStandardItemModel` to handle dense multi-field filtering (text search, account association, health status, and publishing eligibility) entirely in-memory with zero UI thread blocking. Multi-account synchronization runs asynchronously via `QThreadPool` and `QRunnable`, keeping the desktop interface fully interactive during long-running Graph API requests. The right-hand inspector panel coordinates operational shortcuts directly into related workspaces (`Content`, `Automation`, `Analytics`) and maintains quick asset identification tools (clipboard copying of Meta asset IDs, CSV asset exports, and manual staleness tagging).
 
+## Security Center and Anti-Bypass Auditing
+
+The Security Center calculates deterministic account health scores (0–100) based on six weighted security vectors: 2FA enforcement (-25), token validity and expiration (-15 to -40), session staleness (-15), OS Keyring vault presence (-15), standard scope coverage (-5 per missing scope), and security challenge states (-30). The system strictly adheres to ethical anti-bypass principles: neither the background workers nor the desktop interface attempt to solve captchas, bypass two-factor challenges, or circumvent platform checkpoints. Instead, the Security Center generates official Meta OAuth re-authorization URLs with clear operator remediation steps and requires manual checkpoint resolution on approved hardware.
+
+
 
 
 

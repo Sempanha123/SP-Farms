@@ -13,6 +13,7 @@ from sp_farms.application.meta_service import MetaIntegrationService
 from sp_farms.application.qa_profile_service import QAProfileService
 from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
 from sp_farms.application.secret_service import SecretService
+from sp_farms.application.security_service import SecurityService
 from sp_farms.application.snapshot_service import SnapshotService
 from sp_farms.application.worker import FakeStressJobHandler, WorkerSupervisor
 from sp_farms.domain.meta import MetaOAuthConfig
@@ -142,6 +143,15 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         clock=clock,
     )
 
+    security_service = SecurityService(
+        account_service=account_service,
+        secret_service=secret_service,
+        unit_of_work=database.unit_of_work,
+        secret_repository_factory=SqlAlchemySecretRepository,
+        meta_service=meta_service,
+        clock=clock,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -162,6 +172,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         meta_client=meta_client,
         meta_service=meta_service,
         asset_sync_service=asset_sync_service,
+        security_service=security_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

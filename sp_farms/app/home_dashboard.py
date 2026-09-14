@@ -69,6 +69,7 @@ class HomeDashboard(QWidget):
         quick_layout.addWidget(QLabel("Quick Actions"))
         for label, route in (
             ("Manage Accounts", "Accounts"),
+            ("Security Center", "Security"),
             ("Manage Devices", "Devices"),
             ("Open Automation Queue", "Automation"),
             ("Open Settings", "Settings"),

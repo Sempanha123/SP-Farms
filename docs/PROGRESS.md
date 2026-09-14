@@ -296,6 +296,19 @@ Status: complete
 - Integrated `PagesGroupsWorkspace` directly into `MainWindow` navigation for `"Pages"` and `"Groups"` routes.
 - Added focused UI and model tests in `tests/test_pages_and_groups_ui.py` covering filtering, inspector rendering, and route signals.
 
+## Phase 27 — Security Center
+
+Status: complete
+
+- Built `SecurityCenterWorkspace` with multi-factor account security health scoring (`calculate_security_score`).
+- Added `SecurityService` auditing account 2FA status, vaulted token integrity, session staleness, and granted Meta scopes.
+- Implemented `SecurityFilterProxyModel` for real-time status filtering (Action Required, Missing 2FA, Token Expiring / Expired, Stale Sessions, Challenge Required).
+- Built `SecurityInspectorPanel` displaying health badges, checklist breakdown, and immediate remediation actions.
+- Added official Meta OAuth re-authorization flow URL generator without bypassing checkpoints, captchas, or platform challenges.
+- Added CSV security audit report export and integrated workspace into `AccountWorkspace`, `MainWindow` (`Ctrl+Alt+S`), and `HomeDashboard`.
+- Added unit and UI tests in `tests/test_security_center.py` verifying scoring, audits, system report aggregation, proxy filtering, and inspector behavior.
+
+
 
 
 

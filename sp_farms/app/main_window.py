@@ -74,6 +74,7 @@ class MainWindow(QMainWindow):
             self._context.device_pool_service,
             self._context.snapshot_service,
             self._context.account_exchange_service,
+            self._context.security_service,
         )
         self._workspace = WorkspaceLayout(
             self.device_manager_view.rail_model,
@@ -124,6 +125,10 @@ class MainWindow(QMainWindow):
         return NAVIGATION[self._pages.currentIndex()]
 
     def navigate(self, section: str) -> None:
+        if section in ("Security", "Security Center"):
+            self.navigate("Accounts")
+            self.account_workspace.show_security_center()
+            return
         index = NAVIGATION.index(section)
         self._pages.setCurrentIndex(index)
         for name, button in self._nav_buttons.items():
@@ -266,6 +271,15 @@ class MainWindow(QMainWindow):
         self.navigation.register(
             Command("shortcuts.open", "Show keyboard shortcuts", "Ctrl+/", self._open_shortcuts)
         )
+        self.navigation.register(
+            Command(
+                "security.open",
+                "Open Security Center",
+                "Ctrl+Alt+S",
+                self._open_security_center,
+                keywords=("security", "audit", "2fa", "token", "credentials"),
+            )
+        )
         for command in self.navigation.commands:
             action = QAction(command.title, self)
             action.setShortcut(command.shortcut)
@@ -300,6 +314,9 @@ class MainWindow(QMainWindow):
 
     def _open_shortcuts(self) -> None:
         self.shortcut_help.open()
+
+    def _open_security_center(self) -> None:
+        self.navigate("Security")
 
     def _load_theme(self) -> ThemeMode:
         stored = str(self._settings.value("appearance/theme", ThemeMode.DARK.value, str))
