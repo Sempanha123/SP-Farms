@@ -526,6 +526,18 @@ Status: complete
 - Integrated language selector into `SettingsWorkspace` ("General" section) persisting `general/locale` and dynamically updating navigation buttons and branding.
 - Added 7 automated tests in `tests/test_i18n.py` (total test suite at 275/275 passing).
 
+## Phase 47 — Accessibility and Keyboard Efficiency
+
+Status: complete
+
+- Created dedicated accessibility framework in `sp_farms/app/accessibility.py` supporting `apply_accessibility`, sequential tab chaining `chain_tab_order`, semantic verification `verify_accessible_semantics`, and dialog keyboard handlers.
+- Styled visible 2px high-contrast focus rings (`:focus`) across `QPushButton`, `QLineEdit`, `QComboBox`, `QSpinBox`, `QDateTimeEdit`, `QTextEdit`, `QTableView`, `QListView`, and `QListWidget`.
+- Removed reliance on color alone in `StatusChip`: state is conveyed with semantic visual glyphs (`✓`, `▲`, `✖`, `●`, `○`, `⏸`, `▶`), and accessible names/descriptions.
+- Added accessible names, descriptions, and tooltip shortcut hints to top navigation buttons (`Alt+1` through `Alt+9`), settings search, settings sections, accounts table, and filters.
+- Enforced sequential focus chaining across navigation buttons and settings controls.
+- Added 7 automated tests in `tests/test_accessibility.py` (total test suite at 282/282 passing).
+
+
 
 
 

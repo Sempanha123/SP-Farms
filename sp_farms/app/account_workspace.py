@@ -222,6 +222,8 @@ class AccountWorkspace(QWidget):
         toolbar_layout = QHBoxLayout(toolbar)
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search accounts")
+        self.search_input.setAccessibleName("Search accounts")
+        self.search_input.setAccessibleDescription("Filter account list by name or username")
         self.search_input.textChanged.connect(self.refresh)
 
         self.status_chip = StatusChip("Ready", state="neutral")
@@ -257,6 +259,7 @@ class AccountWorkspace(QWidget):
 
         self.smart_filter = QComboBox()
         self.smart_filter.setObjectName("smartFilter")
+        self.smart_filter.setAccessibleName("Smart filter")
         self.smart_filter.addItems(
             (
                 "All Smart Filters",
@@ -269,12 +272,16 @@ class AccountWorkspace(QWidget):
         )
 
         self.category_filter = QComboBox()
+        self.category_filter.setAccessibleName("Category filter")
         self.category_filter.addItem("All Categories", None)
         self.status_filter = QComboBox()
+        self.status_filter.setAccessibleName("Status filter")
         self.status_filter.addItems(("All Status", "Active", "Attention", "Disabled"))
         self.device_filter = QComboBox()
+        self.device_filter.setAccessibleName("Device filter")
         self.device_filter.addItems(("All Devices", "Assigned", "Unassigned"))
         self.network_filter = QComboBox()
+        self.network_filter.setAccessibleName("Network filter")
         self.network_filter.addItems(("All Networks", "Connected", "Offline"))
         for filter_box in (
             self.smart_filter,
@@ -326,6 +333,10 @@ class AccountWorkspace(QWidget):
 
         self.table = CompactTable()
         self.table.setObjectName("accountTable")
+        self.table.setAccessibleName("Accounts Table")
+        self.table.setAccessibleDescription(
+            "Table listing all managed social accounts, devices, and statuses"
+        )
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         self.table.setSortingEnabled(True)

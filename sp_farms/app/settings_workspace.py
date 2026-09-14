@@ -96,6 +96,8 @@ class SettingsWorkspace(QWidget):
         self.search = QLineEdit()
         self.search.setPlaceholderText("🔍 Search settings by name or keyword...")
         self.search.setFixedWidth(320)
+        self.search.setAccessibleName("Search Settings")
+        self.search.setAccessibleDescription("Filter settings by name or description")
         self.search.textChanged.connect(self._filter_settings)
         header_row.addWidget(self.search)
 
@@ -114,12 +116,15 @@ class SettingsWorkspace(QWidget):
 
         self.nav_list = QListWidget()
         self.nav_list.setFrameShape(QFrame.Shape.NoFrame)
+        self.nav_list.setAccessibleName("Settings Sections")
+        self.nav_list.setAccessibleDescription("List of available configuration sections")
         for section in self.SECTION_NAMES:
             item = QListWidgetItem(section)
             self.nav_list.addItem(item)
         self.nav_list.currentRowChanged.connect(self._on_section_selected)
         nav_layout.addWidget(self.nav_list)
         content_split.addWidget(nav_panel)
+        QWidget.setTabOrder(self.search, self.nav_list)
 
         # Right Form Stack inside ScrollArea
         self.stack = QStackedWidget()
@@ -637,6 +642,9 @@ class SettingsWorkspace(QWidget):
 
         lbl_container = QWidget()
         lbl_container.setLayout(label_col)
+
+        widget.setAccessibleName(title)
+        widget.setAccessibleDescription(description)
 
         form.addRow(lbl_container, widget)
         meta = SettingFieldMeta(section, key, title, description, restart)

@@ -107,7 +107,7 @@ QPushButton {{
 QPushButton:hover {{ border-color: #596267; background: #20272A; }}
 QPushButton:pressed {{ background: #0E1214; }}
 QPushButton:disabled {{ color: #5E666A; border-color: #292F32; background: #151A1C; }}
-QPushButton:focus {{ border-color: {colors.accent}; }}
+QPushButton:focus {{ border: 2px solid {colors.accent}; outline: none; }}
 QPushButton[primary="true"] {{
     color: {colors.accent_text};
     background: {colors.accent};
@@ -157,12 +157,16 @@ QLineEdit, QComboBox, QSpinBox, QDateTimeEdit, QTextEdit {{
     border-radius: 4px;
     selection-background-color: {colors.info};
 }}
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDateTimeEdit:focus, QTextEdit:focus {{
+    border: 2px solid {colors.accent};
+    outline: none;
+}}
 QTextEdit {{ padding: 6px; }}
 QComboBox::drop-down {{ border: 0; width: 22px; }}
 QCheckBox {{ spacing: 5px; background: transparent; }}
 QCheckBox::indicator {{ width: 14px; height: 14px; border: 1px solid #667075; border-radius: 2px; }}
 QCheckBox::indicator:checked {{ background: {colors.accent}; border-color: {colors.accent}; }}
-QTableView, QListView {{
+QTableView, QListView, QListWidget {{
     background: {colors.surface};
     alternate-background-color: #151B1E;
     border: 1px solid {colors.border};
@@ -171,6 +175,9 @@ QTableView, QListView {{
     selection-background-color: {colors.selection};
     selection-color: {colors.text};
     outline: 0;
+}}
+QTableView:focus, QListView:focus, QListWidget:focus {{
+    border: 2px solid {colors.accent};
 }}
 QTableView::item {{ border-bottom: 1px solid #252C2F; padding: 2px 5px; }}
 QTableView::item:selected, QListView::item:selected {{ border: 1px solid {colors.accent}; }}

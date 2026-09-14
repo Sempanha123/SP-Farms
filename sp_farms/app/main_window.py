@@ -269,14 +269,26 @@ class MainWindow(QMainWindow):
         brand_layout.addLayout(brand_text)
         navigation_layout.addWidget(brand_block)
         navigation_layout.addSpacing(4)
-        for section in NAVIGATION:
+        nav_button_list = []
+        for index, section in enumerate(NAVIGATION):
             button = QPushButton(section)
             button.setProperty("nav", True)
             button.setCheckable(True)
             button.setAutoExclusive(True)
+            shortcut_hint = f"Alt+{index + 1}"
+            button.setToolTip(f"Switch to {section} ({shortcut_hint})")
+            button.setAccessibleName(f"Navigate to {section}")
+            button.setAccessibleDescription(
+                f"Switch to {section} workspace using shortcut {shortcut_hint}"
+            )
             button.clicked.connect(lambda checked=False, name=section: self.navigate(name))
             self._nav_buttons[section] = button
+            nav_button_list.append(button)
             navigation_layout.addWidget(button)
+
+        for i in range(len(nav_button_list) - 1):
+            QWidget.setTabOrder(nav_button_list[i], nav_button_list[i + 1])
+
         navigation_layout.addStretch()
         shell_layout.addWidget(navigation)
 
