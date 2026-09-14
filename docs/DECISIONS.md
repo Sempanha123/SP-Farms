@@ -43,3 +43,7 @@ Long-running work is persisted as a current-state job plus append-only transitio
 ## Worker supervisor concurrency and backoff
 
 Background jobs run on a bounded worker pool behind an application supervisor. Concurrency limits protect both provider gateways and target accounts/devices from saturation. Execution handlers receive a cooperative cancellation token and progress reporter; unhandled exceptions are contained without crashing the supervisor. Failed attempts trigger exponential backoff with a UTC-based next retry timestamp until max attempts are exhausted.
+
+## Operator job queue and presentation models
+
+The operator job queue presentation relies on a clean Qt Model-View-Proxy architecture. `JobTableModel` handles dense tabular data with formatting and metrics caching, while `JobQueueFilterProxyModel` handles client-side filtering by job state and search queries without database re-queries. Inspector details and batch actions inspect current selection validity across multiple items, protecting terminal jobs from invalid commands while maintaining responsiveness on queues with thousands of entries.

@@ -28,12 +28,26 @@ class PrimaryButton(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
 
+class DestructiveButton(QPushButton):
+    def __init__(self, text: str, parent: QWidget | None = None) -> None:
+        super().__init__(text, parent)
+        self.setProperty("danger", True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+
+class SecondaryButton(QPushButton):
+    def __init__(self, text: str, parent: QWidget | None = None) -> None:
+        super().__init__(text, parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+
 class StatusChip(QLabel):
     _COLORS = {
         "success": "success",
         "warning": "warning",
         "error": "danger",
         "neutral": "muted_text",
+        "active": "accent",
     }
 
     def __init__(
@@ -44,6 +58,16 @@ class StatusChip(QLabel):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(text, parent)
+        self.update_state(state=state, text=text, mode=mode)
+
+    def update_state(
+        self,
+        state: str,
+        text: str | None = None,
+        mode: ThemeMode = ThemeMode.LIGHT,
+    ) -> None:
+        if text is not None:
+            self.setText(text)
         colors = palette(mode)
         color = getattr(colors, self._COLORS.get(state, "muted_text"))
         self.setStyleSheet(

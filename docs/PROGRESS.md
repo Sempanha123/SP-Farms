@@ -100,3 +100,15 @@ Status: complete
 - Added worker heartbeat tracking, synthetic fake/stress handlers, exception containment, and graceful shutdown.
 - Wired startup recovery and supervisor shutdown hooks into `create_application`.
 - Added tests for execution progress, cancellation, retry/backoff, concurrency limits, exception containment, and graceful shutdown.
+
+## Phase 11 — Job Queue UI
+
+Status: complete
+
+- Added dense job queue table model (`JobTableModel`) and filtering/sorting proxy model (`JobQueueFilterProxyModel`).
+- Added status filters: All, Running, Queued, Waiting Approval, Failed, Completed, plus case-insensitive text search.
+- Added operator actions: Start/Resume, Cancel, Retry, Open Target with dynamic enablement based on single and multi-selection states.
+- Added detailed side inspector (`JobInspectorPanel`) displaying progress, attempt metrics, formatted errors, target details, and status chips.
+- Added bottom status counters for active, queued, failed, and completed workloads.
+- Embedded `JobQueueView` in `MainWindow` under the Automation workspace.
+- Added tests for table model sorting/filtering, selection action enablement, inspector updates, and large queue (1,500 items) responsiveness.

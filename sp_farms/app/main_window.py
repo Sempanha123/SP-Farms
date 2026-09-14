@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from sp_farms.app.command_palette import CommandPalette
+from sp_farms.app.job_queue import JobQueueView
 from sp_farms.app.navigation import Command, NavigationService
 from sp_farms.app.notifications import NotificationCenterModel
 from sp_farms.app.shortcut_help import ShortcutHelpDialog
@@ -112,6 +113,9 @@ class MainWindow(QMainWindow):
         for section in NAVIGATION:
             if section == "Accounts":
                 self._pages.addWidget(self._workspace)
+            elif section == "Automation":
+                self.job_queue_view = JobQueueView(self._context.job_service)
+                self._pages.addWidget(self.job_queue_view)
             else:
                 placeholder = QLabel(f"{section} workspace")
                 placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
