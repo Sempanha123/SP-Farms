@@ -341,6 +341,21 @@ Status: complete
 - Implemented `MediaPrepJobHandler` for background async media normalization and transcoding via `WorkerSupervisor`.
 - Added 8 focused tests in `tests/test_media_prep.py` covering FFmpeg detection, media inspection, non-destructive safety, job execution, cancellation, and dialog UI.
 
+## Phase 31 — Post and Reel Composer
+
+Status: complete
+
+- Built publishing composition workflow and interactive dialog for Posts, Reels, and Stories (`ComposerDialog`).
+- Implemented authorized destination selector querying `AssetRepository` and mapping Page/Group capabilities (`can_publish_reels`, `supports_first_comment`, `supports_location`).
+- Implemented post type selector (`FEED`, `REEL`, `STORY`) with dynamic capability validation and media constraints (Reels require single video, Stories require media).
+- Implemented caption editing with live character counts, hashtag insertion helper, media asset attachments, and thumbnail selection.
+- Added live interactive social card preview reflecting author, post type chip, attached media, caption, location tag, and first comment in real time.
+- Built fuzzy duplicate caption detection (`difflib.SequenceMatcher` > 0.85) warning operators against repetitive spam.
+- Supported draft post saving and loading using structured `ContentItem` metadata and tags.
+- Integrated Composer into `ContentWorkspace` via `✨ Compose Post/Reel` header action and context menu.
+- Added 7 comprehensive unit, domain validation, and UI lifecycle tests in `tests/test_composer.py`.
+
+
 
 
 

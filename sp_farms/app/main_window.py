@@ -112,7 +112,10 @@ class MainWindow(QMainWindow):
         self.groups_workspace.set_tab("Groups")
         self.groups_workspace.route_requested.connect(self.navigate)
         self.content_workspace: ContentWorkspace | None = (
-            ContentWorkspace(self._context.content_service)
+            ContentWorkspace(
+                self._context.content_service,
+                composer_service=self._context.composer_service,
+            )
             if self._context.content_service
             else None
         )

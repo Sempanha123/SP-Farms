@@ -5,6 +5,7 @@ from sp_farms.application.account_onboarding_service import AccountOnboardingSer
 from sp_farms.application.account_service import AccountService
 from sp_farms.application.asset_sync_service import AssetSyncService
 from sp_farms.application.audit_service import AuditService
+from sp_farms.application.composer_service import ComposerService
 from sp_farms.application.content_service import ContentService
 from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_pool_service import DevicePoolService
@@ -176,6 +177,13 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         storage_dir=config.database_path.parent / "content",
     )
 
+    composer_service = ComposerService(
+        unit_of_work=database.unit_of_work,
+        content_repo_factory=SqlAlchemyContentRepository,
+        asset_repo_factory=SqlAlchemyAssetRepository,
+        clock=clock,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -199,6 +207,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         security_service=security_service,
         audit_service=audit_service,
         content_service=content_service,
+        composer_service=composer_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

@@ -112,6 +112,11 @@ The Security Center calculates deterministic account health scores (0–100) bas
 
 Media inspection extracts dimensions, aspect ratios, bitrates, and codecs using `QImageReader` for static images and `ffprobe` for video files. All normalization, format transcoding, and thumbnail generation operations follow a strict non-destructive policy: source files in `assets/` are immutable and read-only; normalized variants are written to isolated directories (`prepared/`) under new identifiers. Heavy transcoding and resizing are offloaded to background worker jobs (`MediaPrepJobHandler`) managed by `WorkerSupervisor`, preserving desktop UI responsiveness and supporting cooperative job cancellation.
 
+## Post and Reel Composer Architecture
+
+The post and reel composition workflow uses a dedicated domain service (`ComposerService`) and validation engine (`validate_draft_post`) that evaluates capabilities dynamically based on destination platform limits (e.g. Reels are permitted on Pages but restricted on Groups; first comments are officially supported on Pages and disabled on Groups). Near-duplicate detection calculates similarity metrics using `difflib.SequenceMatcher` against existing content items to warn operators before publishing repetitive content without imposing disruptive blocking. Draft persistence leverages the existing `ContentItem` schema by serializing composition metadata (post type, destination reference, scheduled date, approval status) into structured JSON within the `folder` attribute, avoiding disruptive database migrations while ensuring clean state round-trips.
+
+
 
 
 
