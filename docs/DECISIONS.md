@@ -84,6 +84,15 @@ MuMu Player automation conforms to the unified `DeviceProviderPort` abstraction.
 
 Physical Android devices (connected via USB or Wi-Fi TCP/IP) conform to the identical `DeviceProviderPort` application protocol as virtual emulators. Hardware devices are classified by serial signature (distinguishing physical USB and Wi-Fi devices from emulator ports). Because physical devices cannot be cold-booted or shut down via software commands, remote power operations raise clear domain errors, while warm reboots, package installs, log collection, and screenshots execute uniformly via ADB. Hardware diagnostics capture device properties (`ro.product.model`, `ro.build.version.release`, etc.) and battery levels without hardware identity spoofing or tampering.
 
+## Device Pool and Lightweight Workspace Snapshots
+
+Device scheduling coordinates across available physical and virtual devices using explicit atomic reservations (`account_workspace_locks`) with TTL-based expiration and automatic stale lock reclaiming. Workspace snapshots (`.spws`) store only versioned, non-secret operator preferences and account metadata in compressed JSON archives. Platform disk images, app caches, private app data, raw cookies, and authentication secrets are strictly excluded, enforcing safety and keeping backup archives under 100 KB per account.
+
+## Accounts Workspace and Dense Model-View Design
+
+The accounts workspace follows a strict Model-View-Proxy separation: `QStandardItemModel` retains rich raw metadata across 24 columns, while `QSortFilterProxyModel` evaluates multiple orthogonal predicates (text search, category, device binding, and smart health filters) without re-querying the database. Bulk actions (categorization, tagging, device assignment, archive, and metadata export) operate on selection models in batch transactions, keeping the UI responsive even with 1,500+ accounts loaded.
+
+
 
 
 

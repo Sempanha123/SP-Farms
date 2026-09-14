@@ -124,3 +124,48 @@ class AccountService:
 
     def health(self, account_id: str) -> AccountHealth:
         return calculate_account_health(self.get_account(account_id))
+
+    def set_category(self, account_id: str, category_id: str | None) -> Account:
+        account = replace(self.get_account(account_id), category_id=category_id)
+        return self.save_account(account)
+
+    def bulk_assign_category(
+        self,
+        account_ids: Sequence[str],
+        category_id: str | None,
+    ) -> int:
+        count = 0
+        for aid in account_ids:
+            self.set_category(aid, category_id)
+            count += 1
+        return count
+
+    def bulk_set_tags(
+        self,
+        account_ids: Sequence[str],
+        tag_ids: Sequence[str],
+    ) -> int:
+        count = 0
+        for aid in account_ids:
+            self.set_tags(aid, tag_ids)
+            count += 1
+        return count
+
+    def bulk_archive(self, account_ids: Sequence[str]) -> int:
+        count = 0
+        for aid in account_ids:
+            self.archive_account(aid)
+            count += 1
+        return count
+
+    def bulk_assign_device(
+        self,
+        account_ids: Sequence[str],
+        provider: str,
+        external_id: str,
+    ) -> int:
+        count = 0
+        for aid in account_ids:
+            self.assign_device(aid, provider, external_id)
+            count += 1
+        return count

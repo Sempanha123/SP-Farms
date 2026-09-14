@@ -35,9 +35,20 @@ def test_main_shell_has_reference_layout(tmp_path: Path) -> None:
     first_widget = splitter.widget(0)
     assert first_widget is not None
     assert first_widget.objectName() == "deviceRail"
-    assert window.current_section == "Accounts"
+    assert window.current_section == "Home"
     assert window.minimumWidth() >= 1024
     assert not window.grab().toImage().isNull()
+    window.close()
+
+
+def test_home_and_accounts_have_distinct_real_workspaces(tmp_path: Path) -> None:
+    application()
+    window = MainWindow(ApplicationContext(SystemClock()), settings(tmp_path))
+
+    assert window._pages.currentWidget() is window.home_workspace
+    window.navigate("Accounts")
+    assert window._pages.currentWidget() is window._workspace
+    assert window._workspace.isAncestorOf(window.account_workspace)
     window.close()
 
 
@@ -53,6 +64,28 @@ def test_navigation_changes_workspace(tmp_path: Path) -> None:
     assert window.devices_workspace.widget(0) is window.device_manager_view
     assert window.devices_workspace.widget(1) is window.qa_profile_lab
     assert window.findChild(QTableView, "deviceTable") is not None
+    window.close()
+
+
+def test_all_global_routes_open_named_workspaces(tmp_path: Path) -> None:
+    application()
+    window = MainWindow(ApplicationContext(SystemClock()), settings(tmp_path))
+
+    for section in (
+        "Home",
+        "Accounts",
+        "Pages",
+        "Groups",
+        "Content",
+        "Automation",
+        "Devices",
+        "Analytics",
+        "Settings",
+    ):
+        window.navigate(section)
+        assert window.current_section == section
+        assert window._pages.currentWidget() is not None
+        assert window._nav_buttons[section].isChecked()
     window.close()
 
 

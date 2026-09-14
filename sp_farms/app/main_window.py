@@ -1,4 +1,4 @@
-from PySide6.QtCore import QByteArray, QSettings, Qt
+from PySide6.QtCore import QByteArray, QSettings, Qt, QThreadPool
 from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -14,9 +14,15 @@ from PySide6.QtWidgets import (
 from sp_farms.app.account_workspace import AccountWorkspace
 from sp_farms.app.command_palette import CommandPalette
 from sp_farms.app.device_manager import DeviceManagerView
+from sp_farms.app.home_dashboard import HomeDashboard
 from sp_farms.app.job_queue import JobQueueView
 from sp_farms.app.navigation import Command, NavigationService
 from sp_farms.app.notifications import NotificationCenterModel
+from sp_farms.app.operational_workspaces import (
+    AnalyticsWorkspace,
+    SettingsWorkspace,
+    UnavailableWorkspace,
+)
 from sp_farms.app.qa_profile_lab import QAProfileLab
 from sp_farms.app.shortcut_help import ShortcutHelpDialog
 from sp_farms.app.theme import ThemeMode, style_sheet
@@ -64,12 +70,34 @@ class MainWindow(QMainWindow):
             self._context.account_service,
             self._context.account_onboarding_service,
             self._context.restore_workspace_service,
+            self._context.device_pool_service,
+            self._context.snapshot_service,
         )
         self._workspace = WorkspaceLayout(
             self.device_manager_view.rail_model,
             self.account_workspace,
+            self.device_manager_view,
+            self._context.job_service,
+        )
+        self.home_dashboard = HomeDashboard(self._context)
+        self.device_manager_view.devices_changed.connect(self.home_dashboard.set_devices)
+        self.home_workspace = WorkspaceLayout(
+            self.device_manager_view.rail_model,
+            self.home_dashboard,
+            self.device_manager_view,
+            self._context.job_service,
+        )
+        self.home_dashboard.route_requested.connect(self.navigate)
+        self.home_workspace.devices_route_requested.connect(lambda: self.navigate("Devices"))
+        self.home_workspace.automation_route_requested.connect(
+            lambda: self.navigate("Automation")
+        )
+        self._workspace.devices_route_requested.connect(lambda: self.navigate("Devices"))
+        self._workspace.automation_route_requested.connect(
+            lambda: self.navigate("Automation")
         )
         self.account_workspace.success_action_requested.connect(self._route_account_action)
+        self.account_workspace.local_navigation_requested.connect(self.navigate)
         self.setObjectName("mainWindow")
         self.setWindowTitle("SP-Farms")
         self.setMinimumSize(1024, 680)
@@ -90,8 +118,18 @@ class MainWindow(QMainWindow):
         self._pages.setCurrentIndex(index)
         for name, button in self._nav_buttons.items():
             button.setChecked(name == section)
-        if section == "Devices" and self.device_manager_view.model.rowCount() == 0:
+        if section == "Home":
+            self.home_dashboard.refresh()
+            self.home_workspace.refresh_jobs()
+        elif section == "Accounts":
+            self.account_workspace.refresh()
+            self._workspace.refresh_jobs()
+        elif section == "Automation":
+            self.job_queue_view.refresh()
+        elif section == "Devices" and self.device_manager_view.model.rowCount() == 0:
             self.device_manager_view.refresh()
+        elif section == "Analytics":
+            self.analytics_workspace.refresh()
 
     def set_theme(self, mode: ThemeMode) -> None:
         self._theme = mode
@@ -100,12 +138,14 @@ class MainWindow(QMainWindow):
 
     def set_job_queue_visible(self, visible: bool) -> None:
         self._workspace.job_queue.setVisible(visible)
+        self.home_workspace.job_queue.setVisible(visible)
         self.toggle_queue_action.setChecked(visible)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self._settings.setValue("window/geometry", self.saveGeometry())
         self._settings.setValue("window/size", self.size())
         self._settings.setValue("window/jobQueueVisible", self._workspace.job_queue.isVisible())
+        QThreadPool.globalInstance().waitForDone()
         self._context.close()
         event.accept()
 
@@ -118,15 +158,40 @@ class MainWindow(QMainWindow):
         navigation = QWidget()
         navigation.setObjectName("topNavigation")
         navigation_layout = QHBoxLayout(navigation)
-        navigation_layout.setContentsMargins(12, 8, 12, 8)
+        navigation_layout.setContentsMargins(10, 7, 12, 7)
         navigation_layout.setSpacing(4)
+
+        brand_block = QWidget()
+        brand_block.setObjectName("brandBlock")
+        brand_layout = QHBoxLayout(brand_block)
+        brand_layout.setContentsMargins(0, 0, 10, 0)
+        brand_layout.setSpacing(7)
+        mark = QLabel("♣")
+        mark.setObjectName("brandMark")
+        mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        mark.setFixedSize(38, 38)
+        brand_layout.addWidget(mark)
+        brand_text = QVBoxLayout()
+        brand_text.setContentsMargins(0, 0, 0, 0)
+        brand_text.setSpacing(0)
+        product_row = QHBoxLayout()
+        product_row.setSpacing(5)
         brand = QLabel("SP-FARMS")
         brand.setObjectName("brand")
-        brand.setStyleSheet("font-size: 15px; font-weight: 750;")
-        navigation_layout.addWidget(brand)
-        navigation_layout.addSpacing(12)
+        version = QLabel("v1.0.0")
+        version.setObjectName("brandVersion")
+        product_row.addWidget(brand)
+        product_row.addWidget(version, alignment=Qt.AlignmentFlag.AlignBottom)
+        brand_text.addLayout(product_row)
+        subtitle = QLabel("Automate Smarter • Manage Bigger")
+        subtitle.setObjectName("brandSubtitle")
+        brand_text.addWidget(subtitle)
+        brand_layout.addLayout(brand_text)
+        navigation_layout.addWidget(brand_block)
+        navigation_layout.addSpacing(4)
         for section in NAVIGATION:
             button = QPushButton(section)
+            button.setProperty("nav", True)
             button.setCheckable(True)
             button.setAutoExclusive(True)
             button.clicked.connect(lambda checked=False, name=section: self.navigate(name))
@@ -136,21 +201,57 @@ class MainWindow(QMainWindow):
         shell_layout.addWidget(navigation)
 
         for section in NAVIGATION:
-            if section == "Accounts":
+            if section == "Home":
+                self._pages.addWidget(self.home_workspace)
+            elif section == "Accounts":
                 self._pages.addWidget(self._workspace)
             elif section == "Automation":
                 self.job_queue_view = JobQueueView(self._context.job_service)
                 self._pages.addWidget(self.job_queue_view)
             elif section == "Devices":
                 self._pages.addWidget(self.devices_workspace)
-            else:
-                placeholder = QLabel(f"{section} workspace")
-                placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                placeholder.setProperty("muted", True)
-                self._pages.addWidget(placeholder)
+            elif section == "Pages":
+                workspace = UnavailableWorkspace(
+                    "Pages",
+                    "Phases 24–26",
+                    "official Meta API connection and authorized Page sync",
+                    "Accounts",
+                )
+                workspace.route_requested.connect(self.navigate)
+                self._pages.addWidget(workspace)
+            elif section == "Groups":
+                workspace = UnavailableWorkspace(
+                    "Groups",
+                    "Phases 24–26",
+                    "official Meta API connection and authorized Group sync",
+                    "Accounts",
+                )
+                workspace.route_requested.connect(self.navigate)
+                self._pages.addWidget(workspace)
+            elif section == "Content":
+                workspace = UnavailableWorkspace(
+                    "Content",
+                    "Phases 29–38",
+                    "content library, composer, campaigns, and publishing services",
+                    "Automation",
+                )
+                workspace.route_requested.connect(self.navigate)
+                self._pages.addWidget(workspace)
+            elif section == "Analytics":
+                self.analytics_workspace = AnalyticsWorkspace(self._context)
+                self._pages.addWidget(self.analytics_workspace)
+            elif section == "Settings":
+                self.settings_workspace = SettingsWorkspace(self._settings)
+                self.settings_workspace.theme_requested.connect(
+                    lambda value: self.set_theme(ThemeMode(value))
+                )
+                self.settings_workspace.queue_visibility_requested.connect(
+                    self.set_job_queue_visible
+                )
+                self._pages.addWidget(self.settings_workspace)
         shell_layout.addWidget(self._pages, stretch=1)
         self.setCentralWidget(shell)
-        self.navigate("Accounts")
+        self.navigate("Home")
 
     def _create_actions(self) -> None:
         route_shortcuts = tuple(
@@ -171,7 +272,7 @@ class MainWindow(QMainWindow):
 
         self.toggle_queue_action = QAction("Show Job Queue", self)
         self.toggle_queue_action.setCheckable(True)
-        visible = bool(self._settings.value("window/jobQueueVisible", True, bool))
+        visible = bool(self._settings.value("window/jobQueueVisible", False, bool))
         self.toggle_queue_action.triggered.connect(self.set_job_queue_visible)
         self.addAction(self.toggle_queue_action)
         self.set_job_queue_visible(visible)

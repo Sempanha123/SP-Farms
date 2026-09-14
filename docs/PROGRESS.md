@@ -232,4 +232,29 @@ Status: complete
 - Integrated "Restore Workspace" trigger, status chip, and non-blocking background `_Worker` in `AccountWorkspace` UI and wired it through `ApplicationContext` and `bootstrap.py`.
 - Added unit and UI tests covering binding persistence, successful restore workflow, offline emulator startup, disconnected physical device handling, missing app detection, reauth flagging, and UI status updates.
 
+## Phase 21 — Multi-Account Device Pool Restore Queue and Lightweight Workspace Backup
+
+Status: complete
+
+- Created explicit device pool state machine (`DevicePoolState`: Offline, Starting, Available, Reserved, Restoring, InUse, Releasing, Error, Maintenance) and availability tracking.
+- Implemented `DevicePoolService` supporting atomic SQLite device locking, stale lock recovery, and device assignment policies (Bound Device First, Any Available Device, Least Recently Used, Round Robin, Preferred Provider).
+- Created durable `account_workspace_restore` jobs, batch queueing, and automatic next-account dispatch upon device release.
+- Added `SnapshotService` creating tamper-detecting, lightweight, content-addressed `.spws` compressed account workspace archives strictly excluding passwords, private caches, cookies, and tokens.
+- Created Alembic migration `0008_device_pool_and_snapshots.py` mapping `account_workspace_locks`, `account_workspace_snapshots`, and `device_pool_policies`.
+- Implemented `BatchRestoreDialog` and snapshot management UI with backup, restore, verify, import, and export actions.
+- Added comprehensive unit and integration tests for device pool state transitions, concurrency locks, stale recovery, scheduling policies, and snapshot archive security.
+
+## Phase 22 — Accounts Workspace
+
+Status: complete
+
+- Built the production Accounts workspace with a 24-column model, default/optional column visibility, and interactive `ColumnPickerDialog`.
+- Added multi-field search and smart quick filters: Expiring Session, Device Offline, No Device, Permission Issue, Needs Review, Category, and Network status.
+- Added dense context menu and batch actions: assign category, assign tag, reassign device, archive, and safe metadata export (excluding secrets).
+- Implemented the right inspector panel displaying live account metadata, device bindings, network settings, health score, and operator notes.
+- Optimized performance for large datasets (1,500+ accounts) using Qt Model-View-Proxy architecture with instantaneous sorting and filtering.
+- Connected Operations Home Dashboard with system metrics, quick navigation routes, and live device status.
+- Added focused UI and model tests covering column management, smart filters, sorting, bulk dialogs, metadata export, and 1,500-row performance.
+
+
 

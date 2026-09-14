@@ -3,10 +3,12 @@ from pathlib import Path
 from sp_farms.application.account_onboarding_service import AccountOnboardingService
 from sp_farms.application.account_service import AccountService
 from sp_farms.application.context import ApplicationContext
+from sp_farms.application.device_pool_service import DevicePoolService
 from sp_farms.application.device_service import DeviceService
 from sp_farms.application.job_service import JobService
 from sp_farms.application.qa_profile_service import QAProfileService
 from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
+from sp_farms.application.snapshot_service import SnapshotService
 from sp_farms.application.worker import FakeStressJobHandler, WorkerSupervisor
 from sp_farms.infrastructure.adb import SubprocessAdbClient
 from sp_farms.infrastructure.clock import SystemClock
@@ -14,6 +16,7 @@ from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import (
     Database,
     SqlAlchemyAccountRepository,
+    SqlAlchemyDevicePoolRepository,
     SqlAlchemyDeviceProfileRepository,
     SqlAlchemyJobRepository,
     SqlAlchemyQAProfileRepository,
@@ -72,6 +75,23 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         clock,
         providers=(ldplayer, mumu, physical),
     )
+    device_pool_service = DevicePoolService(
+        database.unit_of_work,
+        SqlAlchemyDevicePoolRepository,
+        SqlAlchemyAccountRepository,
+        SqlAlchemyDeviceProfileRepository,
+        device_service,
+        restore_workspace_service,
+        clock,
+    )
+    snapshot_service = SnapshotService(
+        database.unit_of_work,
+        SqlAlchemyDevicePoolRepository,
+        SqlAlchemyAccountRepository,
+        SqlAlchemyDeviceProfileRepository,
+        config.database_path.parent / "backups",
+        clock,
+    )
 
     context = ApplicationContext(
         clock=clock,
@@ -87,6 +107,8 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         account_service=account_service,
         account_onboarding_service=account_onboarding_service,
         restore_workspace_service=restore_workspace_service,
+        device_pool_service=device_pool_service,
+        snapshot_service=snapshot_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

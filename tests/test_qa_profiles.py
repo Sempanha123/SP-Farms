@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,7 +25,9 @@ class FixedClock:
 
 
 @pytest.fixture
-def qa_service(tmp_path: Path) -> tuple[QAProfileService, Database, FakeQAProfileReloadBridge]:
+def qa_service(
+    tmp_path: Path,
+) -> Generator[tuple[QAProfileService, Database, FakeQAProfileReloadBridge], None, None]:
     database = Database(tmp_path / "qa.db")
     run_migrations(database, MIGRATIONS)
     bridge = FakeQAProfileReloadBridge()

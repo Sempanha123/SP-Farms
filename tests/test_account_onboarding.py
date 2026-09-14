@@ -1,4 +1,5 @@
 import json
+from collections.abc import Generator
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -30,7 +31,9 @@ class FixedClock:
 
 
 @pytest.fixture
-def onboarding(tmp_path: Path) -> tuple[AccountOnboardingService, AccountService, Database]:
+def onboarding(
+    tmp_path: Path,
+) -> Generator[tuple[AccountOnboardingService, AccountService, Database], None, None]:
     database = Database(tmp_path / "onboarding.db")
     run_migrations(database, MIGRATIONS)
     accounts = AccountService(

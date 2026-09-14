@@ -47,32 +47,35 @@ class StatusChip(QLabel):
         "warning": "warning",
         "error": "danger",
         "neutral": "muted_text",
-        "active": "accent",
+        "active": "info",
     }
 
     def __init__(
         self,
         text: str,
         state: str = "neutral",
-        mode: ThemeMode = ThemeMode.LIGHT,
+        mode: ThemeMode | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(text, parent)
+        self.setProperty("chip", True)
         self.update_state(state=state, text=text, mode=mode)
 
     def update_state(
         self,
         state: str,
         text: str | None = None,
-        mode: ThemeMode = ThemeMode.LIGHT,
+        mode: ThemeMode | None = None,
     ) -> None:
         if text is not None:
             self.setText(text)
-        colors = palette(mode)
-        color = getattr(colors, self._COLORS.get(state, "muted_text"))
-        self.setStyleSheet(
-            f"color: {color}; border: 1px solid {color}; border-radius: 8px; padding: 2px 7px;"
-        )
+        self.setProperty("state", state)
+        if mode is not None:
+            colors = palette(mode)
+            color = getattr(colors, self._COLORS.get(state, "muted_text"))
+            self.setStyleSheet(f"color: {color}; border-color: {color};")
+        self.style().unpolish(self)
+        self.style().polish(self)
 
 
 class EmptyState(Panel):
@@ -119,12 +122,15 @@ class MetricRow(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
+        self.value_labels: list[QLabel] = []
         for label, value in metrics:
             panel = Panel()
+            panel.setProperty("metric", True)
             panel_layout = QVBoxLayout(panel)
             panel_layout.setContentsMargins(12, 8, 12, 8)
             value_label = QLabel(value)
-            value_label.setStyleSheet("font-size: 18px; font-weight: 650;")
+            value_label.setProperty("metricValue", True)
+            self.value_labels.append(value_label)
             name_label = QLabel(label)
             name_label.setProperty("muted", True)
             panel_layout.addWidget(value_label)

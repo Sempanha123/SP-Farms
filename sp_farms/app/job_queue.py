@@ -343,7 +343,7 @@ class JobQueueView(QWidget):
 
         self._build_ui()
         self._connect_signals()
-        self._update_action_states()
+        self.refresh()
 
     def _build_ui(self) -> None:
         root = QVBoxLayout(self)
@@ -449,6 +449,9 @@ class JobQueueView(QWidget):
         self.open_target_btn.clicked.connect(self._on_open_target)
         self.inspector.target_opened.connect(self.open_target_requested)
 
+    def refresh(self) -> None:
+        self.set_jobs(self._service.list_jobs() if self._service is not None else ())
+
     def set_jobs(self, jobs: Sequence[Job]) -> None:
         self.model.set_jobs(jobs)
         self._update_summary_counters()
@@ -516,7 +519,7 @@ class JobQueueView(QWidget):
         for job in self._selected_jobs():
             if job.state in (JobState.WAITING_APPROVAL, JobState.PENDING):
                 self._service.transition_job(job.id, JobState.QUEUED, "Queued by operator")
-        self.set_jobs(self._service.list_active_jobs())
+        self.refresh()
 
     def _on_cancel(self) -> None:
         if self._service is None:
@@ -524,7 +527,7 @@ class JobQueueView(QWidget):
         for job in self._selected_jobs():
             if not job.state.is_terminal:
                 self._service.cancel_job(job.id, "Cancelled by operator")
-        self.set_jobs(self._service.list_active_jobs())
+        self.refresh()
 
     def _on_retry(self) -> None:
         if self._service is None:
@@ -532,7 +535,7 @@ class JobQueueView(QWidget):
         for job in self._selected_jobs():
             if job.state in (JobState.FAILED, JobState.CANCELLED):
                 self._service.transition_job(job.id, JobState.QUEUED, "Retried by operator")
-        self.set_jobs(self._service.list_active_jobs())
+        self.refresh()
 
     def _on_open_target(self) -> None:
         selected = self._selected_jobs()
