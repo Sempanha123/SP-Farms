@@ -1,0 +1,29 @@
+from collections.abc import Sequence
+from typing import Protocol
+
+from sp_farms.domain.accounts import (
+    Account,
+    AccountCategory,
+    AccountDeviceAssignment,
+    AccountTag,
+)
+
+
+class AccountRepository(Protocol):
+    def list_accounts(self, include_archived: bool = False) -> Sequence[Account]: ...
+
+    def get_account(self, account_id: str) -> Account | None: ...
+
+    def save_account(self, account: Account) -> None: ...
+
+    def list_categories(self) -> Sequence[AccountCategory]: ...
+
+    def save_category(self, category: AccountCategory) -> None: ...
+
+    def list_tags(self) -> Sequence[AccountTag]: ...
+
+    def save_tag(self, tag: AccountTag) -> None: ...
+
+    def set_tags(self, account_id: str, tag_ids: Sequence[str]) -> None: ...
+
+    def assign_device(self, assignment: AccountDeviceAssignment) -> None: ...
