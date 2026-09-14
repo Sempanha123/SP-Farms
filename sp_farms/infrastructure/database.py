@@ -1,7 +1,7 @@
 import json
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from shutil import copy2
 from types import TracebackType
@@ -31,6 +31,7 @@ from sqlalchemy.engine import URL
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from sp_farms.application.accounts import AccountRepository
+from sp_farms.application.device_pool import DevicePoolRepository
 from sp_farms.application.device_profiles import DeviceProfileRepository
 from sp_farms.application.jobs import JobRepository
 from sp_farms.application.qa_profiles import QAProfileRepository
@@ -47,6 +48,12 @@ from sp_farms.domain.accounts import (
     SecurityState,
 )
 from sp_farms.domain.device_management import DeviceProfile
+from sp_farms.domain.device_pool import (
+    AccountWorkspaceLock,
+    DevicePoolPolicy,
+    SchedulingPolicy,
+    SnapshotMetadataRecord,
+)
 from sp_farms.domain.device_restore import AccountDeviceBinding, BindingStatus
 from sp_farms.domain.jobs import Job, JobEvent, JobState
 from sp_farms.domain.providers import DeviceProviderType
@@ -199,6 +206,100 @@ class AccountDeviceBindingModel(EntityMixin, Base):
             last_used_at=_optional_utc(self.last_used_at),
             created_at=_optional_utc(self.created_at),
             updated_at=_optional_utc(self.updated_at),
+        )
+
+
+class AccountWorkspaceLockModel(Base):
+    __tablename__ = "account_workspace_locks"
+
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True
+    )
+    device_key: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    acquired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), index=True, nullable=False
+    )
+    heartbeat: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    def to_lock(self) -> AccountWorkspaceLock:
+        return AccountWorkspaceLock(
+            account_id=self.account_id,
+            device_key=self.device_key,
+            job_id=self.job_id,
+            acquired_at=_as_utc(self.acquired_at),
+            expires_at=_as_utc(self.expires_at),
+            heartbeat=_as_utc(self.heartbeat),
+        )
+
+
+class AccountWorkspaceSnapshotModel(Base):
+    __tablename__ = "account_workspace_snapshots"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("accounts.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    path: Mapped[str] = mapped_column(String(500), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(20), nullable=False, default="1.0")
+    checksum: Mapped[str] = mapped_column(String(64), nullable=False)
+    device_profile_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    preferred_app: Mapped[str] = mapped_column(String(30), nullable=False, default="browser")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_restored_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    def to_record(self) -> SnapshotMetadataRecord:
+        return SnapshotMetadataRecord(
+            id=self.id,
+            account_id=self.account_id,
+            path=self.path,
+            size_bytes=self.size_bytes,
+            schema_version=self.schema_version,
+            checksum=self.checksum,
+            device_profile_id=self.device_profile_id,
+            preferred_app=self.preferred_app,
+            notes=self.notes,
+            created_at=_as_utc(self.created_at),
+            last_restored_at=_optional_utc(self.last_restored_at),
+        )
+
+
+class DevicePoolPolicyModel(Base):
+    __tablename__ = "device_pool_policies"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    policy: Mapped[str] = mapped_column(String(50), nullable=False, default="bound_device_first")
+    preferred_provider_order: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="ldplayer,mumu,physical"
+    )
+    allow_fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    max_concurrent_restores: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    def to_policy(self) -> DevicePoolPolicy:
+        providers = tuple(
+            p.strip() for p in self.preferred_provider_order.split(",") if p.strip()
+        )
+        return DevicePoolPolicy(
+            id=self.id,
+            name=self.name,
+            policy=SchedulingPolicy(self.policy)
+            if self.policy in SchedulingPolicy._value2member_map_
+            else SchedulingPolicy.BOUND_DEVICE_FIRST,
+            preferred_provider_order=providers or ("ldplayer", "mumu", "physical"),
+            allow_fallback=self.allow_fallback,
+            max_concurrent_restores=self.max_concurrent_restores,
+            is_active=self.is_active,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
         )
 
 
@@ -923,6 +1024,10 @@ class SqlAlchemyJobRepository(JobRepository):
         model = self._session.query(JobModel).filter_by(idempotency_key=key).one_or_none()
         return model.to_job() if model else None
 
+    def list_all(self) -> Sequence[Job]:
+        models = self._session.query(JobModel).order_by(JobModel.created_at.desc()).all()
+        return tuple(model.to_job() for model in models)
+
     def list_active(self) -> Sequence[Job]:
         terminal = tuple(state.value for state in JobState if state.is_terminal)
         models = self._session.query(JobModel).filter(JobModel.state.not_in(terminal)).all()
@@ -940,6 +1045,233 @@ class SqlAlchemyJobRepository(JobRepository):
             .all()
         )
         return tuple(model.to_event() for model in models)
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class SqlAlchemyDevicePoolRepository(DevicePoolRepository):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyDevicePoolRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def acquire_lock(
+        self,
+        account_id: str,
+        device_key: str,
+        job_id: str | None,
+        now: datetime,
+        ttl_seconds: int = 300,
+    ) -> AccountWorkspaceLock | None:
+        session = self._session
+        utc_now = _as_utc(now)
+        expires_at = utc_now + timedelta(seconds=ttl_seconds)
+
+        existing_device_locks = (
+            session.query(AccountWorkspaceLockModel)
+            .filter(AccountWorkspaceLockModel.device_key == device_key)
+            .all()
+        )
+        for dlock in existing_device_locks:
+            if dlock.account_id != account_id:
+                if _as_utc(dlock.expires_at) > utc_now:
+                    return None
+                else:
+                    session.delete(dlock)
+                    session.flush()
+
+        lock = session.get(AccountWorkspaceLockModel, account_id)
+        if lock is not None:
+            if _as_utc(lock.expires_at) > utc_now and lock.device_key != device_key:
+                return None
+            lock.device_key = device_key
+            lock.job_id = job_id
+            lock.acquired_at = utc_now
+            lock.expires_at = expires_at
+            lock.heartbeat = utc_now
+        else:
+            lock = AccountWorkspaceLockModel(
+                account_id=account_id,
+                device_key=device_key,
+                job_id=job_id,
+                acquired_at=utc_now,
+                expires_at=expires_at,
+                heartbeat=utc_now,
+            )
+            session.add(lock)
+
+        session.flush()
+        return lock.to_lock()
+
+    def get_lock_by_account(self, account_id: str) -> AccountWorkspaceLock | None:
+        model = self._session.get(AccountWorkspaceLockModel, account_id)
+        return model.to_lock() if model else None
+
+    def get_lock_by_device(self, device_key: str) -> AccountWorkspaceLock | None:
+        model = (
+            self._session.query(AccountWorkspaceLockModel)
+            .filter_by(device_key=device_key)
+            .first()
+        )
+        return model.to_lock() if model else None
+
+    def list_active_locks(self, now: datetime) -> Sequence[AccountWorkspaceLock]:
+        utc_now = _as_utc(now)
+        models = (
+            self._session.query(AccountWorkspaceLockModel)
+            .filter(AccountWorkspaceLockModel.expires_at > utc_now)
+            .order_by(AccountWorkspaceLockModel.acquired_at.desc())
+            .all()
+        )
+        return tuple(m.to_lock() for m in models)
+
+    def release_lock(self, account_id: str) -> bool:
+        model = self._session.get(AccountWorkspaceLockModel, account_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
+
+    def release_stale_locks(self, now: datetime) -> int:
+        utc_now = _as_utc(now)
+        stale = (
+            self._session.query(AccountWorkspaceLockModel)
+            .filter(AccountWorkspaceLockModel.expires_at <= utc_now)
+            .all()
+        )
+        count = len(stale)
+        for m in stale:
+            self._session.delete(m)
+        if count > 0:
+            self._session.flush()
+        return count
+
+    def refresh_lock(
+        self,
+        account_id: str,
+        now: datetime,
+        ttl_seconds: int = 300,
+    ) -> bool:
+        utc_now = _as_utc(now)
+        model = self._session.get(AccountWorkspaceLockModel, account_id)
+        if model is None or _as_utc(model.expires_at) <= utc_now:
+            return False
+        model.heartbeat = utc_now
+        model.expires_at = utc_now + timedelta(seconds=ttl_seconds)
+        self._session.flush()
+        return True
+
+    def save_snapshot_record(self, record: SnapshotMetadataRecord) -> None:
+        session = self._session
+        model = session.get(AccountWorkspaceSnapshotModel, record.id)
+        if model is None:
+            session.add(
+                AccountWorkspaceSnapshotModel(
+                    id=record.id,
+                    account_id=record.account_id,
+                    path=record.path,
+                    size_bytes=record.size_bytes,
+                    schema_version=record.schema_version,
+                    checksum=record.checksum,
+                    device_profile_id=record.device_profile_id,
+                    preferred_app=record.preferred_app,
+                    notes=record.notes,
+                    created_at=_as_utc(record.created_at),
+                    last_restored_at=_optional_utc(record.last_restored_at),
+                )
+            )
+        else:
+            model.path = record.path
+            model.size_bytes = record.size_bytes
+            model.schema_version = record.schema_version
+            model.checksum = record.checksum
+            model.device_profile_id = record.device_profile_id
+            model.preferred_app = record.preferred_app
+            model.notes = record.notes
+            model.last_restored_at = _optional_utc(record.last_restored_at)
+        session.flush()
+
+    def get_snapshot_record(self, snapshot_id: str) -> SnapshotMetadataRecord | None:
+        model = self._session.get(AccountWorkspaceSnapshotModel, snapshot_id)
+        return model.to_record() if model else None
+
+    def list_snapshots_for_account(
+        self, account_id: str
+    ) -> Sequence[SnapshotMetadataRecord]:
+        models = (
+            self._session.query(AccountWorkspaceSnapshotModel)
+            .filter_by(account_id=account_id)
+            .order_by(AccountWorkspaceSnapshotModel.created_at.desc())
+            .all()
+        )
+        return tuple(m.to_record() for m in models)
+
+    def list_all_snapshots(self) -> Sequence[SnapshotMetadataRecord]:
+        models = (
+            self._session.query(AccountWorkspaceSnapshotModel)
+            .order_by(AccountWorkspaceSnapshotModel.created_at.desc())
+            .all()
+        )
+        return tuple(m.to_record() for m in models)
+
+    def delete_snapshot_record(self, snapshot_id: str) -> bool:
+        model = self._session.get(AccountWorkspaceSnapshotModel, snapshot_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
+
+    def update_snapshot_last_restored(
+        self, snapshot_id: str, restored_at: datetime
+    ) -> None:
+        model = self._session.get(AccountWorkspaceSnapshotModel, snapshot_id)
+        if model is not None:
+            model.last_restored_at = _as_utc(restored_at)
+            self._session.flush()
+
+    def get_policy(self, name: str) -> DevicePoolPolicy | None:
+        model = self._session.query(DevicePoolPolicyModel).filter_by(name=name).one_or_none()
+        return model.to_policy() if model else None
+
+    def get_active_policy(self) -> DevicePoolPolicy | None:
+        model = (
+            self._session.query(DevicePoolPolicyModel)
+            .filter_by(is_active=True)
+            .first()
+        )
+        return model.to_policy() if model else None
+
+    def save_policy(self, policy: DevicePoolPolicy) -> None:
+        session = self._session
+        model = session.get(DevicePoolPolicyModel, policy.id)
+        provider_order_str = ",".join(policy.preferred_provider_order)
+        if model is None:
+            session.add(
+                DevicePoolPolicyModel(
+                    id=policy.id,
+                    name=policy.name,
+                    policy=policy.policy.value,
+                    preferred_provider_order=provider_order_str,
+                    allow_fallback=policy.allow_fallback,
+                    max_concurrent_restores=policy.max_concurrent_restores,
+                    is_active=policy.is_active,
+                    created_at=_as_utc(policy.created_at),
+                    updated_at=_as_utc(policy.updated_at),
+                )
+            )
+        else:
+            model.name = policy.name
+            model.policy = policy.policy.value
+            model.preferred_provider_order = provider_order_str
+            model.allow_fallback = policy.allow_fallback
+            model.max_concurrent_restores = policy.max_concurrent_restores
+            model.is_active = policy.is_active
+            model.updated_at = _as_utc(policy.updated_at)
+        session.flush()
 
     @property
     def _session(self) -> Session:

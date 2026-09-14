@@ -99,6 +99,10 @@ class JobService:
             repository = self._repository_factory(unit)
             return repository.get(job_id)
 
+    def list_jobs(self) -> Sequence[Job]:
+        with self._unit_of_work() as unit:
+            return self._repository_factory(unit).list_all()
+
     def list_active_jobs(self) -> Sequence[Job]:
         with self._unit_of_work() as unit:
             repository = self._repository_factory(unit)
