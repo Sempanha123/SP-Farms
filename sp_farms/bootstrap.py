@@ -20,6 +20,7 @@ from sp_farms.application.device_pool_service import DevicePoolService
 from sp_farms.application.device_service import DeviceService
 from sp_farms.application.hybrid_publishing_service import HybridPublishingService
 from sp_farms.application.job_service import JobService
+from sp_farms.application.licensing_service import LicensingService
 from sp_farms.application.media_prep_job import MediaPrepJobHandler
 from sp_farms.application.media_prep_service import MediaPreparationService
 from sp_farms.application.meta_client import MetaClientPort
@@ -286,6 +287,8 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         clock=clock,
     )
 
+    licensing_service = LicensingService()
+
     plugins_dir = config.database_path.parent / "plugins"
     plugins_dir.mkdir(parents=True, exist_ok=True)
     plugin_service = PluginService(plugins_dir=plugins_dir)
@@ -328,6 +331,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         device_analytics_service=device_analytics_service,
         backup_restore_service=backup_restore_service,
         plugin_service=plugin_service,
+        licensing_service=licensing_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

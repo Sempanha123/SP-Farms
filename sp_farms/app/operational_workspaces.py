@@ -8,9 +8,12 @@ from PySide6.QtWidgets import (
 )
 
 from sp_farms.app.analytics_workspace import AnalyticsWorkspace as PostAnalyticsView
+from sp_farms.app.settings_workspace import SettingsWorkspace
 from sp_farms.app.widgets import EmptyState, MetricRow, Panel, PrimaryButton, StatusChip
 from sp_farms.application.context import ApplicationContext
 from sp_farms.domain.jobs import JobState
+
+__all__ = ["AnalyticsWorkspace", "SettingsWorkspace", "UnavailableWorkspace"]
 
 
 class UnavailableWorkspace(QWidget):
@@ -120,10 +123,6 @@ class AnalyticsWorkspace(QWidget):
         ):
             label.setText(str(value))
 
-
-from sp_farms.app.settings_workspace import SettingsWorkspace
-
-__all__ = ["AnalyticsWorkspace", "SettingsWorkspace", "UnavailableWorkspace"]
 
 
 

@@ -500,6 +500,20 @@ Status: complete
 - Created developer guide in `docs/PLUGINS.md` detailing plugin architecture, manifests, and error boundaries.
 - Added 6 automated tests in `tests/test_plugins_sdk.py` (total test suite at 263/263 passing).
 
+## Phase 45 — Licensing and Edition Framework
+
+Status: complete
+
+- Implemented cryptographic asymmetric licensing engine via Ed25519 digital signatures.
+- Defined product editions (`FREE`, `PRO`, `VIP`, `DEV`) and feature gating flags (`UNLIMITED_ACCOUNTS`, `UNLIMITED_DEVICES`, `ADVANCED_ANALYTICS`, `AI_CAPTIONS`, `AUTOMATION_APPIUM`, `PLUGINS_RUNTIME`, `HYBRID_PUBLISHING`, `DISASTER_RECOVERY_SCHEDULE`).
+- Implemented `LicensingService` verifying base64 payload and signature pairs against embedded Ed25519 public key.
+- Embedded only Ed25519 public key in client source — zero private signing keys exist in the repository.
+- Built offline expiration handling with automatic 7-day grace period (`GRACE_PERIOD`) before locking (`EXPIRED`).
+- Added developer override mode via `SP_FARMS_DEV_MODE=1` unlocking all features and unbounded account/device capacities.
+- Wired `LicensingService` into `ApplicationContext` and `bootstrap.py`.
+- Added 5 automated tests in `tests/test_licensing.py` (total test suite at 268/268 passing).
+
+
 
 
 
