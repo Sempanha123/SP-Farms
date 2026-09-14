@@ -201,3 +201,14 @@ Status: complete
 - Kept credentials, tokens, cookies, recovery codes, and 2FA seeds outside account persistence behind the existing vault boundary.
 - Added repository round-trip, category/tag, assignment, health-rule, and archive-preservation coverage.
 
+## Phase 19 — Account Onboarding Workspace
+
+Status: complete
+
+- Replaced the demo account table with a live Accounts workspace backed by `AccountService`, including masked email/phone presentation, search, metrics, and immediate selection of newly added records.
+- Added safe manual, development/test, strict versioned metadata-import, official connector, and permitted authorized-session onboarding boundaries without implementing account creation or challenge bypass.
+- Added normalized metadata validation for required fields, contact details, dates, timestamps, enums, counts, lengths, and distinct recovery email.
+- Added metadata-only JSON export and recursive rejection of secret-bearing or unknown import fields.
+- Added persistent-mailbox guidance, supported preferred-app choices, success actions, and navigation routing to existing workspaces/placeholders.
+- Added service, validation, import/export, masking, UI smoke, immediate availability, and success-routing coverage.
+

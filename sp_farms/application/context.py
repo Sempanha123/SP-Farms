@@ -6,6 +6,7 @@ from sp_farms.application.ports import Clock
 from sp_farms.application.unit_of_work import UnitOfWork
 
 if TYPE_CHECKING:
+    from sp_farms.application.account_onboarding_service import AccountOnboardingService
     from sp_farms.application.account_service import AccountService
     from sp_farms.application.adb import AdbPort
     from sp_farms.application.device_service import DeviceService
@@ -30,6 +31,7 @@ class ApplicationContext:
     device_service: "DeviceService | None" = None
     qa_profile_service: "QAProfileService | None" = None
     account_service: "AccountService | None" = None
+    account_onboarding_service: "AccountOnboardingService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

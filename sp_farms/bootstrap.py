@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from sp_farms.application.account_onboarding_service import AccountOnboardingService
 from sp_farms.application.account_service import AccountService
 from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_service import DeviceService
@@ -60,6 +61,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         SqlAlchemyAccountRepository,
         clock,
     )
+    account_onboarding_service = AccountOnboardingService(account_service)
 
     context = ApplicationContext(
         clock=clock,
@@ -73,6 +75,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         device_service=device_service,
         qa_profile_service=qa_profile_service,
         account_service=account_service,
+        account_onboarding_service=account_onboarding_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

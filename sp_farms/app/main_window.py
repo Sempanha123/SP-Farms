@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from sp_farms.app.account_workspace import AccountWorkspace
 from sp_farms.app.command_palette import CommandPalette
 from sp_farms.app.device_manager import DeviceManagerView
 from sp_farms.app.job_queue import JobQueueView
@@ -59,7 +60,15 @@ class MainWindow(QMainWindow):
         self.devices_workspace.setObjectName("devicesWorkspace")
         self.devices_workspace.addTab(self.device_manager_view, "Device Manager")
         self.devices_workspace.addTab(self.qa_profile_lab, "QA Profile Lab")
-        self._workspace = WorkspaceLayout(self.device_manager_view.rail_model)
+        self.account_workspace = AccountWorkspace(
+            self._context.account_service,
+            self._context.account_onboarding_service,
+        )
+        self._workspace = WorkspaceLayout(
+            self.device_manager_view.rail_model,
+            self.account_workspace,
+        )
+        self.account_workspace.success_action_requested.connect(self._route_account_action)
         self.setObjectName("mainWindow")
         self.setWindowTitle("SP-Farms")
         self.setMinimumSize(1024, 680)
@@ -165,6 +174,22 @@ class MainWindow(QMainWindow):
         self.toggle_queue_action.triggered.connect(self.set_job_queue_visible)
         self.addAction(self.toggle_queue_action)
         self.set_job_queue_visible(visible)
+
+    def _route_account_action(self, account_id: str, action: str) -> None:
+        routes = {
+            "open_account": "Accounts",
+            "assign_device": "Devices",
+            "add_category": "Accounts",
+            "security_center": "Settings",
+            "pages": "Pages",
+            "content": "Content",
+            "scheduler": "Automation",
+        }
+        section = routes.get(action)
+        if section is not None:
+            self.navigate(section)
+        if action in {"open_account", "add_category"}:
+            self.account_workspace.select_account(account_id)
 
     def _open_palette(self) -> None:
         self.command_palette.open()

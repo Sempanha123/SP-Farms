@@ -39,19 +39,28 @@ class AccountService:
             raise ValueError(f"Account '{account_id}' not found")
         return account
 
+    def new_account(
+        self,
+        display_name: str,
+        platform_uid: str,
+        primary_email: str,
+    ) -> Account:
+        return Account.create(
+            display_name,
+            platform_uid,
+            primary_email,
+            self._clock.now(),
+        )
+
     def create_account(
         self,
         display_name: str,
         platform_uid: str,
         primary_email: str,
     ) -> Account:
-        account = Account.create(
-            display_name,
-            platform_uid,
-            primary_email,
-            self._clock.now(),
+        return self.save_account(
+            self.new_account(display_name, platform_uid, primary_email)
         )
-        return self.save_account(account)
 
     def save_account(self, account: Account) -> Account:
         validate_account(account)

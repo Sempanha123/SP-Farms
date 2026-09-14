@@ -107,6 +107,7 @@ class WorkspaceLayout(QWidget):
     def __init__(
         self,
         device_model: QAbstractItemModel | None = None,
+        content: QWidget | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -118,7 +119,7 @@ class WorkspaceLayout(QWidget):
         splitter.setObjectName("workspaceSplitter")
         splitter.setChildrenCollapsible(False)
         splitter.addWidget(DeviceRail(device_model))
-        splitter.addWidget(ManagementWorkspace())
+        splitter.addWidget(content or ManagementWorkspace())
         self.job_queue = JobQueueDrawer()
         splitter.addWidget(self.job_queue)
         splitter.setStretchFactor(0, 0)
