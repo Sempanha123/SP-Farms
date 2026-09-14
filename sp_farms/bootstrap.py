@@ -7,11 +7,14 @@ from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_pool_service import DevicePoolService
 from sp_farms.application.device_service import DeviceService
 from sp_farms.application.job_service import JobService
+from sp_farms.application.meta_client import MetaClientPort
+from sp_farms.application.meta_service import MetaIntegrationService
 from sp_farms.application.qa_profile_service import QAProfileService
 from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
 from sp_farms.application.secret_service import SecretService
 from sp_farms.application.snapshot_service import SnapshotService
 from sp_farms.application.worker import FakeStressJobHandler, WorkerSupervisor
+from sp_farms.domain.meta import MetaOAuthConfig
 from sp_farms.infrastructure.adb import SubprocessAdbClient
 from sp_farms.infrastructure.clock import SystemClock
 from sp_farms.infrastructure.config import load_config
@@ -26,6 +29,8 @@ from sp_farms.infrastructure.database import (
     run_migrations,
 )
 from sp_farms.infrastructure.logging import configure_logging
+from sp_farms.infrastructure.meta.client import MetaHttpClient
+from sp_farms.infrastructure.meta.fake_client import FakeMetaApiClient
 from sp_farms.infrastructure.providers.ldplayer import LdPlayerProvider
 from sp_farms.infrastructure.providers.mumu import MuMuProvider
 from sp_farms.infrastructure.providers.physical import PhysicalAndroidProvider
@@ -106,6 +111,26 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         secret_repository_factory=SqlAlchemySecretRepository,
     )
 
+    meta_client: MetaClientPort
+    if config.meta_app_id and config.meta_app_secret:
+        oauth_cfg = MetaOAuthConfig(
+            client_id=config.meta_app_id,
+            client_secret=config.meta_app_secret,
+            redirect_uri=config.meta_redirect_uri,
+            graph_version=config.meta_api_version,
+        )
+        meta_client = MetaHttpClient(oauth_cfg)
+    else:
+        meta_client = FakeMetaApiClient(
+            app_id=config.meta_app_id or "sp_farms_offline_app",
+            redirect_uri=config.meta_redirect_uri,
+        )
+
+    meta_service = MetaIntegrationService(
+        meta_client=meta_client,
+        secret_service=secret_service,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -123,6 +148,8 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         restore_workspace_service=restore_workspace_service,
         device_pool_service=device_pool_service,
         snapshot_service=snapshot_service,
+        meta_client=meta_client,
+        meta_service=meta_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

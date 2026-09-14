@@ -15,6 +15,10 @@ class AppConfig:
     adb_path: Path | None = None
     ldplayer_path: Path | None = None
     mumu_path: Path | None = None
+    meta_app_id: str | None = None
+    meta_app_secret: str | None = None
+    meta_redirect_uri: str = "https://localhost/oauth/callback"
+    meta_api_version: str = "v21.0"
 
     def __post_init__(self) -> None:
         if self.log_level not in LOG_LEVELS:

@@ -92,6 +92,11 @@ Device scheduling coordinates across available physical and virtual devices usin
 
 The accounts workspace follows a strict Model-View-Proxy separation: `QStandardItemModel` retains rich raw metadata across 24 columns, while `QSortFilterProxyModel` evaluates multiple orthogonal predicates (text search, category, device binding, and smart health filters) without re-querying the database. Bulk actions (categorization, tagging, device assignment, archive, and metadata export) operate on selection models in batch transactions, keeping the UI responsive even with 1,500+ accounts loaded.
 
+## Meta API Integration Boundary & Keyring Vault Storage
+
+Meta Graph API integration uses an explicit client port (`MetaClientPort`) with an implementation based on `httpx` (`MetaHttpClient`) and a deterministic test double (`FakeMetaApiClient`). Access tokens are treated as strictly confidential credentials and stored exclusively in the OS Keyring (`KeyringVault` using Windows Credential Manager), never in SQLite or plaintext configuration files. All HTTP request logging redacts sensitive tokens, and the client implements automatic exponential backoff for transient 5xx errors and rate limits (`x-app-usage`).
+
+
 
 
 

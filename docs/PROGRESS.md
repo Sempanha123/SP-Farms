@@ -256,5 +256,32 @@ Status: complete
 - Connected Operations Home Dashboard with system metrics, quick navigation routes, and live device status.
 - Added focused UI and model tests covering column management, smart filters, sorting, bulk dialogs, metadata export, and 1,500-row performance.
 
+## Phase 23 — Account Metadata Import/Export & Encrypted Vault Formats
+
+Status: complete
+
+- Added zero-dependency OpenXML (.xlsx) generation and parsing via standard library `zipfile` and `xml.etree.ElementTree`.
+- Added RFC 4180 CSV with UTF-8 BOM (`\xef\xbb\xbf`) and JSON metadata exchange.
+- Enforced strict secret boundary: normal exports exclude passwords, cookies, tokens, and recovery secrets.
+- Implemented encrypted `.spvault` backup format using Scrypt (N=32768, r=8, p=1) and authenticated AES-256-GCM.
+- Built dry-run import preview pipeline reporting validation errors and supporting conflict policies (SKIP, OVERWRITE, ERROR).
+- Added `AccountExportDialog` and `AccountImportDialog` integrated into `AccountWorkspace`.
+
+## Phase 24 — Meta API Integration Boundary
+
+Status: complete
+
+- Built typed Meta client interface (`MetaClientPort`) and application integration service (`MetaIntegrationService`).
+- Modeled official supported OAuth 2.0 authorization code flow and short-to-long-lived token upgrades (60 days).
+- Implemented scope/permission domain value objects (`MetaScopeSet`, `MetaPermission`).
+- Added token inspection metadata (`MetaTokenMetadata`), expiration evaluation, and health warnings.
+- Secured access tokens in the OS keyring vault (`SecretType.ACCESS_TOKEN`), keeping SQLite free of plaintext credentials.
+- Implemented retry and exponential backoff on transient HTTP 5xx errors and network failures.
+- Added structured Meta rate-limit header parsing (`x-app-usage`, `x-page-usage`).
+- Mapped Graph API error codes (190, 4, 17, 32, 200-299) to domain exceptions (`MetaAuthError`, `MetaRateLimitError`, etc.).
+- Created `FakeMetaApiClient` for offline development, deterministic unit tests, and CI/CD without live credentials.
+- Ensured sensitive tokens and secrets are never logged in URL query parameters or request headers.
+- Documented Meta API setup, configuration, and security rules in `docs/META_API.md` and `.env.example`.
+
 
 
