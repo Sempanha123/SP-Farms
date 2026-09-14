@@ -1,7 +1,6 @@
 import json
 import sqlite3
-import tempfile
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -10,10 +9,8 @@ from sp_farms.application.backup_restore_service import (
     CURRENT_APP_VERSION,
     CURRENT_BACKUP_SCHEMA_VERSION,
     BackupRestoreService,
-    compute_sha256,
 )
 from sp_farms.domain.disaster_recovery import (
-    BackupManifest,
     RetentionPolicy,
 )
 
@@ -157,9 +154,11 @@ def test_corrupted_backup_integrity_validation(test_env):
 
     # Tamper with the zip contents by modifying a file
     tampered_archive = test_env["backup_dir"] / "tampered.spbackup"
-    with zipfile.ZipFile(archive_path, "r") as zin:
-        with zipfile.ZipFile(tampered_archive, "w") as zout:
-            for item in zin.infolist():
+    with (
+        zipfile.ZipFile(archive_path, "r") as zin,
+        zipfile.ZipFile(tampered_archive, "w") as zout,
+    ):
+        for item in zin.infolist():
                 data = zin.read(item.filename)
                 if item.filename == "settings.json":
                     data = b'{"tampered": true}'

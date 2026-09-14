@@ -1,19 +1,13 @@
-from PySide6.QtCore import QSettings, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QFormLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QPushButton,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from sp_farms.app.analytics_workspace import AnalyticsWorkspace as PostAnalyticsView
-from sp_farms.app.theme import ThemeMode
 from sp_farms.app.widgets import EmptyState, MetricRow, Panel, PrimaryButton, StatusChip
 from sp_farms.application.context import ApplicationContext
 from sp_farms.domain.jobs import JobState
@@ -127,69 +121,9 @@ class AnalyticsWorkspace(QWidget):
             label.setText(str(value))
 
 
-class SettingsWorkspace(QWidget):
-    theme_requested = Signal(str)
-    queue_visibility_requested = Signal(bool)
+from sp_farms.app.settings_workspace import SettingsWorkspace
 
-    def __init__(self, settings: QSettings, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setObjectName("settingsWorkspace")
-        self._settings = settings
-        root = QVBoxLayout(self)
-        root.setContentsMargins(12, 12, 12, 12)
-        root.setSpacing(8)
-        title = QLabel("Settings")
-        title.setProperty("heading", True)
-        root.addWidget(title)
-        self.search = QLineEdit()
-        self.search.setPlaceholderText("Search settings")
-        root.addWidget(self.search)
+__all__ = ["AnalyticsWorkspace", "SettingsWorkspace", "UnavailableWorkspace"]
 
-        general = Panel()
-        form = QFormLayout(general)
-        self.theme = QComboBox()
-        self.theme.addItems(("Dark", "Light"))
-        saved_theme = str(settings.value("appearance/theme", ThemeMode.DARK.value))
-        self.theme.setCurrentText(saved_theme.title())
-        self.queue_visible = QCheckBox("Show job queue drawer")
-        self.queue_visible.setChecked(bool(settings.value("window/jobQueueVisible", False, bool)))
-        form.addRow("Appearance", self.theme)
-        form.addRow("Workspace", self.queue_visible)
-        root.addWidget(general)
 
-        advanced = Panel()
-        advanced_layout = QVBoxLayout(advanced)
-        advanced_layout.addWidget(QLabel("Configuration coverage"))
-        coverage = QLabel(
-            "General appearance and queue visibility are available. Meta, storage, "
-            "security, scheduler, network, backup, plugin, update, and diagnostics "
-            "settings require their corresponding service phases."
-        )
-        coverage.setProperty("muted", True)
-        coverage.setWordWrap(True)
-        advanced_layout.addWidget(coverage)
-        root.addWidget(advanced)
-        root.addStretch()
 
-        buttons = QHBoxLayout()
-        buttons.addStretch()
-        reset = QPushButton("Reset this section")
-        save = PrimaryButton("Save Settings")
-        buttons.addWidget(reset)
-        buttons.addWidget(save)
-        root.addLayout(buttons)
-        save.clicked.connect(self.save)
-        reset.clicked.connect(self.reset)
-
-    def save(self) -> None:
-        theme = self.theme.currentText().casefold()
-        self._settings.setValue("appearance/theme", theme)
-        self._settings.setValue("window/jobQueueVisible", self.queue_visible.isChecked())
-        self._settings.sync()
-        self.theme_requested.emit(theme)
-        self.queue_visibility_requested.emit(self.queue_visible.isChecked())
-
-    def reset(self) -> None:
-        self.theme.setCurrentText("Dark")
-        self.queue_visible.setChecked(False)
-        self.save()

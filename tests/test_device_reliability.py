@@ -8,9 +8,7 @@ from PySide6.QtWidgets import QApplication
 
 from sp_farms.app.analytics_workspace import (
     AnalyticsWorkspace,
-    DeviceReliabilityTableModel,
 )
-from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_analytics_service import DeviceAnalyticsService
 from sp_farms.domain.device_analytics import (
     DeviceOperationalEvent,
@@ -54,7 +52,6 @@ def test_device_reliability_domain_rating():
 
 def test_device_analytics_service_in_memory_metrics():
     service = DeviceAnalyticsService()
-    now = datetime.now(UTC)
 
     # Device 1: clean run
     service.record_job_completion(
@@ -114,7 +111,7 @@ def test_device_analytics_repository_persistence(db):
         repo_factory=SqlAlchemyDeviceAnalyticsRepository,
     )
 
-    ev1 = service.record_event(
+    service.record_event(
         device_key="physical:R58M12345",
         provider="physical",
         event_type=OperationalEventType.CONNECT,

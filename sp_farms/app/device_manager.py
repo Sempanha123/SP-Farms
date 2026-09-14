@@ -448,9 +448,12 @@ class DeviceManagerView(QWidget):
             dev = selected[0]
             self.alias_input.setText(dev.alias)
             self.notes_input.setPlainText(dev.notes)
-            self.appium_status_lbl.setText(f"Appium: {getattr(dev, 'appium_status', 'Ready')}")
-            self.session_state_lbl.setText(f"Session: {getattr(dev, 'appium_session_state', 'Idle')}")
-            self.active_job_lbl.setText(f"Job: {getattr(dev, 'current_job_id', 'None') or 'None'}")
+            appium_st = getattr(dev, "appium_status", "Ready")
+            session_st = getattr(dev, "appium_session_state", "Idle")
+            cur_job = getattr(dev, "current_job_id", "None") or "None"
+            self.appium_status_lbl.setText(f"Appium: {appium_st}")
+            self.session_state_lbl.setText(f"Session: {session_st}")
+            self.active_job_lbl.setText(f"Job: {cur_job}")
         else:
             self.alias_input.clear()
             self.notes_input.clear()

@@ -1,9 +1,7 @@
 """Analytics and live engagement monitoring workspace UI with social and device reliability tabs."""
 
-import json
 import logging
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from PySide6.QtCore import (
@@ -19,7 +17,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QSplitter,
     QTabWidget,
-    QTableView,
     QVBoxLayout,
     QWidget,
 )
@@ -33,18 +30,26 @@ from sp_farms.app.widgets import (
 )
 from sp_farms.application.analytics_service import AnalyticsService
 from sp_farms.application.device_analytics_service import DeviceAnalyticsService
-from sp_farms.domain.analytics import AggregatedMetrics, PostAnalyticsSnapshot
+from sp_farms.domain.analytics import PostAnalyticsSnapshot
 from sp_farms.domain.device_analytics import (
-    DeviceReliabilityRating,
     DeviceReliabilityStats,
-    FleetReliabilityReport,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class AnalyticsTableModel(QAbstractTableModel):
-    HEADERS = ["Synced At", "External ID", "Destination", "Type", "Likes", "Comments", "Shares", "Reach", "Eng. %"]
+    HEADERS = [
+        "Synced At",
+        "External ID",
+        "Destination",
+        "Type",
+        "Likes",
+        "Comments",
+        "Shares",
+        "Reach",
+        "Eng. %",
+    ]
 
     def __init__(self, snapshots: Sequence[PostAnalyticsSnapshot] = ()) -> None:
         super().__init__()
@@ -322,8 +327,9 @@ class AnalyticsWorkspace(QWidget):
         self.device_table_model = DeviceReliabilityTableModel()
         self.device_table_view = CompactTable()
         self.device_table_view.setModel(self.device_table_model)
-        self.device_table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        self.device_table_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        hh = self.device_table_view.horizontalHeader()
+        hh.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        hh.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.device_table_view.selectionModel().selectionChanged.connect(self._on_device_row_selected)
         left_layout.addWidget(self.device_table_view)
 
@@ -335,7 +341,9 @@ class AnalyticsWorkspace(QWidget):
         insp_layout.setSpacing(8)
 
         self.lbl_device_insp_title = QLabel("Select a device to view diagnostics")
-        self.lbl_device_insp_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #A3BE8C;")
+        self.lbl_device_insp_title.setStyleSheet(
+            "font-size: 13px; font-weight: bold; color: #A3BE8C;"
+        )
         self.lbl_device_insp_title.setWordWrap(True)
         insp_layout.addWidget(self.lbl_device_insp_title)
 
@@ -390,7 +398,12 @@ class AnalyticsWorkspace(QWidget):
         if not self.device_service:
             return
         csv_data = self.device_service.export_diagnostics_csv()
-        path, _ = QFileDialog.getSaveFileName(self, "Save Fleet Diagnostics CSV", "device_reliability.csv", "CSV Files (*.csv)")
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Fleet Diagnostics CSV",
+            "device_reliability.csv",
+            "CSV Files (*.csv)",
+        )
         if path:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(csv_data)
@@ -399,7 +412,12 @@ class AnalyticsWorkspace(QWidget):
         if not self.device_service:
             return
         json_data = self.device_service.export_diagnostics_json()
-        path, _ = QFileDialog.getSaveFileName(self, "Save Fleet Diagnostics JSON", "device_reliability.json", "JSON Files (*.json)")
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Fleet Diagnostics JSON",
+            "device_reliability.json",
+            "JSON Files (*.json)",
+        )
         if path:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(json_data)
@@ -445,11 +463,14 @@ class AnalyticsWorkspace(QWidget):
             return
 
         self.lbl_device_insp_title.setText(f"Device: {stat.device_key}")
-        last_seen_str = stat.last_seen.strftime('%Y-%m-%d %H:%M:%S UTC') if stat.last_seen else "Never"
+        last_seen_str = (
+            stat.last_seen.strftime("%Y-%m-%d %H:%M:%S UTC") if stat.last_seen else "Never"
+        )
+        rating_str = stat.rating.value.upper()
         details = (
             f"<b>Provider:</b> {stat.provider.upper()}<br>"
             f"<b>Serial:</b> {stat.serial}<br>"
-            f"<b>Reliability Score:</b> {stat.reliability_score:.1f}% ({stat.rating.value.upper()})<br>"
+            f"<b>Reliability Score:</b> {stat.reliability_score:.1f}% ({rating_str})<br>"
             f"<b>Uptime Percentage:</b> {stat.uptime_percentage:.1f}%<br>"
             f"<b>Disconnect Count:</b> {stat.disconnect_count}<br>"
             f"<b>Total Jobs Executed:</b> {stat.total_jobs}<br>"
