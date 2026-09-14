@@ -32,11 +32,13 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sess
 
 from sp_farms.application.accounts import AccountRepository
 from sp_farms.application.audit_repository import AuditRepository
+from sp_farms.application.campaign_repository import CampaignRepositoryPort
 from sp_farms.application.content_repository import ContentRepositoryPort
 from sp_farms.application.device_pool import DevicePoolRepository
 from sp_farms.application.device_profiles import DeviceProfileRepository
 from sp_farms.application.jobs import JobRepository
 from sp_farms.application.qa_profiles import QAProfileRepository
+from sp_farms.application.scheduler_repository import ScheduledItemRepositoryPort
 from sp_farms.application.secrets import SecretRepository
 from sp_farms.application.unit_of_work import UnitOfWork
 from sp_farms.domain.accounts import (
@@ -51,6 +53,17 @@ from sp_farms.domain.accounts import (
     SecurityState,
 )
 from sp_farms.domain.audit import AuditEvent, AuditResult
+from sp_farms.domain.campaigns import (
+    ApprovalPolicy,
+    Campaign,
+    CampaignStatus,
+    CampaignTarget,
+    RetryPolicy,
+    SchedulePolicy,
+    SchedulePolicyType,
+    TargetStatus,
+)
+from sp_farms.domain.composer import PostType, PublishDestinationType
 from sp_farms.domain.content import (
     CaptionTemplate,
     ContentItem,
@@ -75,6 +88,11 @@ from sp_farms.domain.qa_profiles import (
     QAProfile,
     QAProfileAudit,
     QATargetPackage,
+)
+from sp_farms.domain.scheduler import (
+    SchedulePriority,
+    ScheduledItem,
+    ScheduledItemStatus,
 )
 from sp_farms.domain.secrets import SecretReference, SecretType
 
@@ -865,6 +883,244 @@ class ContentItemModel(EntityMixin, Base):
             tags=tags,
             is_favorite=self.is_favorite,
             is_archived=self.is_archived,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
+        )
+
+
+class CampaignModel(EntityMixin, Base):
+    __tablename__ = "campaigns"
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    content_item_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    post_type: Mapped[str] = mapped_column(String(20), nullable=False, default="FEED", index=True)
+    caption: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    media_asset_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="draft", index=True)
+    schedule_policy_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    approval_policy: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
+    retry_policy_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    tags_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    @classmethod
+    def from_campaign(cls, c: Campaign) -> "CampaignModel":
+        sched_dict = {
+            "policy_type": c.schedule_policy.policy_type.value,
+            "scheduled_at": c.schedule_policy.scheduled_at.isoformat()
+            if c.schedule_policy.scheduled_at
+            else None,
+            "stagger_interval_seconds": c.schedule_policy.stagger_interval_seconds,
+        }
+        retry_dict = {
+            "max_attempts": c.retry_policy.max_attempts,
+            "backoff_seconds": c.retry_policy.backoff_seconds,
+            "allow_retry_on_network_error": c.retry_policy.allow_retry_on_network_error,
+        }
+        return cls(
+            id=c.id,
+            title=c.title,
+            content_item_id=c.content_item_id,
+            post_type=c.post_type.value,
+            caption=c.caption,
+            media_asset_ids_json=json.dumps(list(c.media_asset_ids)),
+            status=c.status.value,
+            schedule_policy_json=json.dumps(sched_dict),
+            approval_policy=c.approval_policy.value,
+            retry_policy_json=json.dumps(retry_dict),
+            tags_json=json.dumps(list(c.tags)),
+            notes=c.notes,
+            created_at=_as_utc(c.created_at),
+            updated_at=_as_utc(c.updated_at),
+            archived_at=_optional_utc(c.archived_at),
+        )
+
+    def to_campaign(self, targets: Sequence[CampaignTarget] = ()) -> Campaign:
+        try:
+            media_ids = tuple(json.loads(self.media_asset_ids_json))
+        except Exception:
+            media_ids = ()
+        try:
+            tags = tuple(json.loads(self.tags_json))
+        except Exception:
+            tags = ()
+        try:
+            sched_data = json.loads(self.schedule_policy_json)
+            sched_at = (
+                datetime.fromisoformat(sched_data["scheduled_at"])
+                if sched_data.get("scheduled_at")
+                else None
+            )
+            schedule_policy = SchedulePolicy(
+                policy_type=SchedulePolicyType(
+                    sched_data.get("policy_type", SchedulePolicyType.IMMEDIATE.value)
+                ),
+                scheduled_at=_optional_utc(sched_at),
+                stagger_interval_seconds=int(sched_data.get("stagger_interval_seconds", 0)),
+            )
+        except Exception:
+            schedule_policy = SchedulePolicy()
+
+        try:
+            retry_data = json.loads(self.retry_policy_json)
+            retry_policy = RetryPolicy(
+                max_attempts=int(retry_data.get("max_attempts", 3)),
+                backoff_seconds=int(retry_data.get("backoff_seconds", 60)),
+                allow_retry_on_network_error=bool(
+                    retry_data.get("allow_retry_on_network_error", True)
+                ),
+            )
+        except Exception:
+            retry_policy = RetryPolicy()
+
+        return Campaign(
+            id=self.id,
+            title=self.title,
+            content_item_id=self.content_item_id,
+            post_type=PostType(self.post_type),
+            caption=self.caption,
+            media_asset_ids=media_ids,
+            status=CampaignStatus(self.status),
+            schedule_policy=schedule_policy,
+            approval_policy=ApprovalPolicy(self.approval_policy),
+            retry_policy=retry_policy,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
+            targets=tuple(targets),
+            tags=tags,
+            notes=self.notes,
+            archived_at=_optional_utc(self.archived_at),
+        )
+
+
+class CampaignTargetModel(EntityMixin, Base):
+    __tablename__ = "campaign_targets"
+
+    campaign_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("campaigns.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    destination_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    destination_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    destination_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    published_post_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @classmethod
+    def from_target(cls, t: CampaignTarget) -> "CampaignTargetModel":
+        return cls(
+            id=t.id,
+            campaign_id=t.campaign_id,
+            destination_type=t.destination_type.value,
+            destination_id=t.destination_id,
+            destination_name=t.destination_name,
+            status=t.status.value,
+            attempt_count=t.attempt_count,
+            published_post_id=t.published_post_id,
+            error_message=t.error_message,
+            executed_at=_optional_utc(t.executed_at),
+            scheduled_at=_optional_utc(t.scheduled_at),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+
+    def to_target(self) -> CampaignTarget:
+        return CampaignTarget(
+            id=self.id,
+            campaign_id=self.campaign_id,
+            destination_type=PublishDestinationType(self.destination_type),
+            destination_id=self.destination_id,
+            destination_name=self.destination_name,
+            status=TargetStatus(self.status),
+            attempt_count=self.attempt_count,
+            published_post_id=self.published_post_id,
+            error_message=self.error_message,
+            executed_at=_optional_utc(self.executed_at),
+            scheduled_at=_optional_utc(self.scheduled_at),
+        )
+
+
+class ScheduledItemModel(EntityMixin, Base):
+    __tablename__ = "scheduled_items"
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    campaign_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    content_item_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    destination_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    destination_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    destination_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    post_type: Mapped[str] = mapped_column(String(20), nullable=False, default="FEED")
+    caption: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    media_asset_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="queued", index=True)
+    priority: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
+    timezone_name: Mapped[str] = mapped_column(String(50), nullable=False, default="UTC")
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    tags_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+
+    @classmethod
+    def from_item(cls, item: ScheduledItem) -> "ScheduledItemModel":
+        return cls(
+            id=item.id,
+            title=item.title,
+            campaign_id=item.campaign_id,
+            content_item_id=item.content_item_id,
+            destination_type=item.destination_type.value,
+            destination_id=item.destination_id,
+            destination_name=item.destination_name,
+            scheduled_at=_as_utc(item.scheduled_at),
+            post_type=item.post_type.value,
+            caption=item.caption,
+            media_asset_ids_json=json.dumps(list(item.media_asset_ids)),
+            status=item.status.value,
+            priority=item.priority.value,
+            timezone_name=item.timezone_name,
+            retry_count=item.retry_count,
+            max_retries=item.max_retries,
+            error_message=item.error_message,
+            executed_at=_optional_utc(item.executed_at),
+            tags_json=json.dumps(list(item.tags)),
+            created_at=_as_utc(item.created_at),
+            updated_at=_as_utc(item.updated_at),
+        )
+
+    def to_item(self) -> ScheduledItem:
+        try:
+            media_ids = tuple(json.loads(self.media_asset_ids_json))
+        except Exception:
+            media_ids = ()
+        try:
+            tags = tuple(json.loads(self.tags_json))
+        except Exception:
+            tags = ()
+
+        return ScheduledItem(
+            id=self.id,
+            title=self.title,
+            campaign_id=self.campaign_id,
+            content_item_id=self.content_item_id,
+            destination_type=PublishDestinationType(self.destination_type),
+            destination_id=self.destination_id,
+            destination_name=self.destination_name,
+            scheduled_at=_as_utc(self.scheduled_at),
+            post_type=PostType(self.post_type),
+            caption=self.caption,
+            media_asset_ids=media_ids,
+            status=ScheduledItemStatus(self.status),
+            priority=SchedulePriority(self.priority),
+            timezone_name=self.timezone_name,
+            retry_count=self.retry_count,
+            max_retries=self.max_retries,
+            error_message=self.error_message,
+            executed_at=_optional_utc(self.executed_at),
+            tags=tags,
             created_at=_as_utc(self.created_at),
             updated_at=_as_utc(self.updated_at),
         )
@@ -1951,6 +2207,243 @@ class SqlAlchemyContentRepository(ContentRepositoryPort):
             self._session.flush()
             return True
         return False
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class SqlAlchemyCampaignRepository(CampaignRepositoryPort):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyCampaignRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def save_campaign(self, campaign: Campaign) -> Campaign:
+        session = self._session
+        model = session.get(CampaignModel, campaign.id)
+        if model is None:
+            model = CampaignModel.from_campaign(campaign)
+            session.add(model)
+        else:
+            model.title = campaign.title
+            model.content_item_id = campaign.content_item_id
+            model.post_type = campaign.post_type.value
+            model.caption = campaign.caption
+            model.media_asset_ids_json = json.dumps(list(campaign.media_asset_ids))
+            model.status = campaign.status.value
+            sched_dict = {
+                "policy_type": campaign.schedule_policy.policy_type.value,
+                "scheduled_at": campaign.schedule_policy.scheduled_at.isoformat()
+                if campaign.schedule_policy.scheduled_at
+                else None,
+                "stagger_interval_seconds": campaign.schedule_policy.stagger_interval_seconds,
+            }
+            model.schedule_policy_json = json.dumps(sched_dict)
+            model.approval_policy = campaign.approval_policy.value
+            retry_dict = {
+                "max_attempts": campaign.retry_policy.max_attempts,
+                "backoff_seconds": campaign.retry_policy.backoff_seconds,
+                "allow_retry_on_network_error": campaign.retry_policy.allow_retry_on_network_error,
+            }
+            model.retry_policy_json = json.dumps(retry_dict)
+            model.tags_json = json.dumps(list(campaign.tags))
+            model.notes = campaign.notes
+            model.updated_at = _as_utc(campaign.updated_at)
+            model.archived_at = _optional_utc(campaign.archived_at)
+        session.flush()
+
+        # Update targets
+        for target in campaign.targets:
+            self.save_target(target)
+
+        return self.get_campaign(campaign.id) or campaign
+
+    def get_campaign(self, campaign_id: str) -> Campaign | None:
+        model = self._session.get(CampaignModel, campaign_id)
+        if model is None:
+            return None
+        targets = self.list_targets(campaign_id)
+        return model.to_campaign(targets)
+
+    def list_campaigns(
+        self,
+        status: CampaignStatus | None = None,
+        search: str | None = None,
+        include_archived: bool = False,
+    ) -> Sequence[Campaign]:
+        query = self._session.query(CampaignModel)
+        if not include_archived:
+            query = query.filter(CampaignModel.status != CampaignStatus.ARCHIVED.value)
+        if status is not None:
+            query = query.filter(CampaignModel.status == status.value)
+        if search:
+            pattern = f"%{search}%"
+            query = query.filter(
+                (CampaignModel.title.ilike(pattern))
+                | (CampaignModel.caption.ilike(pattern))
+                | (CampaignModel.tags_json.ilike(pattern))
+            )
+        models = query.order_by(CampaignModel.created_at.desc()).all()
+        result: list[Campaign] = []
+        for m in models:
+            targets = self.list_targets(m.id)
+            result.append(m.to_campaign(targets))
+        return tuple(result)
+
+    def delete_campaign(self, campaign_id: str) -> bool:
+        model = self._session.get(CampaignModel, campaign_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
+
+    def save_target(self, target: CampaignTarget) -> CampaignTarget:
+        session = self._session
+        model = session.get(CampaignTargetModel, target.id)
+        if model is None:
+            model = CampaignTargetModel.from_target(target)
+            session.add(model)
+        else:
+            model.destination_type = target.destination_type.value
+            model.destination_id = target.destination_id
+            model.destination_name = target.destination_name
+            model.status = target.status.value
+            model.attempt_count = target.attempt_count
+            model.published_post_id = target.published_post_id
+            model.error_message = target.error_message
+            model.executed_at = _optional_utc(target.executed_at)
+            model.scheduled_at = _optional_utc(target.scheduled_at)
+            model.updated_at = datetime.now(UTC)
+        session.flush()
+        return model.to_target()
+
+    def get_target(self, target_id: str) -> CampaignTarget | None:
+        model = self._session.get(CampaignTargetModel, target_id)
+        return model.to_target() if model else None
+
+    def list_targets(self, campaign_id: str) -> Sequence[CampaignTarget]:
+        models = (
+            self._session.query(CampaignTargetModel)
+            .filter_by(campaign_id=campaign_id)
+            .order_by(CampaignTargetModel.created_at.asc())
+            .all()
+        )
+        return tuple(m.to_target() for m in models)
+
+    def delete_target(self, target_id: str) -> bool:
+        model = self._session.get(CampaignTargetModel, target_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class SqlAlchemySchedulerRepository(ScheduledItemRepositoryPort):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemySchedulerRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def save_item(self, item: ScheduledItem) -> ScheduledItem:
+        session = self._session
+        model = session.get(ScheduledItemModel, item.id)
+        if model is None:
+            model = ScheduledItemModel.from_item(item)
+            session.add(model)
+        else:
+            model.title = item.title
+            model.campaign_id = item.campaign_id
+            model.content_item_id = item.content_item_id
+            model.destination_type = item.destination_type.value
+            model.destination_id = item.destination_id
+            model.destination_name = item.destination_name
+            model.scheduled_at = _as_utc(item.scheduled_at)
+            model.post_type = item.post_type.value
+            model.caption = item.caption
+            model.media_asset_ids_json = json.dumps(list(item.media_asset_ids))
+            model.status = item.status.value
+            model.priority = item.priority.value
+            model.timezone_name = item.timezone_name
+            model.retry_count = item.retry_count
+            model.max_retries = item.max_retries
+            model.error_message = item.error_message
+            model.executed_at = _optional_utc(item.executed_at)
+            model.tags_json = json.dumps(list(item.tags))
+            model.updated_at = datetime.now(UTC)
+        session.flush()
+        return model.to_item()
+
+    def get_item(self, item_id: str) -> ScheduledItem | None:
+        model = self._session.get(ScheduledItemModel, item_id)
+        return model.to_item() if model else None
+
+    def list_items(
+        self,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        destination_id: str | None = None,
+        status: ScheduledItemStatus | None = None,
+        limit: int = 200,
+    ) -> Sequence[ScheduledItem]:
+        query = self._session.query(ScheduledItemModel)
+        if from_time is not None:
+            query = query.filter(ScheduledItemModel.scheduled_at >= _as_utc(from_time))
+        if to_time is not None:
+            query = query.filter(ScheduledItemModel.scheduled_at <= _as_utc(to_time))
+        if destination_id is not None:
+            query = query.filter(ScheduledItemModel.destination_id == destination_id)
+        if status is not None:
+            query = query.filter(ScheduledItemModel.status == status.value)
+        models = (
+            query.order_by(ScheduledItemModel.scheduled_at.asc())
+            .limit(limit)
+            .all()
+        )
+        return tuple(m.to_item() for m in models)
+
+    def delete_item(self, item_id: str) -> bool:
+        model = self._session.get(ScheduledItemModel, item_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+            return True
+        return False
+
+    def list_due_items(self, now: datetime, limit: int = 50) -> Sequence[ScheduledItem]:
+        utc_now = _as_utc(now)
+        models = (
+            self._session.query(ScheduledItemModel)
+            .filter(
+                ScheduledItemModel.status == ScheduledItemStatus.QUEUED.value,
+                ScheduledItemModel.scheduled_at <= utc_now,
+            )
+            .order_by(ScheduledItemModel.scheduled_at.asc())
+            .limit(limit)
+            .all()
+        )
+        return tuple(m.to_item() for m in models)
+
+    def list_missed_items(
+        self, now: datetime, grace_period_minutes: int = 15
+    ) -> Sequence[ScheduledItem]:
+        cutoff = _as_utc(now) - timedelta(minutes=grace_period_minutes)
+        models = (
+            self._session.query(ScheduledItemModel)
+            .filter(
+                ScheduledItemModel.status == ScheduledItemStatus.QUEUED.value,
+                ScheduledItemModel.scheduled_at < cutoff,
+            )
+            .order_by(ScheduledItemModel.scheduled_at.asc())
+            .all()
+        )
+        return tuple(m.to_item() for m in models)
 
     @property
     def _session(self) -> Session:

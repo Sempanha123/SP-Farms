@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 
 from sp_farms.app.account_workspace import AccountWorkspace
 from sp_farms.app.asset_workspace import PagesGroupsWorkspace
+from sp_farms.app.campaign_workspace import CampaignWorkspace
 from sp_farms.app.command_palette import CommandPalette
 from sp_farms.app.content_workspace import ContentWorkspace
 from sp_farms.app.device_manager import DeviceManagerView
@@ -123,6 +124,11 @@ class MainWindow(QMainWindow):
         self.error_center_workspace: ErrorCenterWorkspace | None = (
             ErrorCenterWorkspace(self._context.audit_service)
             if self._context.audit_service
+            else None
+        )
+        self.campaign_workspace: CampaignWorkspace | None = (
+            CampaignWorkspace(self._context.campaign_service)
+            if self._context.campaign_service
             else None
         )
         if self.error_center_workspace:
@@ -256,8 +262,11 @@ class MainWindow(QMainWindow):
             elif section == "Accounts":
                 self._pages.addWidget(self._workspace)
             elif section == "Automation":
-                self.job_queue_view = JobQueueView(self._context.job_service)
-                self._pages.addWidget(self.job_queue_view)
+                if self.campaign_workspace is not None:
+                    self._pages.addWidget(self.campaign_workspace)
+                else:
+                    self.job_queue_view = JobQueueView(self._context.job_service)
+                    self._pages.addWidget(self.job_queue_view)
             elif section == "Devices":
                 self._pages.addWidget(self.devices_workspace)
             elif section == "Pages":

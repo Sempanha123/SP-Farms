@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from sp_farms.application.adb import AdbPort
     from sp_farms.application.asset_sync_service import AssetSyncService
     from sp_farms.application.audit_service import AuditService
+    from sp_farms.application.campaign_service import CampaignService
     from sp_farms.application.caption_ai_service import CaptionAIService
     from sp_farms.application.composer_service import ComposerService
     from sp_farms.application.content_service import ContentService
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from sp_farms.application.providers import DeviceProviderPort
     from sp_farms.application.qa_profile_service import QAProfileService
     from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
+    from sp_farms.application.scheduler_service import SchedulerService
     from sp_farms.application.security_service import SecurityService
     from sp_farms.application.snapshot_service import SnapshotService
     from sp_farms.application.worker import WorkerSupervisor
@@ -56,6 +58,8 @@ class ApplicationContext:
     content_service: "ContentService | None" = None
     composer_service: "ComposerService | None" = None
     caption_ai_service: "CaptionAIService | None" = None
+    campaign_service: "CampaignService | None" = None
+    scheduler_service: "SchedulerService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 
