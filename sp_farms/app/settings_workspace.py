@@ -39,6 +39,7 @@ class SettingsWorkspace(QWidget):
 
     theme_requested = Signal(str)
     queue_visibility_requested = Signal(bool)
+    locale_requested = Signal(str)
 
     SECTION_NAMES = (
         "General",
@@ -193,6 +194,20 @@ class SettingsWorkspace(QWidget):
                 "Application Name",
                 "Official SP-Farms title",
                 self.app_name_input,
+            )
+
+            self.language_selector = QComboBox()
+            self.language_selector.addItem("English (United States)", "en_US")
+            self.language_selector.addItem("ភាសាខ្មែរ (Khmer)", "km_KH")
+            self.language_selector.addItem("ไทย (Thai)", "th_TH")
+            self.language_selector.addItem("Tiếng Việt (Vietnamese)", "vi_VN")
+            self._add_field(
+                form,
+                section,
+                "general/locale",
+                "Display Language",
+                "User interface language catalog (English, Khmer, Thai, Vietnamese)",
+                self.language_selector,
             )
 
             self.start_minimized = QCheckBox("Start minimized to system tray")
@@ -700,6 +715,11 @@ class SettingsWorkspace(QWidget):
         self.compact_density.setChecked(
             bool(self._settings.value("appearance/compact_density", False, type=bool))
         )
+        saved_locale = str(self._settings.value("general/locale", "en_US"))
+        idx = self.language_selector.findData(saved_locale)
+        if idx >= 0:
+            self.language_selector.setCurrentIndex(idx)
+
         self.start_minimized.setChecked(
             bool(self._settings.value("general/start_minimized", False, type=bool))
         )
@@ -797,6 +817,12 @@ class SettingsWorkspace(QWidget):
         self._settings.setValue("appearance/theme", theme)
         self._settings.setValue("window/jobQueueVisible", self.queue_visible.isChecked())
         self._settings.setValue("appearance/compact_density", self.compact_density.isChecked())
+        selected_locale = self.language_selector.currentData() or "en_US"
+        self._settings.setValue("general/locale", selected_locale)
+        if self._context and self._context.i18n_service:
+            self._context.i18n_service.set_locale(selected_locale)
+        self.locale_requested.emit(str(selected_locale))
+
         self._settings.setValue("general/start_minimized", self.start_minimized.isChecked())
         self._settings.setValue("general/sync_interval", self.auto_sync_interval.value())
 
@@ -859,6 +885,9 @@ class SettingsWorkspace(QWidget):
         section = current_item.text()
 
         if section == "General":
+            idx = self.language_selector.findData("en_US")
+            if idx >= 0:
+                self.language_selector.setCurrentIndex(idx)
             self.start_minimized.setChecked(False)
             self.auto_sync_interval.setValue(30)
         elif section == "Appearance":

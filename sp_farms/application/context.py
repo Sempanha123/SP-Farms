@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from sp_farms.application.device_pool_service import DevicePoolService
     from sp_farms.application.device_service import DeviceService
     from sp_farms.application.hybrid_publishing_service import HybridPublishingService
+    from sp_farms.application.i18n_service import I18nService
     from sp_farms.application.job_service import JobService
     from sp_farms.application.licensing_service import LicensingService
     from sp_farms.application.meta_client import MetaClientPort
@@ -76,6 +77,7 @@ class ApplicationContext:
     backup_restore_service: "BackupRestoreService | None" = None
     plugin_service: "PluginService | None" = None
     licensing_service: "LicensingService | None" = None
+    i18n_service: "I18nService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

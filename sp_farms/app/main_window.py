@@ -204,6 +204,18 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(style_sheet(mode))
         self._settings.setValue("appearance/theme", mode.value)
 
+    def _apply_locale(self, locale_code: str) -> None:
+        if not self._context or not self._context.i18n_service:
+            return
+        self._context.i18n_service.set_locale(locale_code)
+        if hasattr(self, "brand_subtitle"):
+            self.brand_subtitle.setText(self._context.i18n_service.t("app.subtitle"))
+        for section, btn in self._nav_buttons.items():
+            translated = self._context.i18n_service.t(
+                f"nav.{section.casefold()}", default=section
+            )
+            btn.setText(translated)
+
     def set_job_queue_visible(self, visible: bool) -> None:
         self._workspace.job_queue.setVisible(visible)
         self.home_workspace.job_queue.setVisible(visible)
@@ -251,9 +263,9 @@ class MainWindow(QMainWindow):
         product_row.addWidget(brand)
         product_row.addWidget(version, alignment=Qt.AlignmentFlag.AlignBottom)
         brand_text.addLayout(product_row)
-        subtitle = QLabel("Automate Smarter • Manage Bigger")
-        subtitle.setObjectName("brandSubtitle")
-        brand_text.addWidget(subtitle)
+        self.brand_subtitle = QLabel("Automate Smarter • Manage Bigger")
+        self.brand_subtitle.setObjectName("brandSubtitle")
+        brand_text.addWidget(self.brand_subtitle)
         brand_layout.addLayout(brand_text)
         navigation_layout.addWidget(brand_block)
         navigation_layout.addSpacing(4)
@@ -313,11 +325,15 @@ class MainWindow(QMainWindow):
                 self.settings_workspace.queue_visibility_requested.connect(
                     self.set_job_queue_visible
                 )
+                self.settings_workspace.locale_requested.connect(
+                    self._apply_locale
+                )
                 self._pages.addWidget(self.settings_workspace)
         if self.error_center_workspace is not None:
             self._pages.addWidget(self.error_center_workspace)
         shell_layout.addWidget(self._pages, stretch=1)
         self.setCentralWidget(shell)
+        self._apply_locale(str(self._settings.value("general/locale", "en_US")))
         self.navigate("Home")
 
     def _create_actions(self) -> None:

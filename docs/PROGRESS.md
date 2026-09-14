@@ -513,6 +513,20 @@ Status: complete
 - Wired `LicensingService` into `ApplicationContext` and `bootstrap.py`.
 - Added 5 automated tests in `tests/test_licensing.py` (total test suite at 268/268 passing).
 
+## Phase 46 — Internationalization
+
+Status: complete
+
+- Implemented multilingual engine with English and Khmer as first-class UI languages, alongside prepared Thai and Vietnamese catalogs.
+- Externalized user-facing strings across navigation, actions, statuses, settings sections, and messages.
+- Created `I18nService` providing key translation `t(...)`, fallback to `en_US`, and variable interpolation.
+- Added Unicode Normalization Form C (NFC) enforcement across all localized text and storage.
+- Added locale-aware date formatting (`YYYY-MM-DD` vs `DD/MM/YYYY`) and number/monetary formatting with custom separators.
+- Implemented UTF-8 BOM encoding utility (`to_utf8_bom`) for clean Excel exports with Southeast Asian scripts.
+- Integrated language selector into `SettingsWorkspace` ("General" section) persisting `general/locale` and dynamically updating navigation buttons and branding.
+- Added 7 automated tests in `tests/test_i18n.py` (total test suite at 275/275 passing).
+
+
 
 
 
