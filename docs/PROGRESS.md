@@ -405,6 +405,59 @@ Status: complete
 - Integrated `ApprovalWorkspace` and `SchedulerWorkspace` into `MainWindow` navigation within the Automation workspace tab group.
 - Added 5 automated tests in `tests/test_approvals.py` verifying domain transitions, audit integration, expiration, job coordination, and UI workspace.
 
+## Phase 36 — Publishing Executor and Meta Graph API Integration
+
+Status: complete
+
+- Built `PublishingService` executing multi-destination publishing jobs across Facebook Pages and Groups for feed posts, reels, and stories.
+- Created `MetaPublishingAdapter` integrating Meta Graph API `/feed`, `/videos`, and `/photos` endpoints with chunked video upload support.
+- Added Alembic migration `0015_publish_attempts.py` and `SqlAlchemyPublishRepository` tracking detailed publish attempts, external Meta post IDs, permalinks, and response payloads.
+- Implemented robust error categorization: permission, rate limit, media, duplicate post, and network errors.
+- Handled transient retry policies, idempotency keys, and human-in-the-loop approval verification before dispatch.
+- Added 9 comprehensive automated tests in `tests/test_publishing_executor.py`.
+
+## Phase 37 — Appium 2 & UiAutomator2 Android UI Automation Layer
+
+Status: complete
+
+- Integrated Appium 2 with UiAutomator2 for Android UI automation while maintaining ADB for low-level device/emulator operations.
+- Added Appium server manager (`AppiumServerManager`) supporting local discovery, health status monitoring (`/status`), and uiautomator2 verification.
+- Implemented `AppiumSessionManager` allocating isolated sessions and system ports (8200..8299) per reserved device across LDPlayer, MuMu, and physical Android devices.
+- Integrated Appium sessions with `DevicePoolService` device reservation locks and `WorkerSupervisor` job execution.
+- Enforced that Appium/ADB network operations never execute on the Qt GUI thread.
+- Created `MobileDriver` providing explicit waits, timeouts, cancellation tokens, retries, and automatic screenshot-on-failure capture.
+- Created Page Object models (`BaseScreen`, `FacebookHomeScreen`, `FacebookComposerScreen`) encapsulating Android UI selectors and flows.
+- Ensured deterministic Appium session teardown upon job completion and device release.
+- Updated `DeviceManagerView` table and inspector to display ADB status, Appium status, Appium session state, and active job ID.
+- Documented complete architecture, prerequisites, and emulator/device setup in `docs/APPIUM_SETUP.md`.
+- Added automated test suite in `tests/test_appium_automation.py` with 100% passage (230/230 total tests passing).
+
+## Phase 39 — Publishing Service & Hybrid Publishing Engine
+
+Status: complete
+
+- Built `HybridPublishingService` routing publications across official Meta Graph API and Appium-driven Android UI fallback.
+- Auto-detected destination compatibility: Pages/Groups routed via official Graph API, personal profiles or accounts with API permission restrictions (#200) routed via Appium UI automation.
+- Integrated `AppiumJobExecutor` and device lock reservations through `DevicePoolService` for UI automation flows.
+- Enforced end-to-end idempotency, publish attempts logging, retry strategies, and error categorization across publishing modes.
+- Added automated test suite in `tests/test_hybrid_publishing.py`.
+
+## Phase 40 — Social Post Performance Analytics & Live Engagement Monitoring
+
+Status: complete
+
+- Defined domain models `PostAnalyticsSnapshot`, `AggregatedMetrics`, and time ranges (`24h`, `7d`, `30d`, `all`).
+- Implemented interaction calculations (likes + comments + shares) and engagement rate metrics.
+- Added `AnalyticsPort` and `AnalyticsRepositoryPort` interfaces.
+- Implemented `MetaAnalyticsAdapter` querying Graph API object insights and summaries (`likes.summary(true)`, `comments.summary(true)`, `shares`, etc.) alongside `FakeAnalyticsAdapter`.
+- Created Alembic migration `0016_analytics_snapshots.py` and `SqlAlchemyAnalyticsRepository` mapping table `analytics_snapshots`.
+- Built `AnalyticsService` for background polling, sync orchestration, and audit event emission.
+- Built PySide6 `AnalyticsWorkspace` dashboard tab featuring KPI overview cards, filter bar, `AnalyticsTableModel`, and detailed post inspector card.
+- Wired `AnalyticsService`, `PublishingService`, and `HybridPublishingService` into `ApplicationContext` and dependency injection in `bootstrap.py`.
+- Added 4 automated tests in `tests/test_analytics.py` (total test suite at 238/238 passing).
+
+
+
 
 
 

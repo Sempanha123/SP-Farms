@@ -62,6 +62,9 @@ class ApplicationContext:
     campaign_service: "CampaignService | None" = None
     scheduler_service: "SchedulerService | None" = None
     approval_service: "ApprovalService | None" = None
+    publishing_service: "PublishingService | None" = None
+    hybrid_publishing_service: "HybridPublishingService | None" = None
+    analytics_service: "AnalyticsService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 
