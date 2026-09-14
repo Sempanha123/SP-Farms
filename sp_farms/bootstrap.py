@@ -1,12 +1,18 @@
 from pathlib import Path
 
 from sp_farms.application.context import ApplicationContext
+from sp_farms.application.device_service import DeviceService
 from sp_farms.application.job_service import JobService
 from sp_farms.application.worker import FakeStressJobHandler, WorkerSupervisor
 from sp_farms.infrastructure.adb import SubprocessAdbClient
 from sp_farms.infrastructure.clock import SystemClock
 from sp_farms.infrastructure.config import load_config
-from sp_farms.infrastructure.database import Database, SqlAlchemyJobRepository, run_migrations
+from sp_farms.infrastructure.database import (
+    Database,
+    SqlAlchemyDeviceProfileRepository,
+    SqlAlchemyJobRepository,
+    run_migrations,
+)
 from sp_farms.infrastructure.logging import configure_logging
 from sp_farms.infrastructure.providers.ldplayer import LdPlayerProvider
 from sp_farms.infrastructure.providers.mumu import MuMuProvider
@@ -32,6 +38,12 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
     ldplayer = LdPlayerProvider(config.ldplayer_path, adb_port=adb)
     mumu = MuMuProvider(config.mumu_path, adb_port=adb)
     physical = PhysicalAndroidProvider(adb_port=adb)
+    device_service = DeviceService(
+        (ldplayer, mumu, physical),
+        database.unit_of_work,
+        SqlAlchemyDeviceProfileRepository,
+        config.database_path.parent / "device_artifacts",
+    )
 
     context = ApplicationContext(
         clock=clock,
@@ -42,6 +54,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         ldplayer=ldplayer,
         mumu=mumu,
         physical=physical,
+        device_service=device_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

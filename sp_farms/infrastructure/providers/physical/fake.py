@@ -120,6 +120,9 @@ class FakePhysicalProvider(DeviceProviderPort):
                     adb_serial=serial,
                     is_running=is_running,
                     resolution=meta.resolution,
+                    state=state,
+                    android_version=meta.android_version,
+                    network_state=meta.transport.value,
                 )
             )
         return instances

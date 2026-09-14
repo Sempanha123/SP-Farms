@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from sp_farms.app.command_palette import CommandPalette
+from sp_farms.app.device_manager import DeviceManagerView
 from sp_farms.app.job_queue import JobQueueView
 from sp_farms.app.navigation import Command, NavigationService
 from sp_farms.app.notifications import NotificationCenterModel
@@ -41,12 +42,16 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._context = context
         self._settings = settings or QSettings("SP-Farms", "SP-Farms")
-        self._workspace = WorkspaceLayout()
         self._pages = QStackedWidget()
         self._nav_buttons: dict[str, QPushButton] = {}
         self._theme = ThemeMode.DARK
         self.navigation = NavigationService(self.navigate)
         self.notifications = NotificationCenterModel()
+        self.device_manager_view = DeviceManagerView(
+            self._context.device_service,
+            self._settings,
+        )
+        self._workspace = WorkspaceLayout(self.device_manager_view.rail_model)
         self.setObjectName("mainWindow")
         self.setWindowTitle("SP-Farms")
         self.setMinimumSize(1024, 680)
@@ -67,6 +72,8 @@ class MainWindow(QMainWindow):
         self._pages.setCurrentIndex(index)
         for name, button in self._nav_buttons.items():
             button.setChecked(name == section)
+        if section == "Devices" and self.device_manager_view.model.rowCount() == 0:
+            self.device_manager_view.refresh()
 
     def set_theme(self, mode: ThemeMode) -> None:
         self._theme = mode
@@ -116,6 +123,8 @@ class MainWindow(QMainWindow):
             elif section == "Automation":
                 self.job_queue_view = JobQueueView(self._context.job_service)
                 self._pages.addWidget(self.job_queue_view)
+            elif section == "Devices":
+                self._pages.addWidget(self.device_manager_view)
             else:
                 placeholder = QLabel(f"{section} workspace")
                 placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)

@@ -79,6 +79,10 @@ class PhysicalAndroidProvider(DeviceProviderPort):
                     adb_serial=dev.serial,
                     is_running=is_running,
                     resolution=dev.resolution,
+                    state=dev.state,
+                    android_version=dev.android_version,
+                    last_heartbeat=dev.last_heartbeat,
+                    network_state=classify_transport(dev.serial).value,
                 )
             )
             idx += 1

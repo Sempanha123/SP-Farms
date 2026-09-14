@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
@@ -65,6 +66,10 @@ class EmulatorInstance:
     resolution: tuple[int, int] | None = None
     dpi: int | None = None
     install_path: Path | None = None
+    state: DeviceState | None = None
+    android_version: str | None = None
+    last_heartbeat: datetime | None = None
+    network_state: str | None = None
 
     @property
     def display_name(self) -> str:

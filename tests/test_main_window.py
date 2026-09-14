@@ -5,7 +5,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QSettings
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QApplication, QSplitter
+from PySide6.QtWidgets import QApplication, QSplitter, QTableView
 
 from sp_farms.app.main_window import MainWindow
 from sp_farms.application.context import ApplicationContext
@@ -49,6 +49,8 @@ def test_navigation_changes_workspace(tmp_path: Path) -> None:
 
     assert window.current_section == "Devices"
     assert window._nav_buttons["Devices"].isChecked()
+    assert window._pages.currentWidget() is window.device_manager_view
+    assert window.findChild(QTableView, "deviceTable") is not None
     window.close()
 
 

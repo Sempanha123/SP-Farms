@@ -26,9 +26,12 @@ from sqlalchemy import (
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
+from sp_farms.application.device_profiles import DeviceProfileRepository
 from sp_farms.application.jobs import JobRepository
 from sp_farms.application.unit_of_work import UnitOfWork
+from sp_farms.domain.device_management import DeviceProfile
 from sp_farms.domain.jobs import Job, JobEvent, JobState
+from sp_farms.domain.providers import DeviceProviderType
 from sp_farms.domain.secrets import SecretReference, SecretType
 
 
@@ -83,6 +86,26 @@ class SecretMetadata(EntityMixin, Base):
             vault_ref=self.vault_ref,
             created_at=self.created_at,
             updated_at=self.updated_at,
+        )
+
+
+class DeviceProfileModel(EntityMixin, Base):
+    __tablename__ = "device_profiles"
+    __table_args__ = (
+        Index("ux_device_profiles_identity", "provider", "external_id", unique=True),
+    )
+
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    alias: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    def to_profile(self) -> DeviceProfile:
+        return DeviceProfile(
+            provider=DeviceProviderType(self.provider),
+            external_id=self.external_id,
+            alias=self.alias,
+            notes=self.notes,
         )
 
 
@@ -193,6 +216,48 @@ def _as_utc(value: datetime) -> datetime:
 
 def _optional_as_utc(value: datetime | None) -> datetime | None:
     return _as_utc(value) if value is not None else None
+
+
+class SqlAlchemyDeviceProfileRepository(DeviceProfileRepository):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyDeviceProfileRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def get(self, provider: DeviceProviderType, external_id: str) -> DeviceProfile | None:
+        model = (
+            self._session.query(DeviceProfileModel)
+            .filter_by(provider=provider.value, external_id=external_id)
+            .one_or_none()
+        )
+        return model.to_profile() if model else None
+
+    def list_all(self) -> Sequence[DeviceProfile]:
+        models = self._session.query(DeviceProfileModel).order_by(DeviceProfileModel.id).all()
+        return tuple(model.to_profile() for model in models)
+
+    def save(self, profile: DeviceProfile) -> None:
+        model = (
+            self._session.query(DeviceProfileModel)
+            .filter_by(provider=profile.provider.value, external_id=profile.external_id)
+            .one_or_none()
+        )
+        if model is None:
+            self._session.add(
+                DeviceProfileModel(
+                    provider=profile.provider.value,
+                    external_id=profile.external_id,
+                    alias=profile.alias,
+                    notes=profile.notes,
+                )
+            )
+        else:
+            model.alias = profile.alias
+            model.notes = profile.notes
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
 
 
 class SqlAlchemyJobRepository(JobRepository):

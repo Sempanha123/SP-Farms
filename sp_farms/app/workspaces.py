@@ -1,10 +1,11 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QAbstractItemModel, Qt
 from PySide6.QtGui import QStandardItemModel
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
+    QListView,
     QPushButton,
     QSplitter,
     QVBoxLayout,
@@ -22,7 +23,11 @@ from sp_farms.app.widgets import (
 
 
 class DeviceRail(Panel):
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        model: QAbstractItemModel | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self.setObjectName("deviceRail")
         self.setMinimumWidth(220)
@@ -39,16 +44,16 @@ class DeviceRail(Panel):
         header.addStretch()
         header.addWidget(refresh)
         layout.addLayout(header)
-        layout.addWidget(QLineEdit("Search devices"))
-        layout.addWidget(StatusChip("0 online", "neutral"))
-        layout.addWidget(
-            EmptyState(
-                "No devices found",
-                "Connect an authorized Android device or configure an emulator provider.",
-                "Add device",
-            )
-        )
-        layout.addStretch()
+        search = QLineEdit()
+        search.setPlaceholderText("Search devices")
+        layout.addWidget(search)
+        layout.addWidget(StatusChip("Connected fleet", "neutral"))
+        self.list_view = QListView()
+        self.list_view.setObjectName("deviceRailList")
+        self.list_view.setUniformItemSizes(True)
+        if model is not None:
+            self.list_view.setModel(model)
+        layout.addWidget(self.list_view, stretch=1)
 
 
 class ManagementWorkspace(QWidget):
@@ -99,7 +104,11 @@ class JobQueueDrawer(Panel):
 
 
 class WorkspaceLayout(QWidget):
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        device_model: QAbstractItemModel | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         root = QVBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 8)
@@ -108,7 +117,7 @@ class WorkspaceLayout(QWidget):
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setObjectName("workspaceSplitter")
         splitter.setChildrenCollapsible(False)
-        splitter.addWidget(DeviceRail())
+        splitter.addWidget(DeviceRail(device_model))
         splitter.addWidget(ManagementWorkspace())
         self.job_queue = JobQueueDrawer()
         splitter.addWidget(self.job_queue)

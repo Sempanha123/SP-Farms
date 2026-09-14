@@ -48,6 +48,10 @@ Background jobs run on a bounded worker pool behind an application supervisor. C
 
 The operator job queue presentation relies on a clean Qt Model-View-Proxy architecture. `JobTableModel` handles dense tabular data with formatting and metrics caching, while `JobQueueFilterProxyModel` handles client-side filtering by job state and search queries without database re-queries. Inspector details and batch actions inspect current selection validity across multiple items, protecting terminal jobs from invalid commands while maintaining responsiveness on queues with thousands of entries.
 
+## Device management projection and persistence
+
+Provider discovery is projected into immutable `ManagedDevice` rows keyed by provider and stable ADB identity. Qt models consume those rows but never execute provider subprocesses; discovery and device actions run through `DeviceService` on worker threads. Alias and notes are durable domain profile data in SQLite, while saved filters remain local `QSettings` presentation preferences. Optional metrics remain absent rather than triggering one health-check subprocess per table row. Emulator window arrangement stays unavailable until the provider port exposes it uniformly.
+
 ## ADB Abstraction and Discovery
 
 Direct subprocess execution is strictly encapsulated behind the `AdbPort` protocol. Neither UI components nor higher-level automation services invoke the `adb` binary or parse command-line output directly. Executable resolution checks user overrides, environment variables, and standard Windows SDK paths. Stderr error categorization converts CLI error strings into typed domain exceptions (`AdbTimeoutError`, `AdbUnauthorizedError`, `AdbOfflineError`, `AdbDeviceNotFoundError`). Deterministic simulation through `FakeAdbAdapter` provides complete offline testability across device authorization and failure scenarios without hardware dependencies.

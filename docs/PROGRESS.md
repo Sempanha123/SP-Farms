@@ -165,6 +165,16 @@ Status: complete
 - Integrated `PhysicalAndroidProvider` into `ApplicationContext` and application bootstrap.
 - Added tests for transport classification, battery parsing, lifecycle limitations, metadata queries, APK installation, offline/unauthorized troubleshooting, and diagnostic metrics.
 
+## Phase 16 — Device Manager Workspace
 
+Status: complete
 
+- Added a unified device service aggregating LDPlayer, MuMu, and physical endpoints while isolating unavailable providers.
+- Added a dense model/view device table with provider, identity, state, Android, assignment, app, resource, network, resolution, and heartbeat columns.
+- Added live search, provider/state filters, persistent saved filter presets, multi-select, and select-all.
+- Added capability-aware start, stop, restart, app launch, screenshot, and log actions on background workers.
+- Connected the account workspace rail and Devices page to one shared device model.
+- Added durable device aliases and notes through SQLite profile persistence and Alembic migration 0004.
+- Kept optional emulator window arrangement disabled because no unified provider capability exists.
+- Added mixed-provider, action-state, persistence, filter, artifact, and 1,500-device performance tests.
 

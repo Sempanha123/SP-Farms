@@ -7,6 +7,7 @@ from sp_farms.application.unit_of_work import UnitOfWork
 
 if TYPE_CHECKING:
     from sp_farms.application.adb import AdbPort
+    from sp_farms.application.device_service import DeviceService
     from sp_farms.application.job_service import JobService
     from sp_farms.application.providers import DeviceProviderPort
     from sp_farms.application.worker import WorkerSupervisor
@@ -24,6 +25,7 @@ class ApplicationContext:
     ldplayer: "DeviceProviderPort | None" = None
     mumu: "DeviceProviderPort | None" = None
     physical: "DeviceProviderPort | None" = None
+    device_service: "DeviceService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 
