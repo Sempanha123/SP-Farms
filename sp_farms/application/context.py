@@ -19,9 +19,11 @@ if TYPE_CHECKING:
     from sp_farms.application.caption_ai_service import CaptionAIService
     from sp_farms.application.composer_service import ComposerService
     from sp_farms.application.content_service import ContentService
+    from sp_farms.application.crash_recovery_service import CrashRecoveryService
     from sp_farms.application.device_analytics_service import DeviceAnalyticsService
     from sp_farms.application.device_pool_service import DevicePoolService
     from sp_farms.application.device_service import DeviceService
+    from sp_farms.application.health_service import HealthService
     from sp_farms.application.hybrid_publishing_service import HybridPublishingService
     from sp_farms.application.i18n_service import I18nService
     from sp_farms.application.job_service import JobService
@@ -36,6 +38,7 @@ if TYPE_CHECKING:
     from sp_farms.application.scheduler_service import SchedulerService
     from sp_farms.application.security_service import SecurityService
     from sp_farms.application.snapshot_service import SnapshotService
+    from sp_farms.application.update_service import UpdateService
     from sp_farms.application.worker import WorkerSupervisor
 
 ShutdownHook = Callable[[], None]
@@ -78,6 +81,9 @@ class ApplicationContext:
     plugin_service: "PluginService | None" = None
     licensing_service: "LicensingService | None" = None
     i18n_service: "I18nService | None" = None
+    crash_recovery_service: "CrashRecoveryService | None" = None
+    health_service: "HealthService | None" = None
+    update_service: "UpdateService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

@@ -5,6 +5,7 @@ from PySide6.QtCore import QSettings, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QFileDialog,
     QFormLayout,
     QFrame,
     QHBoxLayout,
@@ -12,6 +13,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QSpinBox,
@@ -585,6 +587,25 @@ class SettingsWorkspace(QWidget):
                 self.update_channel,
             )
 
+            update_action_row = QWidget()
+            u_layout = QHBoxLayout(update_action_row)
+            u_layout.setContentsMargins(0, 0, 0, 0)
+            self.check_updates_btn = QPushButton("Check for Updates Now")
+            self.check_updates_btn.clicked.connect(self._on_check_updates_clicked)
+            self.update_status_label = QLabel("Version status ready")
+            self.update_status_label.setProperty("muted", True)
+            u_layout.addWidget(self.check_updates_btn)
+            u_layout.addWidget(self.update_status_label)
+            u_layout.addStretch()
+            self._add_field(
+                form,
+                section,
+                "updates/action",
+                "Software Updates",
+                "Query distribution server for latest version",
+                update_action_row,
+            )
+
         elif section == "Diagnostics":
             self.log_level = QComboBox()
             self.log_level.addItems(("INFO", "DEBUG", "WARNING", "ERROR"))
@@ -607,6 +628,35 @@ class SettingsWorkspace(QWidget):
                 "Operational Telemetry",
                 "Track uptime and provider error statistics",
                 self.enable_telemetry,
+            )
+
+            health_action_row = QWidget()
+            h_layout = QVBoxLayout(health_action_row)
+            h_layout.setContentsMargins(0, 0, 0, 0)
+            h_layout.setSpacing(6)
+            h_btn_row = QHBoxLayout()
+            self.run_health_btn = QPushButton("Run System Health Checks")
+            self.run_health_btn.clicked.connect(self._on_run_health_checks)
+            self.export_bundle_btn = QPushButton("Export Diagnostics Bundle")
+            self.export_bundle_btn.clicked.connect(self._on_export_diagnostics)
+            h_btn_row.addWidget(self.run_health_btn)
+            h_btn_row.addWidget(self.export_bundle_btn)
+            h_btn_row.addStretch()
+            h_layout.addLayout(h_btn_row)
+
+            self.health_results_label = QLabel(
+                "Click 'Run System Health Checks' to verify all components"
+            )
+            self.health_results_label.setProperty("muted", True)
+            h_layout.addWidget(self.health_results_label)
+
+            self._add_field(
+                form,
+                section,
+                "diagnostics/health",
+                "System Health & Probes",
+                "Verify database, ADB, providers, vault, storage, and connectivity",
+                health_action_row,
             )
 
     def _add_field(
@@ -936,6 +986,65 @@ class SettingsWorkspace(QWidget):
 
         self.status_label.setText(f"↺ {section} reset to default values (click Save to apply).")
         self.status_label.setStyleSheet("color: #ffb74d;")
+
+    def _on_check_updates_clicked(self) -> None:
+        if self._context and self._context.update_service:
+            channel = self.update_channel.currentText().casefold()
+            info = self._context.update_service.check_for_updates(channel=channel)
+            if info.is_update_available:
+                self.update_status_label.setText(
+                    f"Update available: v{info.latest_version} (current: v{info.current_version})"
+                )
+                self.update_status_label.setStyleSheet("color: #81c784; font-weight: bold;")
+            else:
+                self.update_status_label.setText(f"SP-Farms v{info.current_version} is up to date.")
+                self.update_status_label.setStyleSheet("color: #90caf9;")
+        else:
+            self.update_status_label.setText("Update service unavailable.")
+
+    def _on_run_health_checks(self) -> None:
+        if self._context and self._context.health_service:
+            summary = self._context.health_service.run_all_checks()
+            self.health_results_label.setText(
+                f"Status: {summary.overall_status.value.upper()} | "
+                f"{summary.healthy_count} healthy, {summary.degraded_count} degraded, "
+                f"{summary.critical_count} critical"
+            )
+            if summary.is_fully_healthy:
+                self.health_results_label.setStyleSheet("color: #81c784; font-weight: bold;")
+            else:
+                self.health_results_label.setStyleSheet("color: #ffb74d; font-weight: bold;")
+        else:
+            self.health_results_label.setText("Health service not connected.")
+
+    def _on_export_diagnostics(self) -> None:
+        destination, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Diagnostics Bundle",
+            "sp_farms_diagnostics.zip",
+            "Zip Archives (*.zip)",
+        )
+        if not destination:
+            return
+
+        dest_path = Path(destination)
+        if not (self._context and self._context.health_service):
+            QMessageBox.warning(self, "Export Error", "Health service is not available.")
+            return
+
+        try:
+            self._context.health_service.export_diagnostics_bundle(dest_path)
+            QMessageBox.information(
+                self,
+                "Export Complete",
+                f"Diagnostics bundle saved successfully to:\n{dest_path}",
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Export Error",
+                f"Failed to export diagnostics bundle:\n{e}",
+            )
 
     def save(self) -> None:
         self.save_all()

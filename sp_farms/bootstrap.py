@@ -1,5 +1,7 @@
+import logging
 from pathlib import Path
 
+from sp_farms import __version__
 from sp_farms.application.account_exchange_service import AccountExchangeService
 from sp_farms.application.account_onboarding_service import AccountOnboardingService
 from sp_farms.application.account_service import AccountService
@@ -15,9 +17,11 @@ from sp_farms.application.caption_ai_service import CaptionAIService
 from sp_farms.application.composer_service import ComposerService
 from sp_farms.application.content_service import ContentService
 from sp_farms.application.context import ApplicationContext
+from sp_farms.application.crash_recovery_service import CrashRecoveryService
 from sp_farms.application.device_analytics_service import DeviceAnalyticsService
 from sp_farms.application.device_pool_service import DevicePoolService
 from sp_farms.application.device_service import DeviceService
+from sp_farms.application.health_service import HealthService
 from sp_farms.application.hybrid_publishing_service import HybridPublishingService
 from sp_farms.application.i18n_service import I18nService
 from sp_farms.application.job_service import JobService
@@ -38,11 +42,12 @@ from sp_farms.application.scheduler_service import SchedulerService
 from sp_farms.application.secret_service import SecretService
 from sp_farms.application.security_service import SecurityService
 from sp_farms.application.snapshot_service import SnapshotService
+from sp_farms.application.update_service import UpdateService
 from sp_farms.application.worker import FakeStressJobHandler, WorkerSupervisor
 from sp_farms.domain.meta import MetaOAuthConfig
 from sp_farms.infrastructure.adb import SubprocessAdbClient
-from sp_farms.infrastructure.assets_repository import SqlAlchemyAssetRepository
 from sp_farms.infrastructure.appium.fake_driver import FakeAppiumDriver
+from sp_farms.infrastructure.assets_repository import SqlAlchemyAssetRepository
 from sp_farms.infrastructure.clock import SystemClock
 from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import (
@@ -63,6 +68,7 @@ from sp_farms.infrastructure.database import (
     SqlAlchemySecretRepository,
     run_migrations,
 )
+from sp_farms.infrastructure.diagnostics import create_diagnostics_bundle
 from sp_farms.infrastructure.fake_ai_provider import FakeMultilingualAIProvider
 from sp_farms.infrastructure.logging import configure_logging
 from sp_farms.infrastructure.meta.analytics_adapter import FakeAnalyticsAdapter
@@ -79,6 +85,18 @@ from sp_farms.infrastructure.vault import KeyringVault
 def create_application(config_path: Path | None = None) -> ApplicationContext:
     config = load_config(config_path)
     log_handler = configure_logging(config)
+
+    # Crash recovery and safe mode evaluation
+    marker_path = config.database_path.parent / ".startup_marker.json"
+    crash_recovery_service = CrashRecoveryService(
+        marker_path=marker_path,
+        database_path=config.database_path,
+    )
+    safe_mode_state = crash_recovery_service.evaluate_startup()
+    if safe_mode_state.safe_mode_active:
+        logging.getLogger(__name__).warning("Booting in Safe Mode: %s", safe_mode_state.reason)
+    crash_recovery_service.record_startup()
+
     database = Database(config.database_path)
     migrations_path = Path(__file__).resolve().parents[1] / "migrations"
     run_migrations(database, migrations_path)
@@ -291,6 +309,43 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
 
     licensing_service = LicensingService()
     i18n_service = I18nService()
+    update_service = UpdateService(current_version=__version__)
+    def _probe_adb() -> tuple[bool, str]:
+        avail = bool(adb.adb_path and adb.adb_path.exists())
+        return avail, "ADB ready" if avail else "ADB not found"
+
+    def _probe_ldplayer() -> tuple[bool, str]:
+        try:
+            ldplayer.resolve_executable()
+            return True, "LDPlayer detected"
+        except Exception:
+            return False, "LDPlayer not found"
+
+    def _probe_mumu() -> tuple[bool, str]:
+        try:
+            mumu.resolve_executable()
+            return True, "MuMu detected"
+        except Exception:
+            return False, "MuMu not found"
+
+    health_service = HealthService(
+        config=config,
+        vault_probe=lambda: True,
+        adb_probe=_probe_adb,
+        ldplayer_probe=_probe_ldplayer,
+        mumu_probe=_probe_mumu,
+        physical_probe=lambda: (True, f"{len(physical.list_instances())} physical device(s)"),
+        scheduler_probe=lambda: (True, "Scheduler operational"),
+        workers_probe=lambda: (
+            supervisor.is_running,
+            "Worker supervisor active" if supervisor.is_running else "Worker supervisor idle",
+        ),
+        export_bundle_handler=lambda dest, summary: create_diagnostics_bundle(
+            destination=dest,
+            config=config,
+            health_summary=summary,
+        ),
+    )
 
     plugins_dir = config.database_path.parent / "plugins"
     plugins_dir.mkdir(parents=True, exist_ok=True)
@@ -336,7 +391,11 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         plugin_service=plugin_service,
         licensing_service=licensing_service,
         i18n_service=i18n_service,
+        crash_recovery_service=crash_recovery_service,
+        health_service=health_service,
+        update_service=update_service,
     )
+    context.add_shutdown_hook(crash_recovery_service.record_clean_shutdown)
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)
     context.add_shutdown_hook(supervisor.stop)

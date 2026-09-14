@@ -549,6 +549,18 @@ Status: complete
 - Fixed schema parity across append-only log tables (`analytics_snapshots`, `publish_attempts`) removing soft-deletion column drift.
 - Added 6 automated tests in `tests/test_performance.py` (total test suite at 288/288 passing).
 
+## Phase 49 — Health Checks, Crash-Safe Startup, Safe Mode, and Recovery
+
+Status: complete
+
+- Created domain models for health checks, version information, and safe mode in `sp_farms/domain/health.py`.
+- Built `CrashRecoveryService` in `sp_farms/application/crash_recovery_service.py` with crash-safe startup marker, unclean shutdown detection, automatic safe mode activation upon consecutive crashes, SQLite database integrity check (`PRAGMA quick_check`, `PRAGMA foreign_key_check`, `PRAGMA integrity_check`), and automatic corrupted database quarantining (`.corrupt.<timestamp>`).
+- Built `UpdateService` and semantic version comparison (`parse_semver`, `compare_versions`, `is_newer_version`) in `sp_farms/application/update_service.py`.
+- Implemented comprehensive `HealthService` in `sp_farms/application/health_service.py` running 11 diagnostic probes: database, vault, ADB, LDPlayer, MuMu, physical devices, Meta config, storage, scheduler, workers, and network.
+- Enhanced diagnostics bundle export (`sp_farms/infrastructure/diagnostics.py`) to include `health_report.json` alongside `runtime.json` and redacted logs.
+- Added interactive update check, live health check display, and diagnostics bundle export to Settings Center (`sp_farms/app/settings_workspace.py`).
+- Added 6 automated tests in `tests/test_health_and_diagnostics.py` (total test suite at 294/294 passing).
+
 
 
 
