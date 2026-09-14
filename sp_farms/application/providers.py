@@ -3,7 +3,12 @@ from pathlib import Path
 from typing import Protocol
 
 from sp_farms.domain.devices import DeviceInfo
-from sp_farms.domain.providers import DeviceProviderType, EmulatorInstance, ProviderCapabilities
+from sp_farms.domain.providers import (
+    DeviceProviderType,
+    EmulatorInstance,
+    ProviderCapabilities,
+    TroubleshootingGuidance,
+)
 
 
 class ProviderError(Exception):
@@ -47,6 +52,10 @@ class DeviceProviderPort(Protocol):
 
     def collect_logs(self, index_or_name: int | str, lines: int = 100) -> str: ...
 
+    def install_apk(self, index_or_name: int | str, apk_path: Path) -> None: ...
+
     def health_check(self, index_or_name: int | str) -> DeviceInfo | None: ...
+
+    def get_troubleshooting(self, index_or_name: int | str) -> TroubleshootingGuidance: ...
 
     def diagnostics(self) -> dict[str, object]: ...

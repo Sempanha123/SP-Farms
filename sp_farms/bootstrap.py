@@ -10,6 +10,7 @@ from sp_farms.infrastructure.database import Database, SqlAlchemyJobRepository, 
 from sp_farms.infrastructure.logging import configure_logging
 from sp_farms.infrastructure.providers.ldplayer import LdPlayerProvider
 from sp_farms.infrastructure.providers.mumu import MuMuProvider
+from sp_farms.infrastructure.providers.physical import PhysicalAndroidProvider
 
 
 def create_application(config_path: Path | None = None) -> ApplicationContext:
@@ -30,6 +31,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
     adb = SubprocessAdbClient(config.adb_path)
     ldplayer = LdPlayerProvider(config.ldplayer_path, adb_port=adb)
     mumu = MuMuProvider(config.mumu_path, adb_port=adb)
+    physical = PhysicalAndroidProvider(adb_port=adb)
 
     context = ApplicationContext(
         clock=clock,
@@ -39,6 +41,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         adb=adb,
         ldplayer=ldplayer,
         mumu=mumu,
+        physical=physical,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

@@ -1,6 +1,9 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+
+from sp_farms.domain.devices import DeviceState
 
 
 class DeviceProviderType(StrEnum):
@@ -8,6 +11,13 @@ class DeviceProviderType(StrEnum):
     MUMU = "mumu"
     PHYSICAL = "physical"
     GENERIC_ADB = "generic_adb"
+
+
+class ConnectionTransport(StrEnum):
+    USB = "usb"
+    WIFI = "wifi"
+    EMULATOR = "emulator"
+    UNKNOWN = "unknown"
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +30,28 @@ class ProviderCapabilities:
     can_collect_logs: bool = True
     can_create_instances: bool = False
     can_clone_instances: bool = False
+    can_install_apk: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class TroubleshootingGuidance:
+    state: DeviceState
+    title: str
+    steps: Sequence[str]
+
+
+@dataclass(frozen=True, slots=True)
+class PhysicalDeviceMetadata:
+    serial: str
+    transport: ConnectionTransport
+    manufacturer: str | None = None
+    brand: str | None = None
+    model: str | None = None
+    android_version: str | None = None
+    sdk_version: int | None = None
+    battery_level: int | None = None
+    battery_charging: bool | None = None
+    resolution: tuple[int, int] | None = None
 
 
 @dataclass(frozen=True, slots=True)

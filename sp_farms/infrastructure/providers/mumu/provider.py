@@ -19,12 +19,18 @@ from sp_farms.application.providers import (
     ProviderOperationTimeoutError,
 )
 from sp_farms.domain.devices import DeviceInfo, DeviceState
-from sp_farms.domain.providers import DeviceProviderType, EmulatorInstance, ProviderCapabilities
+from sp_farms.domain.providers import (
+    DeviceProviderType,
+    EmulatorInstance,
+    ProviderCapabilities,
+    TroubleshootingGuidance,
+)
 from sp_farms.infrastructure.providers.mumu.locator import find_mumu_executable
 from sp_farms.infrastructure.providers.mumu.parser import (
     map_mumu_serial,
     parse_mumu_instances,
 )
+from sp_farms.infrastructure.providers.troubleshooting import get_default_troubleshooting_guidance
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +233,29 @@ class MuMuProvider(DeviceProviderPort):
                     resolution=inst.resolution,
                 )
         return None
+
+    def install_apk(self, index_or_name: int | str, apk_path: Path) -> None:
+        index = self._resolve_index(index_or_name)
+        serial = self.get_adb_serial(index)
+        if not apk_path.is_file():
+            raise FileNotFoundError(f"APK file not found at {apk_path}")
+
+        if self._adb_port is not None:
+            self._adb_port.run_command(
+                ["install", "-r", str(apk_path)],
+                serial=serial,
+                timeout=60.0,
+            )
+            return
+
+        raise ProviderError(
+            "APK installation requires an active ADB port connection to the MuMu instance"
+        )
+
+    def get_troubleshooting(self, index_or_name: int | str) -> TroubleshootingGuidance:
+        health = self.health_check(index_or_name)
+        state = health.state if health else DeviceState.UNKNOWN
+        return get_default_troubleshooting_guidance(state)
 
     def diagnostics(self) -> dict[str, object]:
         try:

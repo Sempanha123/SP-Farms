@@ -8,8 +8,14 @@ from sp_farms.application.providers import (
     ProviderOperationTimeoutError,
 )
 from sp_farms.domain.devices import DeviceInfo, DeviceState
-from sp_farms.domain.providers import DeviceProviderType, EmulatorInstance, ProviderCapabilities
+from sp_farms.domain.providers import (
+    DeviceProviderType,
+    EmulatorInstance,
+    ProviderCapabilities,
+    TroubleshootingGuidance,
+)
 from sp_farms.infrastructure.providers.ldplayer.parser import map_ldplayer_serial
+from sp_farms.infrastructure.providers.troubleshooting import get_default_troubleshooting_guidance
 
 # Minimal 1x1 valid PNG binary
 _TINY_PNG = (
@@ -182,6 +188,20 @@ class FakeLdPlayerProvider(DeviceProviderPort):
             model=inst.name,
             resolution=inst.resolution,
         )
+
+    def install_apk(self, index_or_name: int | str, apk_path: Path) -> None:
+        idx = self._resolve_index(index_or_name)
+        inst = self._instances[idx]
+        if not inst.is_running:
+            raise RuntimeError("Cannot install APK: instance is not running")
+        if not apk_path.exists():
+            raise FileNotFoundError(f"APK not found at {apk_path}")
+
+    def get_troubleshooting(self, index_or_name: int | str) -> TroubleshootingGuidance:
+        idx = self._resolve_index(index_or_name)
+        inst = self._instances[idx]
+        state = DeviceState.ONLINE if inst.is_running else DeviceState.OFFLINE
+        return get_default_troubleshooting_guidance(state)
 
     def diagnostics(self) -> dict[str, object]:
         return {

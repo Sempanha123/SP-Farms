@@ -86,6 +86,11 @@ class FakeAdbAdapter(AdbPort):
                 output_lines.append(f"{d.serial}\t{d.state.value} model:{model_str}")
             return AdbCommandResult(stdout="\n".join(output_lines) + "\n", stderr="", returncode=0)
 
+        if args and args[0] == "logcat":
+            return AdbCommandResult(
+                stdout=f"[Logcat output for {serial}]\n", stderr="", returncode=0
+            )
+
         return AdbCommandResult(stdout="OK\n", stderr="", returncode=0)
 
     def shell(
@@ -118,6 +123,14 @@ class FakeAdbAdapter(AdbPort):
 
         if command.strip() == "wm size":
             return f"Physical size: {dev.resolution[0]}x{dev.resolution[1]}\n"
+
+        if command.strip() == "dumpsys battery":
+            return (
+                "Current Battery Service state:\n"
+                "  AC powered: false\n"
+                "  USB powered: true\n"
+                "  level: 90\n"
+            )
 
         if command.strip() == "echo 1":
             return "1\n"

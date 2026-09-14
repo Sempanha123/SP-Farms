@@ -60,5 +60,10 @@ LDPlayer interaction is isolated behind `DeviceProviderPort`. The provider inter
 
 MuMu Player automation conforms to the unified `DeviceProviderPort` abstraction. Subprocess commands communicate with `MuMuManager.exe` using JSON API queries and player lifecycle actions (`launch_player`, `close_player`, `restart_player`, `launch_app`), with fallback to tabular line output parsing. ADB communication uses standard loopback ports (`127.0.0.1:{16384 + index * 32}`). Common diagnostics expose availability, executable paths, and instance metrics uniformly across providers, ensuring the operator interface can display mixed fleets of LDPlayer and MuMu instances without vendor-specific UI logic.
 
+## Physical Android Provider Integration
+
+Physical Android devices (connected via USB or Wi-Fi TCP/IP) conform to the identical `DeviceProviderPort` application protocol as virtual emulators. Hardware devices are classified by serial signature (distinguishing physical USB and Wi-Fi devices from emulator ports). Because physical devices cannot be cold-booted or shut down via software commands, remote power operations raise clear domain errors, while warm reboots, package installs, log collection, and screenshots execute uniformly via ADB. Hardware diagnostics capture device properties (`ro.product.model`, `ro.build.version.release`, etc.) and battery levels without hardware identity spoofing or tampering.
+
+
 
 

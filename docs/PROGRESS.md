@@ -151,5 +151,20 @@ Status: complete
 - Integrated MuMu provider into `ApplicationContext` and application bootstrap with non-secret `mumu_path` configuration support.
 - Added tests for serial mapping, JSON/tabular parsing, lifecycle operations, app launch, screenshot capture, diagnostics, and CLI error handling.
 
+## Phase 15 — Physical Android Provider
+
+Status: complete
+
+- Extended domain models with `ConnectionTransport` (USB, Wi-Fi, Emulator), `PhysicalDeviceMetadata` (manufacturer, brand, model, Android OS version, SDK version, battery level, battery charging, resolution), and `TroubleshootingGuidance`.
+- Extended `DeviceProviderPort` application protocol with `install_apk()` and `get_troubleshooting()` methods across all provider implementations.
+- Added transport classifier distinguishing USB hardware, local network Wi-Fi devices, and loopback/emulators.
+- Added battery parser extracting percentage and charging states from `dumpsys battery`.
+- Added contextual operator troubleshooting guidance for unauthorized, offline, bootloader, and unconfigured device states.
+- Implemented `PhysicalAndroidProvider` discovering physical USB and Wi-Fi devices, pulling hardware metadata, launching apps, installing APK packages, capturing screenshots, collecting logcat, and running diagnostics.
+- Implemented `FakePhysicalProvider` with simulated USB and Wi-Fi physical devices, battery state tracking, APK installation simulation, and failure injection.
+- Integrated `PhysicalAndroidProvider` into `ApplicationContext` and application bootstrap.
+- Added tests for transport classification, battery parsing, lifecycle limitations, metadata queries, APK installation, offline/unauthorized troubleshooting, and diagnostic metrics.
+
+
 
 

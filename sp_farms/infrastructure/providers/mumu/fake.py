@@ -8,8 +8,14 @@ from sp_farms.application.providers import (
     ProviderOperationTimeoutError,
 )
 from sp_farms.domain.devices import DeviceInfo, DeviceState
-from sp_farms.domain.providers import DeviceProviderType, EmulatorInstance, ProviderCapabilities
+from sp_farms.domain.providers import (
+    DeviceProviderType,
+    EmulatorInstance,
+    ProviderCapabilities,
+    TroubleshootingGuidance,
+)
 from sp_farms.infrastructure.providers.mumu.parser import map_mumu_serial
+from sp_farms.infrastructure.providers.troubleshooting import get_default_troubleshooting_guidance
 
 _TINY_PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f"
@@ -173,6 +179,20 @@ class FakeMuMuProvider(DeviceProviderPort):
             model=inst.name,
             resolution=inst.resolution,
         )
+
+    def install_apk(self, index_or_name: int | str, apk_path: Path) -> None:
+        idx = self._resolve_index(index_or_name)
+        inst = self._instances[idx]
+        if not inst.is_running:
+            raise RuntimeError("Cannot install APK: MuMu instance is not running")
+        if not apk_path.exists():
+            raise FileNotFoundError(f"APK not found at {apk_path}")
+
+    def get_troubleshooting(self, index_or_name: int | str) -> TroubleshootingGuidance:
+        idx = self._resolve_index(index_or_name)
+        inst = self._instances[idx]
+        state = DeviceState.ONLINE if inst.is_running else DeviceState.OFFLINE
+        return get_default_troubleshooting_guidance(state)
 
     def diagnostics(self) -> dict[str, object]:
         return {

@@ -23,6 +23,7 @@ class ApplicationContext:
     adb: "AdbPort | None" = None
     ldplayer: "DeviceProviderPort | None" = None
     mumu: "DeviceProviderPort | None" = None
+    physical: "DeviceProviderPort | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 
