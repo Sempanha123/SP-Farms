@@ -146,8 +146,7 @@ class MetaHttpClient(MetaClientPort):
         url = self._build_graph_url("me/accounts")
         headers = {"Authorization": f"Bearer {token}"}
         fields = (
-            "id,name,access_token,category,tasks,verification_status,"
-            "fan_count,followers_count,link"
+            "id,name,access_token,category,tasks,verification_status,fan_count,followers_count,link"
         )
         params = {"fields": fields}
         data = self._request("GET", url, headers=headers, params=params)

@@ -176,15 +176,23 @@ class AssetSyncService:
 
     def list_account_pages(self, account_id: str) -> list[Page]:
         """List all Pages for account."""
+        return self.list_all_pages(account_id)
+
+    def list_all_pages(self, account_id: str | None = None) -> list[Page]:
+        """List all Pages across all accounts or for a specific account."""
         with self._uow() as uow:
             repo = self._asset_repo_factory(uow)
-            return repo.list_pages_by_account(account_id)
+            return repo.list_all_pages(account_id=account_id)
 
     def list_account_groups(self, account_id: str) -> list[Group]:
         """List all Groups for account."""
+        return self.list_all_groups(account_id)
+
+    def list_all_groups(self, account_id: str | None = None) -> list[Group]:
+        """List all Groups across all accounts or for a specific account."""
         with self._uow() as uow:
             repo = self._asset_repo_factory(uow)
-            return repo.list_groups_by_account(account_id)
+            return repo.list_all_groups(account_id=account_id)
 
     def get_publishing_eligible_pages(self, account_id: str) -> list[Page]:
         """Return all healthy pages with publishing privileges."""

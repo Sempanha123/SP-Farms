@@ -100,6 +100,11 @@ Meta Graph API integration uses an explicit client port (`MetaClientPort`) with 
 
 Authorized Facebook Pages and Groups are modeled as immutable domain entities with explicit eligibility logic based on Meta tasks (`MANAGE`, `CREATE_CONTENT`) and group roles (`ADMIN`, `MODERATOR`). All page-specific access tokens returned by Meta are vaulted in the OS keyring alongside user tokens. Asset synchronization tolerates partial failures (e.g. Rate Limit on Groups preserves Page updates) and marks removed/inaccessible assets as `AssetHealthState.STALE` rather than immediately deleting them, preserving audit trails and operator context.
 
+## Pages & Groups Management Workspace Architecture
+
+The Pages and Groups workspace (`PagesGroupsWorkspace`) uses dual `QSortFilterProxyModel` layers on top of `QStandardItemModel` to handle dense multi-field filtering (text search, account association, health status, and publishing eligibility) entirely in-memory with zero UI thread blocking. Multi-account synchronization runs asynchronously via `QThreadPool` and `QRunnable`, keeping the desktop interface fully interactive during long-running Graph API requests. The right-hand inspector panel coordinates operational shortcuts directly into related workspaces (`Content`, `Automation`, `Analytics`) and maintains quick asset identification tools (clipboard copying of Meta asset IDs, CSV asset exports, and manual staleness tagging).
+
+
 
 
 

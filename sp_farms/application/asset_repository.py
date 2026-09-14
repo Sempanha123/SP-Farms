@@ -23,6 +23,10 @@ class AssetRepository(Protocol):
         """List all Pages authorized for an account."""
         ...
 
+    def list_all_pages(self, account_id: str | None = None) -> list[Page]:
+        """List all Pages across all accounts or for a specific account."""
+        ...
+
     def delete_page(self, id: str) -> None:
         """Remove Page record."""
         ...
@@ -41,6 +45,10 @@ class AssetRepository(Protocol):
 
     def list_groups_by_account(self, account_id: str) -> list[Group]:
         """List all Groups associated with an account."""
+        ...
+
+    def list_all_groups(self, account_id: str | None = None) -> list[Group]:
+        """List all Groups across all accounts or for a specific account."""
         ...
 
     def delete_group(self, id: str) -> None:

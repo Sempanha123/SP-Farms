@@ -202,12 +202,13 @@ class SqlAlchemyAssetRepository(AssetRepository):
         return model.to_entity() if model else None
 
     def list_pages_by_account(self, account_id: str) -> list[Page]:
-        models = (
-            self._session.query(FacebookPageModel)
-            .filter_by(account_id=account_id)
-            .order_by(FacebookPageModel.name)
-            .all()
-        )
+        return self.list_all_pages(account_id=account_id)
+
+    def list_all_pages(self, account_id: str | None = None) -> list[Page]:
+        query = self._session.query(FacebookPageModel)
+        if account_id is not None:
+            query = query.filter_by(account_id=account_id)
+        models = query.order_by(FacebookPageModel.name).all()
         return [m.to_entity() for m in models]
 
     def delete_page(self, id: str) -> None:
@@ -241,12 +242,13 @@ class SqlAlchemyAssetRepository(AssetRepository):
         return model.to_entity() if model else None
 
     def list_groups_by_account(self, account_id: str) -> list[Group]:
-        models = (
-            self._session.query(FacebookGroupModel)
-            .filter_by(account_id=account_id)
-            .order_by(FacebookGroupModel.name)
-            .all()
-        )
+        return self.list_all_groups(account_id=account_id)
+
+    def list_all_groups(self, account_id: str | None = None) -> list[Group]:
+        query = self._session.query(FacebookGroupModel)
+        if account_id is not None:
+            query = query.filter_by(account_id=account_id)
+        models = query.order_by(FacebookGroupModel.name).all()
         return [m.to_entity() for m in models]
 
     def delete_group(self, id: str) -> None:

@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from sp_farms.app.account_workspace import AccountWorkspace
+from sp_farms.app.asset_workspace import PagesGroupsWorkspace
 from sp_farms.app.command_palette import CommandPalette
 from sp_farms.app.device_manager import DeviceManagerView
 from sp_farms.app.home_dashboard import HomeDashboard
@@ -95,6 +96,18 @@ class MainWindow(QMainWindow):
         self._workspace.automation_route_requested.connect(lambda: self.navigate("Automation"))
         self.account_workspace.success_action_requested.connect(self._route_account_action)
         self.account_workspace.local_navigation_requested.connect(self.navigate)
+        self.pages_workspace = PagesGroupsWorkspace(
+            self._context.asset_sync_service,
+            self._context.account_service,
+        )
+        self.pages_workspace.set_tab("Pages")
+        self.pages_workspace.route_requested.connect(self.navigate)
+        self.groups_workspace = PagesGroupsWorkspace(
+            self._context.asset_sync_service,
+            self._context.account_service,
+        )
+        self.groups_workspace.set_tab("Groups")
+        self.groups_workspace.route_requested.connect(self.navigate)
         self.setObjectName("mainWindow")
         self.setWindowTitle("SP-Farms")
         self.setMinimumSize(1024, 680)
@@ -121,6 +134,12 @@ class MainWindow(QMainWindow):
         elif section == "Accounts":
             self.account_workspace.refresh()
             self._workspace.refresh_jobs()
+        elif section == "Pages":
+            self.pages_workspace.set_tab("Pages")
+            self.pages_workspace.refresh()
+        elif section == "Groups":
+            self.groups_workspace.set_tab("Groups")
+            self.groups_workspace.refresh()
         elif section == "Automation":
             self.job_queue_view.refresh()
         elif section == "Devices" and self.device_manager_view.model.rowCount() == 0:
@@ -208,23 +227,9 @@ class MainWindow(QMainWindow):
             elif section == "Devices":
                 self._pages.addWidget(self.devices_workspace)
             elif section == "Pages":
-                workspace = UnavailableWorkspace(
-                    "Pages",
-                    "Phases 24–26",
-                    "official Meta API connection and authorized Page sync",
-                    "Accounts",
-                )
-                workspace.route_requested.connect(self.navigate)
-                self._pages.addWidget(workspace)
+                self._pages.addWidget(self.pages_workspace)
             elif section == "Groups":
-                workspace = UnavailableWorkspace(
-                    "Groups",
-                    "Phases 24–26",
-                    "official Meta API connection and authorized Group sync",
-                    "Accounts",
-                )
-                workspace.route_requested.connect(self.navigate)
-                self._pages.addWidget(workspace)
+                self._pages.addWidget(self.groups_workspace)
             elif section == "Content":
                 workspace = UnavailableWorkspace(
                     "Content",

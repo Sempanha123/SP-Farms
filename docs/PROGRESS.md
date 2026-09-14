@@ -283,18 +283,19 @@ Status: complete
 - Ensured sensitive tokens and secrets are never logged in URL query parameters or request headers.
 - Documented Meta API setup, configuration, and security rules in `docs/META_API.md` and `.env.example`.
 
-## Phase 25 — Pages & Groups Domain and Sync
+## Phase 26 — Pages and Groups Workspace
 
 Status: complete
 
-- Added domain models for authorized Facebook Pages and Groups (`Page`, `Group`, `AssetPermission`, `AssetHealthState`, `SyncResult`).
-- Implemented task-based and role-based publishing/posting eligibility rules (`is_publishing_eligible`, `is_posting_eligible`).
-- Built `AssetRepository` port and `SqlAlchemyAssetRepository` supporting both active sessions and UnitOfWork contexts.
-- Created Alembic versioned migration (`0009_pages_and_groups.py`) enforcing cascading deletes and unique constraints on `(account_id, page_id)` and `(account_id, group_id)`.
-- Added `AssetSyncService` orchestrating token resolution, incremental synchronization, and stale asset status marking (`AssetHealthState.STALE`).
-- Protected page-level access tokens via OS Keyring vaulting (`SecretService.create_reference`).
-- Implemented partial API failure containment, ensuring successful page or group sync results are preserved if an endpoint errors (e.g. Rate Limit HTTP 429).
-- Added comprehensive unit and integration tests (`tests/test_asset_sync.py`) covering domain rules, sync persistence, incremental changes, stale detection, and partial failure tolerance.
+- Built `PagesGroupsWorkspace` adhering to SP-Farms compact design tokens with dedicated tabs for Facebook Pages and Groups.
+- Implemented `PageFilterProxyModel` and `GroupFilterProxyModel` for multi-column search, account filtering, permission/role filtering, and publishing eligibility.
+- Built `AssetInspectorPanel` with selection tracking, role/task summary, publishing eligibility chip, follower/member reach metrics, and direct operator notes.
+- Connected operational shortcuts: Recent Content, Content Queue, and Analytics jumping to relevant system workspaces.
+- Added background non-blocking synchronization via `SyncWorker` and `QThreadPool` to prevent UI freezing.
+- Added safe bulk organization features: copy meta asset IDs, mark assets stale, and export assets to CSV.
+- Integrated `PagesGroupsWorkspace` directly into `MainWindow` navigation for `"Pages"` and `"Groups"` routes.
+- Added focused UI and model tests in `tests/test_pages_and_groups_ui.py` covering filtering, inspector rendering, and route signals.
+
 
 
 
