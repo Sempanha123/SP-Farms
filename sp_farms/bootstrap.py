@@ -42,6 +42,7 @@ from sp_farms.application.worker import FakeStressJobHandler, WorkerSupervisor
 from sp_farms.domain.meta import MetaOAuthConfig
 from sp_farms.infrastructure.adb import SubprocessAdbClient
 from sp_farms.infrastructure.assets_repository import SqlAlchemyAssetRepository
+from sp_farms.infrastructure.appium.fake_driver import FakeAppiumDriver
 from sp_farms.infrastructure.clock import SystemClock
 from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import (
@@ -251,7 +252,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         job_service=job_service,
     )
 
-    appium_session = AppiumSessionManager(driver_port=None)
+    appium_session = AppiumSessionManager(driver_port=FakeAppiumDriver())
     appium_executor = AppiumJobExecutor(
         session_manager=appium_session,
         device_pool_service=device_pool_service,

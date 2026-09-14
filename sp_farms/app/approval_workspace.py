@@ -187,9 +187,7 @@ class ApprovalInspectorPanel(Panel):
         self.title_label.setText(
             f"<b>{req.action_type.value.replace('_', ' ').title()}</b> — {req.status.value.upper()}"
         )
-        expires_str = (
-            req.expires_at.strftime("%Y-%m-%d %H:%M") if req.expires_at else "Never"
-        )
+        expires_str = req.expires_at.strftime("%Y-%m-%d %H:%M") if req.expires_at else "Never"
         self.details_label.setText(
             f"<b>Target:</b> {req.target_name} ({req.target_id})<br>"
             f"<b>Summary:</b> {req.summary}<br>"
@@ -254,15 +252,9 @@ class ApprovalWorkspace(QWidget):
         self.filter_group.addButton(self.rejected_btn)
         self.filter_group.addButton(self.all_btn)
 
-        self.pending_btn.toggled.connect(
-            lambda: self._on_filter_changed(ApprovalStatus.PENDING)
-        )
-        self.approved_btn.toggled.connect(
-            lambda: self._on_filter_changed(ApprovalStatus.APPROVED)
-        )
-        self.rejected_btn.toggled.connect(
-            lambda: self._on_filter_changed(ApprovalStatus.REJECTED)
-        )
+        self.pending_btn.toggled.connect(lambda: self._on_filter_changed(ApprovalStatus.PENDING))
+        self.approved_btn.toggled.connect(lambda: self._on_filter_changed(ApprovalStatus.APPROVED))
+        self.rejected_btn.toggled.connect(lambda: self._on_filter_changed(ApprovalStatus.REJECTED))
         self.all_btn.toggled.connect(lambda: self._on_filter_changed(None))
 
         top_bar.addWidget(QLabel("Filter:"))
@@ -382,9 +374,6 @@ class ApprovalWorkspace(QWidget):
             self.metrics.value_labels[3].setText(str(expired_count))
 
         # Reset selection if invalid
-        if (
-            self._selected_request
-            and self._selected_request.id not in [r.id for r in reqs]
-        ):
+        if self._selected_request and self._selected_request.id not in [r.id for r in reqs]:
             self._selected_request = None
             self.inspector.set_request(None)

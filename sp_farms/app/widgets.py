@@ -151,8 +151,8 @@ class MetricRow(QWidget):
         if not self.value_labels or len(self.value_labels) != len(metrics):
             while self._layout.count():
                 item = self._layout.takeAt(0)
-                w = item.widget()
-                if w:
+                w = item.widget() if item else None
+                if w is not None:
                     w.deleteLater()
             self.value_labels.clear()
             self.name_labels.clear()

@@ -261,7 +261,9 @@ class AnalyticsWorkspace(QWidget):
         self.table_model = AnalyticsTableModel()
         self.table_view = CompactTable()
         self.table_view.setModel(self.table_model)
-        self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self.table_view.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
         self.table_view.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table_view.selectionModel().selectionChanged.connect(self._on_social_row_selected)
         left_layout.addWidget(self.table_view)
@@ -330,7 +332,9 @@ class AnalyticsWorkspace(QWidget):
         hh = self.device_table_view.horizontalHeader()
         hh.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         hh.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.device_table_view.selectionModel().selectionChanged.connect(self._on_device_row_selected)
+        self.device_table_view.selectionModel().selectionChanged.connect(
+            self._on_device_row_selected
+        )
         left_layout.addWidget(self.device_table_view)
 
         splitter.addWidget(left_panel)

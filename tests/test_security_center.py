@@ -141,8 +141,8 @@ def test_security_service_audit_and_aggregation() -> None:
         updated_at=now,
     )
     mock_secret_repo = MagicMock()
-    mock_secret_repo.list_by_owner_ids.side_effect = (
-        lambda aids: [token_ref] if aids and "acc-1" in aids else []
+    mock_secret_repo.list_by_owner_ids.side_effect = lambda aids: (
+        [token_ref] if aids and "acc-1" in aids else []
     )
 
     def _secret_repo_factory(uow: Any = None) -> MagicMock:

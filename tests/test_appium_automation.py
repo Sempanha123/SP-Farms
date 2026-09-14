@@ -12,17 +12,14 @@ from sp_farms.application.worker import CancellationToken, JobCancelledError
 from sp_farms.domain.automation import (
     AppState,
     AutomationDevice,
-    AutomationTimeoutError,
     By,
     UiAutomator2Capabilities,
 )
 from sp_farms.infrastructure.appium.fake_driver import FakeAppiumDriver
 from sp_farms.infrastructure.appium.page_objects.facebook_screen import (
-    FacebookComposerScreen,
     FacebookHomeScreen,
 )
 from sp_farms.infrastructure.appium.server_manager import (
-    AppiumServerHealth,
     AppiumServerManager,
     ServerHealthState,
 )
@@ -38,7 +35,9 @@ def session_manager(fake_driver: FakeAppiumDriver) -> AppiumSessionManager:
     return AppiumSessionManager(driver_port=fake_driver, server_url="http://127.0.0.1:4723")
 
 
-def test_appium_session_creation_and_teardown(session_manager: AppiumSessionManager, fake_driver: FakeAppiumDriver):
+def test_appium_session_creation_and_teardown(
+    session_manager: AppiumSessionManager, fake_driver: FakeAppiumDriver
+):
     device = AutomationDevice(
         device_id="ldplayer:emulator-5554",
         udid="emulator-5554",
@@ -136,7 +135,9 @@ def test_appium_server_manager_health(monkeypatch):
     assert health.version == "2.5.0"
 
 
-def test_appium_job_executor(session_manager: AppiumSessionManager, fake_driver: FakeAppiumDriver, tmp_path: Path):
+def test_appium_job_executor(
+    session_manager: AppiumSessionManager, fake_driver: FakeAppiumDriver, tmp_path: Path
+):
     mock_pool_service = MagicMock()
     mock_pool_service.acquire_device_lock.return_value = MagicMock()
     mock_pool_service.release_device_lock.return_value = True

@@ -1,7 +1,7 @@
 """Protocols for fetching social engagement metrics from Meta Graph API or mobile interfaces."""
 
 from collections.abc import Mapping
-from typing import Any, Protocol
+from typing import Protocol
 
 
 class AnalyticsPort(Protocol):

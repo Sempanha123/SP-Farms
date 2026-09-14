@@ -211,9 +211,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "brand_subtitle"):
             self.brand_subtitle.setText(self._context.i18n_service.t("app.subtitle"))
         for section, btn in self._nav_buttons.items():
-            translated = self._context.i18n_service.t(
-                f"nav.{section.casefold()}", default=section
-            )
+            translated = self._context.i18n_service.t(f"nav.{section.casefold()}", default=section)
             btn.setText(translated)
 
     def set_job_queue_visible(self, visible: bool) -> None:
@@ -337,9 +335,7 @@ class MainWindow(QMainWindow):
                 self.settings_workspace.queue_visibility_requested.connect(
                     self.set_job_queue_visible
                 )
-                self.settings_workspace.locale_requested.connect(
-                    self._apply_locale
-                )
+                self.settings_workspace.locale_requested.connect(self._apply_locale)
                 self._pages.addWidget(self.settings_workspace)
         if self.error_center_workspace is not None:
             self._pages.addWidget(self.error_center_workspace)

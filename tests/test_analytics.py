@@ -1,13 +1,11 @@
 """Automated tests for Analytics domain, SqlAlchemy repository, and AnalyticsService."""
 
-from datetime import UTC, datetime, timedelta
-
 import pytest
 
 from sp_farms.application.analytics_service import AnalyticsService
-from sp_farms.domain.analytics import AggregatedMetrics, PostAnalyticsSnapshot
+from sp_farms.domain.analytics import PostAnalyticsSnapshot
 from sp_farms.domain.composer import PostType
-from sp_farms.domain.publishing import PublishAttempt, PublishMethod, PublishStatus
+from sp_farms.domain.publishing import PublishAttempt
 from sp_farms.infrastructure.database import (
     Base,
     Database,

@@ -7,7 +7,6 @@ from sp_farms.application.appium_port import AppiumDriverPort
 from sp_farms.domain.automation import (
     AppState,
     By,
-    ElementNotFoundError,
     ElementRef,
     SessionNotCreatedError,
     UiAutomator2Capabilities,
@@ -41,9 +40,7 @@ class FakeAppiumDriver(AppiumDriverPort):
         self.sessions[session_id] = capabilities
         self.app_states[session_id] = AppState.RUNNING_IN_FOREGROUND
         self.current_packages[session_id] = capabilities.app_package or "com.facebook.katana"
-        self.current_activities[session_id] = (
-            capabilities.app_activity or ".LoginActivity"
-        )
+        self.current_activities[session_id] = capabilities.app_activity or ".LoginActivity"
         self.elements[session_id] = {}
         return session_id
 
@@ -82,7 +79,9 @@ class FakeAppiumDriver(AppiumDriverPort):
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
         )
 
-    def register_element(self, session_id: str, by: By, value: str, elem_id: str, text: str = "") -> ElementRef:
+    def register_element(
+        self, session_id: str, by: By, value: str, elem_id: str, text: str = ""
+    ) -> ElementRef:
         elem = ElementRef(element_id=elem_id, by=by, value=value, text=text)
         if session_id not in self.elements:
             self.elements[session_id] = {}

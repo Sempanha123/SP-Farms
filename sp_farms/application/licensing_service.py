@@ -161,14 +161,10 @@ class LicensingService:
         try:
             issued_at = datetime.fromisoformat(data["issued_at"])
             expires_at = (
-                datetime.fromisoformat(data["expires_at"])
-                if data.get("expires_at")
-                else None
+                datetime.fromisoformat(data["expires_at"]) if data.get("expires_at") else None
             )
             edition = ProductEdition(data.get("edition", "pro"))
-            feature_flags = tuple(
-                FeatureFlag(f) for f in data.get("feature_flags", ())
-            )
+            feature_flags = tuple(FeatureFlag(f) for f in data.get("feature_flags", ()))
             grace_days = int(data.get("grace_period_days", 7))
 
             payload = LicensePayload(

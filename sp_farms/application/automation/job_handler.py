@@ -1,4 +1,7 @@
-"""Job handler and automation runner integrating Appium 2 with WorkerSupervisor and DevicePoolService."""
+"""Job handler and automation runner integrating Appium 2.
+
+Integrates with WorkerSupervisor and DevicePoolService.
+"""
 
 import logging
 from collections.abc import Callable
@@ -8,9 +11,8 @@ from typing import Any
 from sp_farms.application.automation.appium_session_manager import AppiumSessionManager
 from sp_farms.application.automation.mobile_driver import MobileDriver
 from sp_farms.application.device_pool_service import DevicePoolService
-from sp_farms.application.worker import JobCancelledError, JobExecutionContext
-from sp_farms.domain.automation import AutomationDevice, AutomationError, UiAutomator2Capabilities
-from sp_farms.domain.device_pool import AccountWorkspaceLock
+from sp_farms.application.worker import JobExecutionContext
+from sp_farms.domain.automation import AutomationDevice, UiAutomator2Capabilities
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +40,7 @@ class AppiumJobExecutor:
         package: str | None = None,
         activity: str | None = None,
     ) -> Any:
-        """Reserve/bind device lock, initialize Appium session, run action safely, and cleanup session upon completion/release."""
+        """Reserve device lock, initialize Appium session, run action, and cleanup."""
         context.check_cancelled()
         context.record_progress(5)
 
@@ -49,9 +51,13 @@ class AppiumJobExecutor:
             ttl_seconds=600,
         )
         if not lock:
-            raise RuntimeError(f"Could not acquire device lock for account {account_id} on {device_key}")
+            raise RuntimeError(
+                f"Could not acquire device lock for account {account_id} on {device_key}"
+            )
 
-        provider, ext_id = device_key.split(":", 1) if ":" in device_key else ("physical", device_key)
+        provider, ext_id = (
+            device_key.split(":", 1) if ":" in device_key else ("physical", device_key)
+        )
         device = AutomationDevice(
             device_id=device_key,
             udid=ext_id,
@@ -69,7 +75,9 @@ class AppiumJobExecutor:
         try:
             context.check_cancelled()
             context.record_progress(15)
-            logger.info("Starting Appium session for job=%s on device=%s", context.job.id, device_key)
+            logger.info(
+                "Starting Appium session for job=%s on device=%s", context.job.id, device_key
+            )
             self.session_manager.start_session(
                 device=device,
                 capabilities_override=caps,
@@ -98,7 +106,9 @@ class AppiumJobExecutor:
                 logger.warning("Could not save failure screenshot: %s", ss_err)
             raise
         finally:
-            logger.info("Tearing down Appium session and releasing device lock for device=%s", device_key)
+            logger.info(
+                "Tearing down Appium session and releasing device lock for device=%s", device_key
+            )
             try:
                 self.session_manager.end_session(device_key)
             except Exception as e:

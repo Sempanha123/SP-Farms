@@ -9,7 +9,6 @@ import zipfile
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
 
 from sp_farms.application.ports import Clock
 from sp_farms.domain.disaster_recovery import (
@@ -82,9 +81,10 @@ class BackupRestoreService:
         archive_name = f"{backup_id}.spbackup"
         archive_path = dest_dir / archive_name
 
-        if include_secrets:
-            if not secrets_passphrase or len(secrets_passphrase) < 6:
-                raise ValueError("Explicit secrets backup requires a passphrase of at least 6 characters")
+        if include_secrets and (not secrets_passphrase or len(secrets_passphrase) < 6):
+            raise ValueError(
+                "Explicit secrets backup requires a passphrase of at least 6 characters"
+            )
 
         with tempfile.TemporaryDirectory() as tmp:
             staging = Path(tmp)
@@ -161,7 +161,7 @@ class BackupRestoreService:
             # 5. Build Manifest
             combined_hash = hashlib.sha256()
             for it in sorted(items, key=lambda x: x.relative_path):
-                combined_hash.update(f"{it.relative_path}:{it.sha256}".encode("utf-8"))
+                combined_hash.update(f"{it.relative_path}:{it.sha256}".encode())
 
             manifest = BackupManifest(
                 backup_id=backup_id,
@@ -228,7 +228,8 @@ class BackupRestoreService:
                 major_curr_ver = CURRENT_BACKUP_SCHEMA_VERSION.split(".")[0]
                 if major_backup_ver > major_curr_ver:
                     errors.append(
-                        f"Incompatible backup schema version: {manifest.version} (supported: {CURRENT_BACKUP_SCHEMA_VERSION})"
+                        f"Incompatible backup schema: {manifest.version} "
+                        f"(supported: {CURRENT_BACKUP_SCHEMA_VERSION})"
                     )
 
                 # Integrity verification of every item
@@ -241,7 +242,8 @@ class BackupRestoreService:
                     actual_sha = hashlib.sha256(data).hexdigest()
                     if actual_sha != item.sha256:
                         errors.append(
-                            f"Integrity checksum mismatch for {item.relative_path}: expected {item.sha256}, got {actual_sha}"
+                            f"Integrity checksum mismatch for {item.relative_path}: "
+                            f"expected {item.sha256}, got {actual_sha}"
                         )
 
                 is_valid = len(errors) == 0

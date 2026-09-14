@@ -32,6 +32,9 @@ class MetaErrorCode(StrEnum):
     ASSET_NOT_FOUND = "asset_not_found"
     TEMPORARY_SERVICE_ERROR = "temporary_service_error"
     NETWORK_ERROR = "network_error"
+    PARAM_ERROR = "param_error"
+    GRAPH_METHOD_NOT_SUPPORTED = "graph_method_not_supported"
+    DUPLICATE_POST = "duplicate_post"
     UNKNOWN_ERROR = "unknown_error"
 
 

@@ -15,7 +15,6 @@ from sp_farms.domain.automation import (
     ElementNotFoundError,
     ElementRef,
     SessionNotCreatedError,
-    StaleElementReferenceError,
     UiAutomator2Capabilities,
 )
 
@@ -167,9 +166,7 @@ class W3CAppiumClient(AppiumDriverPort):
         data = res.json().get("value", {})
         # W3C element identifier format is "element-6066-11e4-a52e-4f735466cecf"
         elem_id = (
-            data.get("element-6066-11e4-a52e-4f735466cecf")
-            or data.get("ELEMENT")
-            or str(data)
+            data.get("element-6066-11e4-a52e-4f735466cecf") or data.get("ELEMENT") or str(data)
         )
         return ElementRef(element_id=elem_id, by=by, value=value)
 

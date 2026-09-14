@@ -3,16 +3,13 @@
 import logging
 import time
 from pathlib import Path
-from typing import Any
 
 from sp_farms.application.appium_port import AppiumDriverPort
 from sp_farms.application.worker import CancellationToken
 from sp_farms.domain.automation import (
     AppState,
-    AutomationError,
     AutomationTimeoutError,
     By,
-    ElementNotFoundError,
     ElementRef,
 )
 

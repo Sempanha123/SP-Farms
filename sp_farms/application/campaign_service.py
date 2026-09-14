@@ -308,10 +308,8 @@ class CampaignService:
             new_attempt = target.attempt_count + 1 if increment_attempt else target.attempt_count
             now = datetime.now(UTC)
 
-            executed_at=(
-                now
-                if status in (TargetStatus.SUCCESS, TargetStatus.FAILED)
-                else target.executed_at
+            executed_at = (
+                now if status in (TargetStatus.SUCCESS, TargetStatus.FAILED) else target.executed_at
             )
             updated_target = CampaignTarget(
                 id=target.id,

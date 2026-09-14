@@ -64,9 +64,7 @@ def upgrade() -> None:
         sa.Column("permission_state", sa.String(length=30), nullable=False),
         sa.Column("security_state", sa.String(length=30), nullable=False),
         *_entity_columns(),
-        sa.ForeignKeyConstraint(
-            ["category_id"], ["account_categories.id"], ondelete="SET NULL"
-        ),
+        sa.ForeignKeyConstraint(["category_id"], ["account_categories.id"], ondelete="SET NULL"),
         sa.UniqueConstraint("platform_uid"),
     )
     op.create_table(

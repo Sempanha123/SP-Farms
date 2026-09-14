@@ -122,7 +122,3 @@ class AnalyticsWorkspace(QWidget):
             strict=True,
         ):
             label.setText(str(value))
-
-
-
-

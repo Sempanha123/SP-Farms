@@ -1,12 +1,12 @@
 """Manages local or remote Appium 2 server discovery, health checks, and lifecycle."""
 
+import contextlib
 import json
 import logging
 import subprocess
 import time
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
 
 import httpx
 
@@ -153,8 +153,6 @@ class AppiumServerManager:
                 self._process.wait(timeout=5.0)
             except Exception as e:
                 logger.warning("Error stopping Appium server: %s", e)
-                try:
+                with contextlib.suppress(Exception):
                     self._process.kill()
-                except Exception:
-                    pass
             self._process = None

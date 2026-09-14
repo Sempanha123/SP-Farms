@@ -29,15 +29,15 @@ class PublishExecutionStrategy(StrEnum):
     HYBRID_AUTO = "hybrid_auto"
 
 
-def is_api_supported_destination(destination_type: PublishDestinationType, post_type: PostType) -> bool:
-    """Return True if the official Meta Graph API supports direct posting for this destination and post type."""
-    # Graph API does NOT support personal profile publishing or certain groups without installed FB apps
+def is_api_supported_destination(
+    destination_type: PublishDestinationType, post_type: PostType
+) -> bool:
+    """Return True if Meta Graph API supports direct posting for this destination and post type."""
+    # Graph API does NOT support personal profile publishing or certain groups
     if destination_type in (PublishDestinationType.ACCOUNT_PROFILE,):
         return False
     # Stories on groups are also not supported via Graph API
-    if destination_type == PublishDestinationType.GROUP and post_type == PostType.STORY:
-        return False
-    return True
+    return not (destination_type == PublishDestinationType.GROUP and post_type == PostType.STORY)
 
 
 class PublishErrorCode(StrEnum):
@@ -116,7 +116,9 @@ class PublishAttempt:
             updated_at=now,
         )
 
-    def mark_published(self, external_post_id: str, duration_ms: int = 0, method_used: PublishMethod | None = None) -> "PublishAttempt":
+    def mark_published(
+        self, external_post_id: str, duration_ms: int = 0, method_used: PublishMethod | None = None
+    ) -> "PublishAttempt":
         now = datetime.now(UTC)
         return PublishAttempt(
             id=self.id,

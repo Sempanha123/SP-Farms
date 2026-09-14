@@ -50,9 +50,7 @@ class PluginManifest:
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "PluginManifest":
         p_type = PluginType(data["plugin_type"])
-        caps = tuple(
-            PluginCapability(c) for c in data.get("capabilities", ())
-        )
+        caps = tuple(PluginCapability(c) for c in data.get("capabilities", ()))
         return cls(
             id=str(data["id"]),
             name=str(data["name"]),
@@ -94,6 +92,7 @@ class PluginExecutionResult:
 # -------------------------------------------------------------------------
 # Plugin Protocols
 # -------------------------------------------------------------------------
+
 
 @runtime_checkable
 class BasePlugin(Protocol):

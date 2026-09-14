@@ -49,9 +49,7 @@ class I18nService:
 
     @property
     def metadata(self) -> LocaleMetadata:
-        return SUPPORTED_LOCALES.get(
-            self._current_locale, SUPPORTED_LOCALES[SupportedLocale.EN_US]
-        )
+        return SUPPORTED_LOCALES.get(self._current_locale, SUPPORTED_LOCALES[SupportedLocale.EN_US])
 
     def register_listener(self, listener: Callable[[SupportedLocale], None]) -> None:
         """Register a callback invoked when locale changes."""
@@ -100,9 +98,7 @@ class I18nService:
             with open(catalog_path, encoding="utf-8") as f:
                 raw_data = json.load(f)
                 # Store NFC normalized strings
-                normalized_data = {
-                    k: normalize_unicode(str(v)) for k, v in raw_data.items()
-                }
+                normalized_data = {k: normalize_unicode(str(v)) for k, v in raw_data.items()}
                 self._catalogs[locale] = normalized_data
         except Exception as e:
             logger.error("Failed loading catalog for %s: %s", locale, e)

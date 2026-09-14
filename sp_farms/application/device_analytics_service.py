@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Callable, Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -98,9 +98,7 @@ class DeviceAnalyticsService:
                 error_message=error_message,
             )
 
-        ev_type = (
-            OperationalEventType.JOB_SUCCESS if success else OperationalEventType.JOB_FAILURE
-        )
+        ev_type = OperationalEventType.JOB_SUCCESS if success else OperationalEventType.JOB_FAILURE
         self.record_event(
             device_key=device_key,
             provider=provider,
@@ -168,8 +166,12 @@ class DeviceAnalyticsService:
     ) -> DeviceReliabilityStats:
         """Compute comprehensive operational reliability metrics for a specific device."""
         events = self._get_events(device_key=device_key, since=since)
-        effective_serial = serial or (device_key.split(":", 1)[-1] if ":" in device_key else device_key)
-        effective_provider = provider or (device_key.split(":", 1)[0] if ":" in device_key else "unknown")
+        effective_serial = serial or (
+            device_key.split(":", 1)[-1] if ":" in device_key else device_key
+        )
+        effective_provider = provider or (
+            device_key.split(":", 1)[0] if ":" in device_key else "unknown"
+        )
 
         successful_jobs = 0
         failed_jobs = 0
@@ -262,7 +264,9 @@ class DeviceAnalyticsService:
         successful_jobs = sum(1 for e in events if e.event_type == OperationalEventType.JOB_SUCCESS)
         failed_jobs = sum(1 for e in events if e.event_type == OperationalEventType.JOB_FAILURE)
         disconnect_count = sum(1 for e in events if e.event_type == OperationalEventType.DISCONNECT)
-        provider_errors = sum(1 for e in events if e.event_type == OperationalEventType.PROVIDER_ERROR)
+        provider_errors = sum(
+            1 for e in events if e.event_type == OperationalEventType.PROVIDER_ERROR
+        )
         total_jobs = successful_jobs + failed_jobs
 
         total_ops = total_jobs + provider_errors
@@ -344,7 +348,9 @@ class DeviceAnalyticsService:
         time_window: str = "24h",
     ) -> str:
         """Export full diagnostics payload as formatted JSON string."""
-        report = self.generate_fleet_report(known_devices=known_devices, since=since, time_window=time_window)
+        report = self.generate_fleet_report(
+            known_devices=known_devices, since=since, time_window=time_window
+        )
         return json.dumps(report.to_diagnostics_dict(), indent=2)
 
     def export_diagnostics_csv(
@@ -354,5 +360,7 @@ class DeviceAnalyticsService:
         time_window: str = "24h",
     ) -> str:
         """Export fleet reliability metrics as CSV string."""
-        report = self.generate_fleet_report(known_devices=known_devices, since=since, time_window=time_window)
+        report = self.generate_fleet_report(
+            known_devices=known_devices, since=since, time_window=time_window
+        )
         return report.to_csv()

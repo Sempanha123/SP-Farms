@@ -590,9 +590,7 @@ class CampaignWorkspace(QWidget):
             }
             result = self._campaign_service.create_campaign(
                 title=title,
-                post_type=post_type_map.get(
-                    dialog.post_type_combo.currentText(), PostType.FEED
-                ),
+                post_type=post_type_map.get(dialog.post_type_combo.currentText(), PostType.FEED),
                 caption=dialog.caption_input.toPlainText().strip(),
                 approval_policy=approval_map.get(
                     dialog.approval_combo.currentText(), ApprovalPolicy.MANUAL

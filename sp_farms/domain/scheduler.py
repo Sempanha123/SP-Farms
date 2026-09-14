@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, datetime, time, timedelta, tzinfo
 from enum import StrEnum
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -40,9 +40,8 @@ class PublishingWindow:
 
     def is_within_window(self, dt: datetime) -> bool:
         """Check if datetime falls within allowed publishing window and outside quiet hours."""
-        if self.timezone_name in ("UTC", "Etc/UTC", "Z", ""):
-            tz = UTC
-        else:
+        tz: tzinfo = UTC
+        if self.timezone_name not in ("UTC", "Etc/UTC", "Z", ""):
             try:
                 tz = ZoneInfo(self.timezone_name)
             except Exception:

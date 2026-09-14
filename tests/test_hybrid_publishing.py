@@ -66,6 +66,7 @@ def appium_executor(session_manager):
 @pytest.fixture
 def fake_api_publisher():
     from sp_farms.infrastructure.meta.publishing_adapter import FakePublishingAdapter
+
     adapter = FakePublishingAdapter()
     adapter.custom_post_id = "fb_api_post_123"
     return adapter
@@ -104,7 +105,9 @@ def test_hybrid_uses_api_when_supported(hybrid_service, fake_api_publisher):
     assert len(fake_api_publisher.published_feed_calls) == 1
 
 
-def test_hybrid_routes_to_appium_when_destination_unsupported_by_api(hybrid_service, fake_api_publisher):
+def test_hybrid_routes_to_appium_when_destination_unsupported_by_api(
+    hybrid_service, fake_api_publisher
+):
     # Personal profile is not supported by official Meta Graph API
     ctx = MagicMock()
     ctx.job.id = "job-hybrid-1"

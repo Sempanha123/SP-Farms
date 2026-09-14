@@ -60,7 +60,11 @@ class AppiumSessionManager:
         with self._lock:
             existing = self._sessions.get(device.device_id)
             if existing and existing.state in (AppiumSessionState.ACTIVE, AppiumSessionState.BUSY):
-                logger.info("Reusing existing active session %s for device %s", existing.session_id, device.device_id)
+                logger.info(
+                    "Reusing existing active session %s for device %s",
+                    existing.session_id,
+                    device.device_id,
+                )
                 return existing
 
             system_port = self._allocate_system_port()
@@ -70,7 +74,11 @@ class AppiumSessionManager:
                 system_port=system_port,
             )
 
-            logger.info("Initializing Appium session for device %s on systemPort=%d", device.device_id, system_port)
+            logger.info(
+                "Initializing Appium session for device %s on systemPort=%d",
+                device.device_id,
+                system_port,
+            )
             self._sessions[device.device_id] = AppiumSessionInfo(
                 session_id="",
                 device_id=device.device_id,
@@ -95,7 +103,9 @@ class AppiumSessionManager:
                     capabilities=caps,
                 )
                 self._sessions[device.device_id] = session_info
-                logger.info("Appium session %s established for device %s", session_id, device.device_id)
+                logger.info(
+                    "Appium session %s established for device %s", session_id, device.device_id
+                )
                 return session_info
         except Exception as e:
             logger.error("Failed to start Appium session for device %s: %s", device.device_id, e)
@@ -119,7 +129,11 @@ class AppiumSessionManager:
         """Obtain a MobileDriver helper for an active session."""
         with self._lock:
             session = self._sessions.get(device_id)
-            if not session or not session.session_id or session.state not in (AppiumSessionState.ACTIVE, AppiumSessionState.BUSY):
+            if (
+                not session
+                or not session.session_id
+                or session.state not in (AppiumSessionState.ACTIVE, AppiumSessionState.BUSY)
+            ):
                 raise ValueError(f"No active Appium session for device {device_id}")
             return MobileDriver(
                 driver_port=self.driver_port,
