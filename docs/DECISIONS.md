@@ -116,6 +116,11 @@ Media inspection extracts dimensions, aspect ratios, bitrates, and codecs using 
 
 The post and reel composition workflow uses a dedicated domain service (`ComposerService`) and validation engine (`validate_draft_post`) that evaluates capabilities dynamically based on destination platform limits (e.g. Reels are permitted on Pages but restricted on Groups; first comments are officially supported on Pages and disabled on Groups). Near-duplicate detection calculates similarity metrics using `difflib.SequenceMatcher` against existing content items to warn operators before publishing repetitive content without imposing disruptive blocking. Draft persistence leverages the existing `ContentItem` schema by serializing composition metadata (post type, destination reference, scheduled date, approval status) into structured JSON within the `folder` attribute, avoiding disruptive database migrations while ensuring clean state round-trips.
 
+## Caption Templates, Multilingual AI Assist, and Unicode NFC Safety
+
+Multilingual text rendering across Southeast Asian languages (Khmer `km`, Thai `th`, Vietnamese `vi`) and English (`en`) presents unique script normalization challenges with sub-script consonants, tone markers, and complex combining diacritics. All domain text inputs and AI outputs are normalized to Unicode NFC (`unicodedata.normalize("NFC", text)`) at system boundaries to prevent corrupt rendering, double-spacing, or broken glyph stacking in SQLite, JSON serialization, and PySide6 widgets. AI assistance is structured around an explicit port-adapter interface (`AIProviderPort`) and defaults to an air-gapped deterministic provider (`FakeMultilingualAIProvider`), guaranteeing zero external dependencies during offline testing and automated verification. AI API keys are treated as critical secrets and stored solely within the OS Keyring via `SecretService` and `Vault`, avoiding plaintext file or SQLite persistence. Finally, automated publishing of AI content is strictly prohibited: AI suggestions always enter a human-in-the-loop review modal (`AiAssistDialog`) for side-by-side comparison and explicit operator confirmation before incorporation into the draft composer.
+
+
 
 
 

@@ -32,6 +32,7 @@ from sp_farms.domain.composer import (
 )
 
 if TYPE_CHECKING:
+    from sp_farms.application.caption_ai_service import CaptionAIService
     from sp_farms.application.composer_service import ComposerService
     from sp_farms.application.content_service import ContentService
 
@@ -45,6 +46,7 @@ class ComposerDialog(QDialog):
         self,
         composer_service: "ComposerService",
         content_service: "ContentService",
+        caption_ai_service: "CaptionAIService | None" = None,
         draft: DraftPost | None = None,
         parent: QWidget | None = None,
     ) -> None:
@@ -55,6 +57,7 @@ class ComposerDialog(QDialog):
 
         self._composer_service = composer_service
         self._content_service = content_service
+        self._caption_ai_service = caption_ai_service
         self._current_draft = draft
         self._destinations: list[PublishDestination] = []
         self._selected_media_ids: list[str] = list(draft.media_asset_ids) if draft else []
@@ -127,11 +130,18 @@ class ComposerDialog(QDialog):
         caption_box.addLayout(caption_header)
         caption_box.addWidget(self.txt_caption)
 
-        # Quick hashtag insert helpers
+        # Quick template & hashtag & AI insert helpers
         tag_bar = QHBoxLayout()
+        btn_add_template = SecondaryButton("Insert Template")
+        btn_add_template.clicked.connect(self._on_insert_template)
         btn_add_tag = SecondaryButton("Insert Tags")
         btn_add_tag.clicked.connect(self._on_insert_hashtag)
+        self.btn_ai_assist = PrimaryButton("✨ AI Assist...")
+        self.btn_ai_assist.clicked.connect(self._on_open_ai_assist)
+
+        tag_bar.addWidget(btn_add_template)
         tag_bar.addWidget(btn_add_tag)
+        tag_bar.addWidget(self.btn_ai_assist)
         tag_bar.addStretch()
         caption_box.addLayout(tag_bar)
 
@@ -445,6 +455,54 @@ class ComposerDialog(QDialog):
             text = self.txt_caption.toPlainText()
             separator = "\n\n" if text.strip() else ""
             self.txt_caption.setPlainText(f"{text}{separator}{chosen.formatted_string()}")
+
+    def _on_insert_template(self) -> None:
+        templates = self._content_service.list_caption_templates()
+        if not templates:
+            QMessageBox.information(
+                self,
+                "Templates",
+                "No caption templates found in Content Library.\nCreate one in Content Workspace.",
+            )
+            return
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Select Caption Template")
+        layout = QVBoxLayout(dlg)
+        cmb = QComboBox()
+        for t in templates:
+            cmb.addItem(f"{t.name} ({len(t.variables)} vars)", t)
+        layout.addWidget(QLabel("Choose Template:"))
+        layout.addWidget(cmb)
+
+        btn_ok = PrimaryButton("Use Template")
+        btn_ok.clicked.connect(dlg.accept)
+        layout.addWidget(btn_ok)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            tpl = templates[cmb.currentIndex()]
+            text = self.txt_caption.toPlainText()
+            separator = "\n\n" if text.strip() else ""
+            self.txt_caption.setPlainText(f"{text}{separator}{tpl.content}")
+
+    def _on_open_ai_assist(self) -> None:
+        if not self._caption_ai_service:
+            QMessageBox.warning(
+                self,
+                "AI Assist",
+                "AI Assistant service is not available in current session.",
+            )
+            return
+
+        from sp_farms.app.ai_assist_dialog import AiAssistDialog
+
+        dlg = AiAssistDialog(
+            caption_ai_service=self._caption_ai_service,
+            initial_text=self.txt_caption.toPlainText(),
+            parent=self,
+        )
+        dlg.suggestion_applied.connect(self.txt_caption.setPlainText)
+        dlg.exec()
 
     def _on_select_media(self) -> None:
         assets = self._content_service.list_assets()

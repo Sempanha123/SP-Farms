@@ -54,6 +54,7 @@ from sp_farms.domain.content import (
 )
 
 if TYPE_CHECKING:
+    from sp_farms.application.caption_ai_service import CaptionAIService
     from sp_farms.application.content_service import ContentService
 
 
@@ -448,6 +449,7 @@ class ContentWorkspace(QWidget):
         self,
         content_service: "ContentService",
         composer_service: ComposerService | None = None,
+        caption_ai_service: "CaptionAIService | None" = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -456,6 +458,7 @@ class ContentWorkspace(QWidget):
             unit_of_work=content_service._uow,
             content_repo_factory=content_service._repo_factory,
         )
+        self._caption_ai_service = caption_ai_service
         self.setAcceptDrops(True)
         self._build_ui()
         self.reload_data()
@@ -884,6 +887,7 @@ class ContentWorkspace(QWidget):
         dialog = ComposerDialog(
             composer_service=self._composer_service,
             content_service=self._content_service,
+            caption_ai_service=self._caption_ai_service,
             parent=self,
         )
         dialog.draft_saved.connect(lambda _: self._reload_items())

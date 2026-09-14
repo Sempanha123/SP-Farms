@@ -115,6 +115,7 @@ class MainWindow(QMainWindow):
             ContentWorkspace(
                 self._context.content_service,
                 composer_service=self._context.composer_service,
+                caption_ai_service=self._context.caption_ai_service,
             )
             if self._context.content_service
             else None
