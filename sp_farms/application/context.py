@@ -22,6 +22,7 @@ class ApplicationContext:
     worker_supervisor: "WorkerSupervisor | None" = None
     adb: "AdbPort | None" = None
     ldplayer: "DeviceProviderPort | None" = None
+    mumu: "DeviceProviderPort | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

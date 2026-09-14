@@ -17,6 +17,7 @@ _ENVIRONMENT_KEYS = {
     "SP_FARMS_LOG_BACKUP_COUNT": "log_backup_count",
     "SP_FARMS_ADB_PATH": "adb_path",
     "SP_FARMS_LDPLAYER_PATH": "ldplayer_path",
+    "SP_FARMS_MUMU_PATH": "mumu_path",
 }
 _ALLOWED_FILE_KEYS = frozenset(_ENVIRONMENT_KEYS.values())
 _SECRET_MARKERS = ("authorization", "cookie", "password", "secret", "token")
@@ -61,6 +62,10 @@ def load_config(
         values["ldplayer_path"] = Path(values["ldplayer_path"])
     else:
         values["ldplayer_path"] = None
+    if "mumu_path" in values and values["mumu_path"] is not None:
+        values["mumu_path"] = Path(values["mumu_path"])
+    else:
+        values["mumu_path"] = None
     return AppConfig(**values)
 
 

@@ -9,16 +9,15 @@ from sp_farms.application.providers import (
 )
 from sp_farms.domain.devices import DeviceInfo, DeviceState
 from sp_farms.domain.providers import DeviceProviderType, EmulatorInstance, ProviderCapabilities
-from sp_farms.infrastructure.providers.ldplayer.parser import map_ldplayer_serial
+from sp_farms.infrastructure.providers.mumu.parser import map_mumu_serial
 
-# Minimal 1x1 valid PNG binary
 _TINY_PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f"
     b"\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
 )
 
 
-class FakeLdPlayerProvider(DeviceProviderPort):
+class FakeMuMuProvider(DeviceProviderPort):
     def __init__(
         self,
         is_installed: bool = True,
@@ -32,24 +31,24 @@ class FakeLdPlayerProvider(DeviceProviderPort):
         self._launched_apps: list[tuple[int, str]] = []
 
         # Default fixtures
-        self.add_instance(0, "LDPlayer-0", is_running=True, resolution=(900, 1600), dpi=320)
-        self.add_instance(1, "LDPlayer-1", is_running=False, resolution=(1080, 1920), dpi=480)
+        self.add_instance(0, "MuMuPlayer-0", is_running=True, resolution=(1080, 1920), dpi=480)
+        self.add_instance(1, "MuMuPlayer-1", is_running=False, resolution=(720, 1280), dpi=320)
 
     @property
     def provider_type(self) -> DeviceProviderType:
-        return DeviceProviderType.LDPLAYER
+        return DeviceProviderType.MUMU
 
     @property
     def capabilities(self) -> ProviderCapabilities:
         return ProviderCapabilities(
-            provider_type=DeviceProviderType.LDPLAYER,
+            provider_type=DeviceProviderType.MUMU,
             can_start_stop=True,
             can_restart=True,
             can_take_screenshot=True,
             can_launch_apps=True,
             can_collect_logs=True,
-            can_create_instances=True,
-            can_clone_instances=True,
+            can_create_instances=False,
+            can_clone_instances=False,
         )
 
     def is_available(self) -> bool:
@@ -66,10 +65,9 @@ class FakeLdPlayerProvider(DeviceProviderPort):
         instance = EmulatorInstance(
             index=index,
             name=name,
-            adb_serial=map_ldplayer_serial(index),
+            adb_serial=map_mumu_serial(index),
             is_running=is_running,
-            pid=1000 + index if is_running else None,
-            vbox_pid=2000 + index if is_running else None,
+            pid=5000 + index if is_running else None,
             resolution=resolution,
             dpi=dpi,
         )
@@ -80,9 +78,10 @@ class FakeLdPlayerProvider(DeviceProviderPort):
         if isinstance(index_or_name, int):
             if index_or_name in self._instances:
                 return index_or_name
-            raise ProviderInstanceNotFoundError(f"Instance with index {index_or_name} not found")
+            raise ProviderInstanceNotFoundError(
+                f"MuMu instance with index {index_or_name} not found"
+            )
 
-        # Search by name or string index
         if index_or_name.isdigit():
             idx = int(index_or_name)
             if idx in self._instances:
@@ -92,20 +91,20 @@ class FakeLdPlayerProvider(DeviceProviderPort):
             if inst.name == index_or_name:
                 return inst.index
 
-        raise ProviderInstanceNotFoundError(f"Instance with name '{index_or_name}' not found")
+        raise ProviderInstanceNotFoundError(f"MuMu instance with name '{index_or_name}' not found")
 
     def list_instances(self) -> Sequence[EmulatorInstance]:
         if not self._installed:
-            raise ProviderExecutableNotFoundError("LDPlayer CLI not found")
+            raise ProviderExecutableNotFoundError("MuMu CLI not found")
         return list(self._instances.values())
 
     def start_instance(self, index_or_name: int | str, timeout: float = 60.0) -> None:
         if not self._installed:
-            raise ProviderExecutableNotFoundError("LDPlayer CLI not found")
+            raise ProviderExecutableNotFoundError("MuMu CLI not found")
         if self._timeout_on_start:
-            raise ProviderOperationTimeoutError("Timeout starting LDPlayer instance")
+            raise ProviderOperationTimeoutError("Timeout starting MuMu instance")
         if self._fail_on_start:
-            raise RuntimeError("Synthetic failure starting LDPlayer instance")
+            raise RuntimeError("Synthetic failure starting MuMu instance")
 
         idx = self._resolve_index(index_or_name)
         current = self._instances[idx]
@@ -114,15 +113,14 @@ class FakeLdPlayerProvider(DeviceProviderPort):
             name=current.name,
             adb_serial=current.adb_serial,
             is_running=True,
-            pid=3000 + idx,
-            vbox_pid=4000 + idx,
+            pid=5000 + idx,
             resolution=current.resolution,
             dpi=current.dpi,
         )
 
     def stop_instance(self, index_or_name: int | str, timeout: float = 30.0) -> None:
         if not self._installed:
-            raise ProviderExecutableNotFoundError("LDPlayer CLI not found")
+            raise ProviderExecutableNotFoundError("MuMu CLI not found")
         idx = self._resolve_index(index_or_name)
         current = self._instances[idx]
         self._instances[idx] = EmulatorInstance(
@@ -131,7 +129,6 @@ class FakeLdPlayerProvider(DeviceProviderPort):
             adb_serial=current.adb_serial,
             is_running=False,
             pid=None,
-            vbox_pid=None,
             resolution=current.resolution,
             dpi=current.dpi,
         )
@@ -141,20 +138,20 @@ class FakeLdPlayerProvider(DeviceProviderPort):
         self.start_instance(index_or_name, timeout=timeout)
 
     def get_adb_serial(self, index: int) -> str:
-        return map_ldplayer_serial(index)
+        return map_mumu_serial(index)
 
     def launch_app(self, index_or_name: int | str, package_name: str) -> None:
         idx = self._resolve_index(index_or_name)
         inst = self._instances[idx]
         if not inst.is_running:
-            raise RuntimeError(f"Cannot launch app '{package_name}': instance is not running")
+            raise RuntimeError(f"Cannot launch app '{package_name}': MuMu instance is not running")
         self._launched_apps.append((idx, package_name))
 
     def take_screenshot(self, index_or_name: int | str, destination: Path) -> Path:
         idx = self._resolve_index(index_or_name)
         inst = self._instances[idx]
         if not inst.is_running:
-            raise RuntimeError("Cannot take screenshot: instance is not running")
+            raise RuntimeError("Cannot take screenshot: MuMu instance is not running")
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(_TINY_PNG)
         return destination
@@ -164,21 +161,15 @@ class FakeLdPlayerProvider(DeviceProviderPort):
         inst = self._instances[idx]
         if not inst.is_running:
             return ""
-        return f"[FakeLogcat] Instance {inst.name} ({inst.adb_serial}) - {lines} lines collected\n"
+        return f"[MuMuLogcat] Instance {inst.name} ({inst.adb_serial}) - {lines} lines collected\n"
 
     def health_check(self, index_or_name: int | str) -> DeviceInfo | None:
         idx = self._resolve_index(index_or_name)
         inst = self._instances[idx]
-        if not inst.is_running:
-            return DeviceInfo(
-                serial=inst.adb_serial,
-                state=DeviceState.OFFLINE,
-                model=inst.name,
-                resolution=inst.resolution,
-            )
+        state = DeviceState.ONLINE if inst.is_running else DeviceState.OFFLINE
         return DeviceInfo(
             serial=inst.adb_serial,
-            state=DeviceState.ONLINE,
+            state=state,
             model=inst.name,
             resolution=inst.resolution,
         )

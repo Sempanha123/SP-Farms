@@ -20,16 +20,16 @@ from sp_farms.application.providers import (
 )
 from sp_farms.domain.devices import DeviceInfo, DeviceState
 from sp_farms.domain.providers import DeviceProviderType, EmulatorInstance, ProviderCapabilities
-from sp_farms.infrastructure.providers.ldplayer.locator import find_ldplayer_executable
-from sp_farms.infrastructure.providers.ldplayer.parser import (
-    map_ldplayer_serial,
-    parse_ldplayer_list,
+from sp_farms.infrastructure.providers.mumu.locator import find_mumu_executable
+from sp_farms.infrastructure.providers.mumu.parser import (
+    map_mumu_serial,
+    parse_mumu_instances,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class LdPlayerProvider(DeviceProviderPort):
+class MuMuProvider(DeviceProviderPort):
     def __init__(
         self,
         executable_path: Path | str | None = None,
@@ -40,27 +40,27 @@ class LdPlayerProvider(DeviceProviderPort):
 
     @property
     def provider_type(self) -> DeviceProviderType:
-        return DeviceProviderType.LDPLAYER
+        return DeviceProviderType.MUMU
 
     @property
     def capabilities(self) -> ProviderCapabilities:
         return ProviderCapabilities(
-            provider_type=DeviceProviderType.LDPLAYER,
+            provider_type=DeviceProviderType.MUMU,
             can_start_stop=True,
             can_restart=True,
             can_take_screenshot=True,
             can_launch_apps=True,
             can_collect_logs=True,
-            can_create_instances=True,
-            can_clone_instances=True,
+            can_create_instances=False,
+            can_clone_instances=False,
         )
 
     def resolve_executable(self) -> Path:
-        exe = find_ldplayer_executable(self._custom_path)
+        exe = find_mumu_executable(self._custom_path)
         if exe is None or not exe.is_file():
             raise ProviderExecutableNotFoundError(
-                "LDPlayer executable (ldconsole.exe / dnconsole.exe) was not found. "
-                "Please verify LDPlayer is installed or specify the path in settings."
+                "MuMu executable (MuMuManager.exe) was not found. "
+                "Please verify MuMu is installed or specify the path in settings."
             )
         return exe
 
@@ -71,7 +71,7 @@ class LdPlayerProvider(DeviceProviderPort):
         except ProviderExecutableNotFoundError:
             return False
 
-    def _run_console_command(
+    def _run_manager_command(
         self,
         args: Sequence[str],
         timeout: float = 30.0,
@@ -88,24 +88,28 @@ class LdPlayerProvider(DeviceProviderPort):
             )
             if result.returncode != 0:
                 err_msg = (result.stderr or result.stdout or "").strip()
-                cmd_name = " ".join(args)
+                cmd_str = " ".join(args)
                 raise ProviderError(
-                    f"LDPlayer command '{cmd_name}' failed with code {result.returncode}: {err_msg}"
+                    f"MuMu command '{cmd_str}' failed with code {result.returncode}: {err_msg}"
                 )
             return result.stdout
         except subprocess.TimeoutExpired as exc:
+            cmd_str = " ".join(args)
             raise ProviderOperationTimeoutError(
-                f"LDPlayer command '{' '.join(args)}' timed out after {timeout}s"
+                f"MuMu command '{cmd_str}' timed out after {timeout}s"
             ) from exc
         except FileNotFoundError as exc:
-            raise ProviderExecutableNotFoundError(
-                f"LDPlayer executable not found at {exe}"
-            ) from exc
+            raise ProviderExecutableNotFoundError(f"MuMu executable not found at {exe}") from exc
 
     def list_instances(self) -> Sequence[EmulatorInstance]:
         exe = self.resolve_executable()
-        output = self._run_console_command(["list2"], timeout=15.0)
-        return parse_ldplayer_list(output, install_path=exe.parent)
+        try:
+            # Try JSON api output
+            output = self._run_manager_command(["api", "-v", "all"], timeout=15.0)
+        except ProviderError:
+            # Fallback to info -v all
+            output = self._run_manager_command(["info", "-v", "all"], timeout=15.0)
+        return parse_mumu_instances(output, install_path=exe.parent)
 
     def _resolve_index(self, index_or_name: int | str) -> int:
         if isinstance(index_or_name, int):
@@ -113,35 +117,47 @@ class LdPlayerProvider(DeviceProviderPort):
         if index_or_name.isdigit():
             return int(index_or_name)
 
-        # Look up by name
         instances = self.list_instances()
         for inst in instances:
             if inst.name == index_or_name:
                 return inst.index
 
         raise ProviderInstanceNotFoundError(
-            f"LDPlayer instance '{index_or_name}' not found. Please check existing instances."
+            f"MuMu instance '{index_or_name}' not found. Please check existing instances."
         )
 
     def start_instance(self, index_or_name: int | str, timeout: float = 60.0) -> None:
         index = self._resolve_index(index_or_name)
-        self._run_console_command(["launch", "--index", str(index)], timeout=timeout)
+        self._run_manager_command(
+            ["api", "-v", str(index), "launch_player"],
+            timeout=timeout,
+        )
 
     def stop_instance(self, index_or_name: int | str, timeout: float = 30.0) -> None:
         index = self._resolve_index(index_or_name)
-        self._run_console_command(["quit", "--index", str(index)], timeout=timeout)
+        self._run_manager_command(
+            ["api", "-v", str(index), "close_player"],
+            timeout=timeout,
+        )
 
     def restart_instance(self, index_or_name: int | str, timeout: float = 60.0) -> None:
         index = self._resolve_index(index_or_name)
-        self._run_console_command(["reboot", "--index", str(index)], timeout=timeout)
+        try:
+            self._run_manager_command(
+                ["api", "-v", str(index), "restart_player"],
+                timeout=timeout,
+            )
+        except ProviderError:
+            self.stop_instance(index, timeout=timeout / 2)
+            self.start_instance(index, timeout=timeout / 2)
 
     def get_adb_serial(self, index: int) -> str:
-        return map_ldplayer_serial(index)
+        return map_mumu_serial(index)
 
     def launch_app(self, index_or_name: int | str, package_name: str) -> None:
         index = self._resolve_index(index_or_name)
-        self._run_console_command(
-            ["runapp", "--index", str(index), "--packagename", package_name],
+        self._run_manager_command(
+            ["api", "-v", str(index), "launch_app", "-pkg", package_name],
             timeout=15.0,
         )
 
@@ -159,16 +175,9 @@ class LdPlayerProvider(DeviceProviderPort):
             destination.write_bytes(res.stdout.encode("latin1"))
             return destination
 
-        # Fallback via ldconsole adb command if adb_port is not provided
-        self._run_console_command(
-            ["adb", "--index", str(index), "--command", "shell screencap -p /sdcard/sp_snap.png"],
-            timeout=15.0,
+        raise ProviderError(
+            "Screenshot requires an active ADB port connection to the MuMu instance"
         )
-        self._run_console_command(
-            ["adb", "--index", str(index), "--command", f"pull /sdcard/sp_snap.png {destination}"],
-            timeout=15.0,
-        )
-        return destination
 
     def collect_logs(self, index_or_name: int | str, lines: int = 100) -> str:
         index = self._resolve_index(index_or_name)
@@ -188,17 +197,10 @@ class LdPlayerProvider(DeviceProviderPort):
                 AdbUnauthorizedError,
                 AdbDeviceNotFoundError,
             ) as exc:
-                logger.warning(
-                    "Failed to collect logcat via ADB for %s: %s",
-                    serial,
-                    exc,
-                )
+                logger.warning("Failed to collect logcat via ADB for %s: %s", serial, exc)
                 return f"[Error collecting logs: {exc}]"
 
-        return self._run_console_command(
-            ["adb", "--index", str(index), "--command", f"logcat -d -t {lines}"],
-            timeout=15.0,
-        )
+        return ""
 
     def health_check(self, index_or_name: int | str) -> DeviceInfo | None:
         index = self._resolve_index(index_or_name)
@@ -214,7 +216,6 @@ class LdPlayerProvider(DeviceProviderPort):
                 logger.warning("Health check for %s failed: %s", serial, exc)
                 return DeviceInfo(serial=serial, state=DeviceState.UNKNOWN)
 
-        # If no ADB port, check if instance is running in list2
         instances = self.list_instances()
         for inst in instances:
             if inst.index == index:
@@ -244,7 +245,7 @@ class LdPlayerProvider(DeviceProviderPort):
                 total_count = len(instances)
                 running_count = sum(1 for i in instances if i.is_running)
             except Exception as exc:
-                logger.warning("Failed to collect LDPlayer diagnostics: %s", exc)
+                logger.warning("Failed to collect MuMu diagnostics: %s", exc)
 
         return {
             "provider": self.provider_type.value,

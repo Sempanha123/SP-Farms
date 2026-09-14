@@ -9,6 +9,7 @@ from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import Database, SqlAlchemyJobRepository, run_migrations
 from sp_farms.infrastructure.logging import configure_logging
 from sp_farms.infrastructure.providers.ldplayer import LdPlayerProvider
+from sp_farms.infrastructure.providers.mumu import MuMuProvider
 
 
 def create_application(config_path: Path | None = None) -> ApplicationContext:
@@ -28,6 +29,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
 
     adb = SubprocessAdbClient(config.adb_path)
     ldplayer = LdPlayerProvider(config.ldplayer_path, adb_port=adb)
+    mumu = MuMuProvider(config.mumu_path, adb_port=adb)
 
     context = ApplicationContext(
         clock=clock,
@@ -36,6 +38,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         worker_supervisor=supervisor,
         adb=adb,
         ldplayer=ldplayer,
+        mumu=mumu,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

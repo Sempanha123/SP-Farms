@@ -139,4 +139,17 @@ Status: complete
 - Integrated LDPlayer provider into `ApplicationContext` and application bootstrap with non-secret `ldplayer_path` configuration support.
 - Added tests for serial mapping, `list2` parsing, instance lifecycle, screenshot capture, log collection, locator precedence, and CLI error handling.
 
+## Phase 14 — MuMu Provider
+
+Status: complete
+
+- Extended `DeviceProviderPort` application protocol with `diagnostics()` providing structured instance counts, execution availability, and ADB connectivity metadata.
+- Added Windows MuMu locator discovering `MuMuManager.exe` / `mumu.exe` across configuration, environment variables, PATH, and standard 64-bit/32-bit install paths.
+- Added MuMu instance parser supporting both JSON API outputs (`MuMuManager.exe api -v all`) and tabular line outputs, with base port mapping (`127.0.0.1:{16384 + index * 32}`) and custom port overrides.
+- Implemented `MuMuProvider` integrating `launch_player`, `close_player`, `restart_player`, `launch_app`, and diagnostics with `AdbPort` delegation for screenshots, logcat, and health checks.
+- Implemented `FakeMuMuProvider` with simulated instances, lifecycle management, mock screenshot generation, logcat simulation, and failure injection.
+- Integrated MuMu provider into `ApplicationContext` and application bootstrap with non-secret `mumu_path` configuration support.
+- Added tests for serial mapping, JSON/tabular parsing, lifecycle operations, app launch, screenshot capture, diagnostics, and CLI error handling.
+
+
 

@@ -56,4 +56,9 @@ Direct subprocess execution is strictly encapsulated behind the `AdbPort` protoc
 
 LDPlayer interaction is isolated behind `DeviceProviderPort`. The provider interfaces with `ldconsole.exe` / `dnconsole.exe` strictly for emulator process lifecycle (`launch`, `quit`, `reboot`, `runapp`), while relying on `AdbPort` for standard Android subsystem interactions (`screencap`, `logcat`, properties, package management). Device identity spoofing and anti-detection evasion techniques are strictly avoided; instances are mapped transparently via their standard port and serial ranges (`emulator-5554`, `emulator-5556`, etc.). Fake provider fixtures enable comprehensive offline testing of instance states, health monitoring, and error mapping without running virtualization software.
 
+## MuMu Provider Integration
+
+MuMu Player automation conforms to the unified `DeviceProviderPort` abstraction. Subprocess commands communicate with `MuMuManager.exe` using JSON API queries and player lifecycle actions (`launch_player`, `close_player`, `restart_player`, `launch_app`), with fallback to tabular line output parsing. ADB communication uses standard loopback ports (`127.0.0.1:{16384 + index * 32}`). Common diagnostics expose availability, executable paths, and instance metrics uniformly across providers, ensuring the operator interface can display mixed fleets of LDPlayer and MuMu instances without vendor-specific UI logic.
+
+
 

@@ -14,6 +14,7 @@ class AppConfig:
     log_backup_count: int = 5
     adb_path: Path | None = None
     ldplayer_path: Path | None = None
+    mumu_path: Path | None = None
 
     def __post_init__(self) -> None:
         if self.log_level not in LOG_LEVELS:
