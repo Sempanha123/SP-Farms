@@ -14,6 +14,7 @@ from sp_farms.application.caption_ai_service import CaptionAIService
 from sp_farms.application.composer_service import ComposerService
 from sp_farms.application.content_service import ContentService
 from sp_farms.application.context import ApplicationContext
+from sp_farms.application.device_analytics_service import DeviceAnalyticsService
 from sp_farms.application.device_pool_service import DevicePoolService
 from sp_farms.application.device_service import DeviceService
 from sp_farms.application.hybrid_publishing_service import HybridPublishingService
@@ -50,6 +51,7 @@ from sp_farms.infrastructure.database import (
     SqlAlchemyQAProfileRepository,
     SqlAlchemySchedulerRepository,
     SqlAlchemySecretRepository,
+    SqlAlchemyDeviceAnalyticsRepository,
     run_migrations,
 )
 from sp_farms.infrastructure.fake_ai_provider import FakeMultilingualAIProvider
@@ -263,6 +265,12 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         audit_service=audit_service,
     )
 
+    device_analytics_service = DeviceAnalyticsService(
+        unit_of_work=database.unit_of_work,
+        repo_factory=SqlAlchemyDeviceAnalyticsRepository,
+        clock=clock,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -294,6 +302,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         publishing_service=publishing_service,
         hybrid_publishing_service=hybrid_publishing_service,
         analytics_service=analytics_service,
+        device_analytics_service=device_analytics_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

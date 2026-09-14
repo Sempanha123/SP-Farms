@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from sp_farms.application.caption_ai_service import CaptionAIService
     from sp_farms.application.composer_service import ComposerService
     from sp_farms.application.content_service import ContentService
+    from sp_farms.application.device_analytics_service import DeviceAnalyticsService
     from sp_farms.application.device_pool_service import DevicePoolService
     from sp_farms.application.device_service import DeviceService
     from sp_farms.application.job_service import JobService
@@ -65,6 +66,7 @@ class ApplicationContext:
     publishing_service: "PublishingService | None" = None
     hybrid_publishing_service: "HybridPublishingService | None" = None
     analytics_service: "AnalyticsService | None" = None
+    device_analytics_service: "DeviceAnalyticsService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 
