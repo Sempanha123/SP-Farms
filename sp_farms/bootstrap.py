@@ -10,6 +10,8 @@ from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_pool_service import DevicePoolService
 from sp_farms.application.device_service import DeviceService
 from sp_farms.application.job_service import JobService
+from sp_farms.application.media_prep_job import MediaPrepJobHandler
+from sp_farms.application.media_prep_service import MediaPreparationService
 from sp_farms.application.meta_client import MetaClientPort
 from sp_farms.application.meta_service import MetaIntegrationService
 from sp_farms.application.qa_profile_service import QAProfileService
@@ -59,6 +61,10 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
     supervisor = WorkerSupervisor(job_service=job_service, clock=clock)
     supervisor.register_handler("stress", FakeStressJobHandler())
     supervisor.register_handler("fake", FakeStressJobHandler())
+    media_prep_service = MediaPreparationService(
+        output_dir=config.database_path.parent / "content" / "prepared"
+    )
+    supervisor.register_handler("media_prep", MediaPrepJobHandler(media_prep_service))
 
     adb = SubprocessAdbClient(config.adb_path)
     ldplayer = LdPlayerProvider(config.ldplayer_path, adb_port=adb)

@@ -330,6 +330,18 @@ Status: complete
 - Replaced placeholder content workspace in `MainWindow` with full `ContentWorkspace`.
 - Added 10 tests in `tests/test_content_library.py` covering deduplication, filters, metadata, and UI lifecycle.
 
+## Phase 30 — Media Preview and Preparation
+
+Status: complete
+
+- Built media inspection domain model and service with aspect ratio detection, resolution formatting, and codec probing.
+- Implemented FFmpeg and FFprobe system/environment diagnostic probe with capability reporting.
+- Built safe non-destructive normalization pipeline (`MediaPreparationService`) with presets (feed square, reel/story, web compact) preventing original asset overwriting.
+- Implemented interactive `MediaPreviewDialog` featuring PySide6 QtMultimedia (`QMediaPlayer`, `QVideoWidget`, `QAudioOutput`) video playback and image display.
+- Implemented `MediaPrepJobHandler` for background async media normalization and transcoding via `WorkerSupervisor`.
+- Added 8 focused tests in `tests/test_media_prep.py` covering FFmpeg detection, media inspection, non-destructive safety, job execution, cancellation, and dialog UI.
+
+
 
 
 

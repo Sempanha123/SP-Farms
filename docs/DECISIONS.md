@@ -108,6 +108,10 @@ The Pages and Groups workspace (`PagesGroupsWorkspace`) uses dual `QSortFilterPr
 
 The Security Center calculates deterministic account health scores (0–100) based on six weighted security vectors: 2FA enforcement (-25), token validity and expiration (-15 to -40), session staleness (-15), OS Keyring vault presence (-15), standard scope coverage (-5 per missing scope), and security challenge states (-30). The system strictly adheres to ethical anti-bypass principles: neither the background workers nor the desktop interface attempt to solve captchas, bypass two-factor challenges, or circumvent platform checkpoints. Instead, the Security Center generates official Meta OAuth re-authorization URLs with clear operator remediation steps and requires manual checkpoint resolution on approved hardware.
 
+## Media Preview and Non-Destructive Preparation
+
+Media inspection extracts dimensions, aspect ratios, bitrates, and codecs using `QImageReader` for static images and `ffprobe` for video files. All normalization, format transcoding, and thumbnail generation operations follow a strict non-destructive policy: source files in `assets/` are immutable and read-only; normalized variants are written to isolated directories (`prepared/`) under new identifiers. Heavy transcoding and resizing are offloaded to background worker jobs (`MediaPrepJobHandler`) managed by `WorkerSupervisor`, preserving desktop UI responsiveness and supporting cooperative job cancellation.
+
 
 
 
