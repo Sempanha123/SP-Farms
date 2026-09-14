@@ -52,3 +52,8 @@ The operator job queue presentation relies on a clean Qt Model-View-Proxy archit
 
 Direct subprocess execution is strictly encapsulated behind the `AdbPort` protocol. Neither UI components nor higher-level automation services invoke the `adb` binary or parse command-line output directly. Executable resolution checks user overrides, environment variables, and standard Windows SDK paths. Stderr error categorization converts CLI error strings into typed domain exceptions (`AdbTimeoutError`, `AdbUnauthorizedError`, `AdbOfflineError`, `AdbDeviceNotFoundError`). Deterministic simulation through `FakeAdbAdapter` provides complete offline testability across device authorization and failure scenarios without hardware dependencies.
 
+## LDPlayer Provider Integration
+
+LDPlayer interaction is isolated behind `DeviceProviderPort`. The provider interfaces with `ldconsole.exe` / `dnconsole.exe` strictly for emulator process lifecycle (`launch`, `quit`, `reboot`, `runapp`), while relying on `AdbPort` for standard Android subsystem interactions (`screencap`, `logcat`, properties, package management). Device identity spoofing and anti-detection evasion techniques are strictly avoided; instances are mapped transparently via their standard port and serial ranges (`emulator-5554`, `emulator-5556`, etc.). Fake provider fixtures enable comprehensive offline testing of instance states, health monitoring, and error mapping without running virtualization software.
+
+

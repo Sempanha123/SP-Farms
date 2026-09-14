@@ -126,3 +126,17 @@ Status: complete
 - Integrated ADB client into application bootstrap context with non-secret `adb_path` configuration support.
 - Added comprehensive tests for device parsing, timeout mapping, unauthorized/offline states, locator precedence, and fake fixtures.
 
+## Phase 13 — LDPlayer Provider
+
+Status: complete
+
+- Added `DeviceProviderType`, `ProviderCapabilities`, and `EmulatorInstance` domain models.
+- Added `DeviceProviderPort` application protocol and typed exceptions: `ProviderExecutableNotFoundError`, `ProviderInstanceNotFoundError`, `ProviderOperationTimeoutError`.
+- Added Windows LDPlayer locator discovering `ldconsole.exe` / `dnconsole.exe` across configuration, environment variables, PATH, and standard 64-bit/32-bit install paths.
+- Added `ldconsole list2` parser extracting instance index, name, running status, PID, VBox PID, display resolution, DPI, and ADB serial mapping (`emulator-5554`, `emulator-5556`, etc.).
+- Implemented `LdPlayerProvider` integrating subprocess execution for `launch`, `quit`, `reboot`, and `runapp`, coupled with `AdbPort` for screenshots, logcat, and health checks.
+- Implemented `FakeLdPlayerProvider` with simulated instances, lifecycle management, mock screenshot binary generation, logcat simulation, and failure injection.
+- Integrated LDPlayer provider into `ApplicationContext` and application bootstrap with non-secret `ldplayer_path` configuration support.
+- Added tests for serial mapping, `list2` parsing, instance lifecycle, screenshot capture, log collection, locator precedence, and CLI error handling.
+
+

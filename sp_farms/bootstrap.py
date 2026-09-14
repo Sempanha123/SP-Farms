@@ -8,6 +8,7 @@ from sp_farms.infrastructure.clock import SystemClock
 from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import Database, SqlAlchemyJobRepository, run_migrations
 from sp_farms.infrastructure.logging import configure_logging
+from sp_farms.infrastructure.providers.ldplayer import LdPlayerProvider
 
 
 def create_application(config_path: Path | None = None) -> ApplicationContext:
@@ -26,6 +27,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
     supervisor.register_handler("fake", FakeStressJobHandler())
 
     adb = SubprocessAdbClient(config.adb_path)
+    ldplayer = LdPlayerProvider(config.ldplayer_path, adb_port=adb)
 
     context = ApplicationContext(
         clock=clock,
@@ -33,6 +35,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         job_service=job_service,
         worker_supervisor=supervisor,
         adb=adb,
+        ldplayer=ldplayer,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

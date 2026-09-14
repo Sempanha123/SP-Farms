@@ -8,6 +8,7 @@ from sp_farms.application.unit_of_work import UnitOfWork
 if TYPE_CHECKING:
     from sp_farms.application.adb import AdbPort
     from sp_farms.application.job_service import JobService
+    from sp_farms.application.providers import DeviceProviderPort
     from sp_farms.application.worker import WorkerSupervisor
 
 ShutdownHook = Callable[[], None]
@@ -20,6 +21,7 @@ class ApplicationContext:
     job_service: "JobService | None" = None
     worker_supervisor: "WorkerSupervisor | None" = None
     adb: "AdbPort | None" = None
+    ldplayer: "DeviceProviderPort | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 
