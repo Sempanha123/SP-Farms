@@ -1,7 +1,6 @@
 """Official and fake publishing adapters for Meta Graph API."""
 
 import time
-from collections.abc import Mapping
 from typing import Any
 from uuid import uuid4
 
@@ -111,7 +110,9 @@ class OfficialMetaPublishingAdapter(PublishingPort):
         elif photo_bytes:
             files = {"source": ("photo.jpg", photo_bytes, "image/jpeg")}
         else:
-            raise MetaApiError("Either photo_url or photo_bytes must be provided for photo publish.")
+            raise MetaApiError(
+                "Either photo_url or photo_bytes must be provided for photo publish."
+            )
 
         res = self._post(url, access_token=access_token, data=data, files=files)
         return PublishResponse(
@@ -145,7 +146,9 @@ class OfficialMetaPublishingAdapter(PublishingPort):
         elif video_bytes:
             files = {"source": ("video.mp4", video_bytes, "video/mp4")}
         else:
-            raise MetaApiError("Either video_url or video_bytes must be provided for video publish.")
+            raise MetaApiError(
+                "Either video_url or video_bytes must be provided for video publish."
+            )
 
         res = self._post(url, access_token=access_token, data=data, files=files)
         return PublishResponse(

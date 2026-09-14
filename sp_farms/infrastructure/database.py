@@ -110,9 +110,9 @@ from sp_farms.domain.qa_profiles import (
     QATargetPackage,
 )
 from sp_farms.domain.scheduler import (
-    SchedulePriority,
     ScheduledItem,
     ScheduledItemStatus,
+    SchedulePriority,
 )
 from sp_farms.domain.secrets import SecretReference, SecretType
 
@@ -471,6 +471,11 @@ class AccountTagModel(EntityMixin, Base):
 
 class AccountModel(EntityMixin, Base):
     __tablename__ = "accounts"
+    __table_args__ = (
+        Index("ix_accounts_display_name", "display_name"),
+        Index("ix_accounts_status", "status"),
+        Index("ix_accounts_category_id", "category_id"),
+    )
 
     avatar_ref: Mapped[str | None] = mapped_column(String(500))
     display_name: Mapped[str] = mapped_column(String(150), nullable=False)
@@ -532,7 +537,10 @@ class AccountDeviceAssignmentModel(EntityMixin, Base):
 
 class JobModel(EntityMixin, Base):
     __tablename__ = "jobs"
-    __table_args__ = (Index("ix_jobs_target", "target_type", "target_id"),)
+    __table_args__ = (
+        Index("ix_jobs_target", "target_type", "target_id"),
+        Index("ix_jobs_state_created", "state", "created_at"),
+    )
 
     job_type: Mapped[str] = mapped_column(String(100), nullable=False)
     target_type: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -638,9 +646,7 @@ class AuditEventModel(EntityMixin, Base):
     action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     target_type: Mapped[str] = mapped_column(String(50), nullable=False)
     target_id: Mapped[str] = mapped_column(String(100), nullable=False)
-    timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
-    )
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     result: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
     error_code: Mapped[str | None] = mapped_column(String(50))
     error_message: Mapped[str | None] = mapped_column(Text)
@@ -648,9 +654,7 @@ class AuditEventModel(EntityMixin, Base):
     job_id: Mapped[str | None] = mapped_column(String(36), index=True)
     details: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
 
-    __table_args__ = (
-        Index("ix_audit_events_target", "target_type", "target_id"),
-    )
+    __table_args__ = (Index("ix_audit_events_target", "target_type", "target_id"),)
 
     @classmethod
     def from_event(cls, event: AuditEvent) -> "AuditEventModel":
@@ -696,6 +700,7 @@ class AuditEventModel(EntityMixin, Base):
 
 class MediaAssetModel(EntityMixin, Base):
     __tablename__ = "media_assets"
+    __table_args__ = (Index("ix_media_assets_type_archived", "media_type", "is_archived"),)
 
     file_path: Mapped[str] = mapped_column(String(512), nullable=False)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1072,7 +1077,9 @@ class ScheduledItemModel(EntityMixin, Base):
     destination_type: Mapped[str] = mapped_column(String(20), nullable=False)
     destination_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     destination_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    scheduled_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     post_type: Mapped[str] = mapped_column(String(20), nullable=False, default="FEED")
     caption: Mapped[str] = mapped_column(Text, nullable=False, default="")
     media_asset_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
@@ -1325,11 +1332,87 @@ class SqlAlchemyAccountRepository(AccountRepository):
             raise TypeError("SqlAlchemyAccountRepository requires SqlAlchemyUnitOfWork")
         self._unit_of_work = unit_of_work
 
-    def list_accounts(self, include_archived: bool = False) -> Sequence[Account]:
+    def list_accounts(
+        self, include_archived: bool = False, limit: int | None = None, offset: int = 0
+    ) -> Sequence[Account]:
         query = self._session.query(AccountModel)
         if not include_archived:
             query = query.filter(AccountModel.archived_at.is_(None))
-        return tuple(self._to_account(model) for model in query.order_by(AccountModel.display_name))
+        query = query.order_by(AccountModel.display_name)
+        if offset > 0:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+        models = query.all()
+        if not models:
+            return ()
+
+        account_ids = [m.id for m in models]
+        tags_by_account: dict[str, list[str]] = {aid: [] for aid in account_ids}
+        devices_by_account: dict[str, AccountDeviceAssignment] = {}
+
+        chunk_size = 500
+        for i in range(0, len(account_ids), chunk_size):
+            chunk = account_ids[i : i + chunk_size]
+            tag_rows = (
+                self._session.query(
+                    AccountTagAssignmentModel.account_id, AccountTagAssignmentModel.tag_id
+                )
+                .filter(AccountTagAssignmentModel.account_id.in_(chunk))
+                .order_by(AccountTagAssignmentModel.tag_id)
+                .all()
+            )
+            for acc_id, tag_id in tag_rows:
+                tags_by_account[acc_id].append(tag_id)
+
+            dev_rows = (
+                self._session.query(AccountDeviceAssignmentModel)
+                .filter(AccountDeviceAssignmentModel.account_id.in_(chunk))
+                .all()
+            )
+            for dev in dev_rows:
+                devices_by_account[dev.account_id] = AccountDeviceAssignment(
+                    dev.account_id, dev.provider, dev.external_id
+                )
+
+        result: list[Account] = []
+        for model in models:
+            result.append(
+                Account(
+                    id=model.id,
+                    avatar_ref=model.avatar_ref,
+                    display_name=model.display_name,
+                    first_name=model.first_name,
+                    last_name=model.last_name,
+                    platform_uid=model.platform_uid,
+                    birthday=model.birthday,
+                    gender=AccountGender(model.gender) if model.gender else None,
+                    primary_email=model.primary_email,
+                    recovery_email=model.recovery_email,
+                    phone=model.phone,
+                    country=model.country,
+                    locale=model.locale,
+                    timezone=model.timezone,
+                    account_created_at=_optional_utc(model.account_created_at),
+                    status=AccountStatus(model.status),
+                    two_factor_enabled=model.two_factor_enabled,
+                    category_id=model.category_id,
+                    tag_ids=tuple(tags_by_account.get(model.id, ())),
+                    notes=model.notes,
+                    assigned_device=devices_by_account.get(model.id),
+                    preferred_app=PreferredApp(model.preferred_app),
+                    last_login_at=_optional_utc(model.last_login_at),
+                    last_verified_at=_optional_utc(model.last_verified_at),
+                    page_count=model.page_count,
+                    group_count=model.group_count,
+                    permission_state=PermissionState(model.permission_state),
+                    security_state=SecurityState(model.security_state),
+                    created_at=_as_utc(model.created_at),
+                    updated_at=_as_utc(model.updated_at),
+                    archived_at=_optional_utc(model.archived_at),
+                )
+            )
+        return tuple(result)
 
     def get_account(self, account_id: str) -> Account | None:
         model = self._session.get(AccountModel, account_id)
@@ -1343,6 +1426,18 @@ class SqlAlchemyAccountRepository(AccountRepository):
         else:
             for key, value in values.items():
                 setattr(model, key, value)
+
+    def save_accounts_batch(self, accounts: Sequence[Account]) -> None:
+        session = self._session
+        for account in accounts:
+            model = session.get(AccountModel, account.id)
+            values = _account_values(account)
+            if model is None:
+                session.add(AccountModel(**values))
+            else:
+                for key, value in values.items():
+                    setattr(model, key, value)
+        session.flush()
 
     def list_categories(self) -> Sequence[AccountCategory]:
         models = self._session.query(AccountCategoryModel).order_by(AccountCategoryModel.name)
@@ -1903,12 +1998,7 @@ class SqlAlchemyAuditRepository(AuditRepository):
             query = query.filter(AuditEventModel.target_id == target_id)
         if action is not None:
             query = query.filter(AuditEventModel.action == action)
-        models = (
-            query.order_by(AuditEventModel.timestamp.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        models = query.order_by(AuditEventModel.timestamp.desc()).offset(offset).limit(limit).all()
         return tuple(m.to_event() for m in models)
 
     def list_errors(
@@ -1925,12 +2015,7 @@ class SqlAlchemyAuditRepository(AuditRepository):
             query = query.filter(AuditEventModel.target_type == target_type)
         if target_id is not None:
             query = query.filter(AuditEventModel.target_id == target_id)
-        models = (
-            query.order_by(AuditEventModel.timestamp.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        models = query.order_by(AuditEventModel.timestamp.desc()).offset(offset).limit(limit).all()
         return tuple(m.to_event() for m in models)
 
     def prune(self, older_than: datetime) -> int:
@@ -2023,12 +2108,7 @@ class SqlAlchemyContentRepository(ContentRepositoryPort):
                 (MediaAssetModel.file_name.ilike(pattern))
                 | (MediaAssetModel.tags_json.ilike(pattern))
             )
-        models = (
-            query.order_by(MediaAssetModel.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        models = query.order_by(MediaAssetModel.created_at.desc()).offset(offset).limit(limit).all()
         return tuple(m.to_asset() for m in models)
 
     def delete_asset(self, asset_id: str) -> bool:
@@ -2213,10 +2293,7 @@ class SqlAlchemyContentRepository(ContentRepositoryPort):
                 | (ContentItemModel.tags_json.ilike(pattern))
             )
         models = (
-            query.order_by(ContentItemModel.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
+            query.order_by(ContentItemModel.created_at.desc()).offset(offset).limit(limit).all()
         )
         return tuple(m.to_item() for m in models)
 
@@ -2421,11 +2498,7 @@ class SqlAlchemySchedulerRepository(ScheduledItemRepositoryPort):
             query = query.filter(ScheduledItemModel.destination_id == destination_id)
         if status is not None:
             query = query.filter(ScheduledItemModel.status == status.value)
-        models = (
-            query.order_by(ScheduledItemModel.scheduled_at.asc())
-            .limit(limit)
-            .all()
-        )
+        models = query.order_by(ScheduledItemModel.scheduled_at.asc()).limit(limit).all()
         return tuple(m.to_item() for m in models)
 
     def delete_item(self, item_id: str) -> bool:
@@ -2568,7 +2641,9 @@ class ApprovalPolicyRuleModel(Base, EntityMixin):
 
 
 class SqlAlchemyApprovalRepository(ApprovalRepositoryPort):
-    def __init__(self, unit_of_work: "SqlAlchemyUnitOfWork") -> None:
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyApprovalRepository requires SqlAlchemyUnitOfWork")
         self._unit_of_work = unit_of_work
 
     def save_request(self, request: ApprovalRequest) -> ApprovalRequest:
@@ -2617,10 +2692,7 @@ class SqlAlchemyApprovalRepository(ApprovalRepositoryPort):
         if job_id is not None:
             query = query.filter(ApprovalRequestModel.job_id == job_id)
         models = (
-            query.order_by(ApprovalRequestModel.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
+            query.order_by(ApprovalRequestModel.created_at.desc()).offset(offset).limit(limit).all()
         )
         return tuple(m.to_request() for m in models)
 
@@ -2664,9 +2736,10 @@ class SqlAlchemyApprovalRepository(ApprovalRepositoryPort):
         return self._unit_of_work._active_session()
 
 
-class PublishAttemptModel(Base, EntityMixin):
+class PublishAttemptModel(Base):
     __tablename__ = "publish_attempts"
 
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
     destination_type: Mapped[str] = mapped_column(String(32), nullable=False)
     destination_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     destination_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -2684,6 +2757,8 @@ class PublishAttemptModel(Base, EntityMixin):
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     @classmethod
     def from_attempt(cls, attempt: PublishAttempt) -> "PublishAttemptModel":
@@ -2728,6 +2803,7 @@ class PublishAttemptModel(Base, EntityMixin):
 
         try:
             from sp_farms.domain.publishing import PublishMethod
+
             method_u = PublishMethod(self.method_used)
         except Exception:
             method_u = PublishMethod.API
@@ -2769,7 +2845,9 @@ class PublishAttemptModel(Base, EntityMixin):
 
 
 class SqlAlchemyPublishRepository(PublishRepositoryPort):
-    def __init__(self, unit_of_work: "SqlAlchemyUnitOfWork") -> None:
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyPublishRepository requires SqlAlchemyUnitOfWork")
         self._unit_of_work = unit_of_work
 
     def save(self, attempt: PublishAttempt) -> None:
@@ -2803,9 +2881,7 @@ class SqlAlchemyPublishRepository(PublishRepositoryPort):
 
     def get_by_idempotency_key(self, key: str) -> PublishAttempt | None:
         model = (
-            self._session.query(PublishAttemptModel)
-            .filter_by(idempotency_key=key)
-            .one_or_none()
+            self._session.query(PublishAttemptModel).filter_by(idempotency_key=key).one_or_none()
         )
         return model.to_attempt() if model is not None else None
 
@@ -2823,11 +2899,7 @@ class SqlAlchemyPublishRepository(PublishRepositoryPort):
             query = query.filter(PublishAttemptModel.destination_id == destination_id)
         if campaign_id is not None:
             query = query.filter(PublishAttemptModel.campaign_id == campaign_id)
-        models = (
-            query.order_by(PublishAttemptModel.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+        models = query.order_by(PublishAttemptModel.created_at.desc()).limit(limit).all()
         return tuple(m.to_attempt() for m in models)
 
     @property
@@ -2835,9 +2907,10 @@ class SqlAlchemyPublishRepository(PublishRepositoryPort):
         return self._unit_of_work._active_session()
 
 
-class AnalyticsSnapshotModel(Base, EntityMixin):
+class AnalyticsSnapshotModel(Base):
     __tablename__ = "analytics_snapshots"
 
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
     external_post_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     account_id: Mapped[str] = mapped_column(String(64), nullable=False)
     destination_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -2851,9 +2924,19 @@ class AnalyticsSnapshotModel(Base, EntityMixin):
     impressions_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     reach_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
 
     @classmethod
     def from_snapshot(cls, snapshot: PostAnalyticsSnapshot) -> "AnalyticsSnapshotModel":
+        now = datetime.now(UTC)
         return cls(
             id=snapshot.id,
             external_post_id=snapshot.external_post_id,
@@ -2869,6 +2952,8 @@ class AnalyticsSnapshotModel(Base, EntityMixin):
             impressions_count=snapshot.impressions_count,
             reach_count=snapshot.reach_count,
             synced_at=_as_utc(snapshot.synced_at),
+            created_at=now,
+            updated_at=now,
         )
 
     def to_snapshot(self) -> PostAnalyticsSnapshot:
@@ -2895,7 +2980,9 @@ class AnalyticsSnapshotModel(Base, EntityMixin):
 
 
 class SqlAlchemyAnalyticsRepository(AnalyticsRepositoryPort):
-    def __init__(self, unit_of_work: "SqlAlchemyUnitOfWork") -> None:
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyAnalyticsRepository requires SqlAlchemyUnitOfWork")
         self._unit_of_work = unit_of_work
 
     def save_snapshot(self, snapshot: PostAnalyticsSnapshot) -> None:
@@ -2950,11 +3037,7 @@ class SqlAlchemyAnalyticsRepository(AnalyticsRepositoryPort):
         if since is not None:
             query = query.filter(AnalyticsSnapshotModel.synced_at >= _as_utc(since))
 
-        models = (
-            query.order_by(AnalyticsSnapshotModel.synced_at.desc())
-            .limit(limit)
-            .all()
-        )
+        models = query.order_by(AnalyticsSnapshotModel.synced_at.desc()).limit(limit).all()
         return tuple(m.to_snapshot() for m in models)
 
     def get_aggregated_metrics(
@@ -2998,7 +3081,9 @@ class DeviceOperationalEventModel(Base):
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), index=True, nullable=False
+    )
 
     @classmethod
     def from_event(cls, ev: DeviceOperationalEvent) -> "DeviceOperationalEventModel":
@@ -3038,7 +3123,9 @@ class DeviceOperationalEventModel(Base):
 
 
 class SqlAlchemyDeviceAnalyticsRepository(DeviceAnalyticsRepositoryPort):
-    def __init__(self, unit_of_work: "SqlAlchemyUnitOfWork") -> None:
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyDeviceAnalyticsRepository requires SqlAlchemyUnitOfWork")
         self._unit_of_work = unit_of_work
 
     def record_event(self, event: DeviceOperationalEvent) -> None:
@@ -3065,11 +3152,7 @@ class SqlAlchemyDeviceAnalyticsRepository(DeviceAnalyticsRepositoryPort):
             query = query.filter(DeviceOperationalEventModel.provider == provider)
         if since is not None:
             query = query.filter(DeviceOperationalEventModel.created_at >= _as_utc(since))
-        models = (
-            query.order_by(DeviceOperationalEventModel.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+        models = query.order_by(DeviceOperationalEventModel.created_at.desc()).limit(limit).all()
         return tuple(m.to_event() for m in models)
 
     @property
@@ -3166,5 +3249,7 @@ def _configure_sqlite(dbapi_connection: object, connection_record: object) -> No
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.execute("PRAGMA busy_timeout=30000")
+        cursor.execute("PRAGMA cache_size=-64000")  # 64MB cache
+        cursor.execute("PRAGMA temp_store=MEMORY")
     finally:
         cursor.close()

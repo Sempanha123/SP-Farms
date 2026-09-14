@@ -159,10 +159,10 @@ def test_corrupted_backup_integrity_validation(test_env):
         zipfile.ZipFile(tampered_archive, "w") as zout,
     ):
         for item in zin.infolist():
-                data = zin.read(item.filename)
-                if item.filename == "settings.json":
-                    data = b'{"tampered": true}'
-                zout.writestr(item, data)
+            data = zin.read(item.filename)
+            if item.filename == "settings.json":
+                data = b'{"tampered": true}'
+            zout.writestr(item, data)
 
     preview = service.preview_restore(tampered_archive)
     assert preview.is_valid is False

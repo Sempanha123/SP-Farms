@@ -10,8 +10,8 @@ from PySide6.QtCore import (
     QDateTime,
     QModelIndex,
     QPersistentModelIndex,
-    QTime,
     Qt,
+    QTime,
     Signal,
 )
 from PySide6.QtWidgets import (
@@ -483,9 +483,7 @@ class SchedulerWorkspace(QWidget):
         elif self._view_mode == "week":
             start = self._current_date - timedelta(days=self._current_date.weekday())
             end = start + timedelta(days=6)
-            self.period_label.setText(
-                f"{start.strftime('%b %d')} - {end.strftime('%b %d, %Y')}"
-            )
+            self.period_label.setText(f"{start.strftime('%b %d')} - {end.strftime('%b %d, %Y')}")
         elif self._view_mode == "month":
             self.period_label.setText(self._current_date.strftime("%B %Y"))
         else:

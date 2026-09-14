@@ -202,9 +202,7 @@ class ComposerService:
                 dest = PublishDestination(
                     id=meta["destination_id"],
                     name=meta.get("destination_name", "Destination"),
-                    destination_type=PublishDestinationType(
-                        meta.get("destination_type", "page")
-                    ),
+                    destination_type=PublishDestinationType(meta.get("destination_type", "page")),
                     account_id="",
                     native_id="",
                 )

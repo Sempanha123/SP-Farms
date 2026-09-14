@@ -1,12 +1,12 @@
 """Tests for Phase 34: Scheduler and Calendar."""
 
+import tempfile
 from collections.abc import Generator
 from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
-import tempfile
 
-from PySide6.QtWidgets import QApplication
 import pytest
+from PySide6.QtWidgets import QApplication
 
 from sp_farms.app.scheduler_workspace import (
     NewScheduleDialog,
@@ -213,9 +213,7 @@ def test_missed_task_recovery(scheduler_service: SchedulerService) -> None:
     assert recovered[0].status == ScheduledItemStatus.QUEUED
 
 
-def test_scheduler_workspace_ui(
-    qapp: QApplication, scheduler_service: SchedulerService
-) -> None:
+def test_scheduler_workspace_ui(qapp: QApplication, scheduler_service: SchedulerService) -> None:
     """Test PySide6 SchedulerWorkspace initialization, model updates, and dialogs."""
     now = datetime.now(UTC)
     scheduler_service.schedule_post(

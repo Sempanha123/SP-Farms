@@ -1,10 +1,8 @@
 """Base Page Object class for Android screens."""
 
 import logging
-from typing import Any
 
 from sp_farms.application.automation.mobile_driver import MobileDriver
-from sp_farms.domain.automation import By, ElementRef
 
 logger = logging.getLogger(__name__)
 

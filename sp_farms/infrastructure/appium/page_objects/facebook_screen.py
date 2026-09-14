@@ -16,7 +16,10 @@ class FacebookHomeScreen(BaseScreen):
     """Encapsulates elements and actions on Facebook Android Home Feed."""
 
     NEWS_FEED_TAB = (By.ACCESSIBILITY_ID, "News Feed")
-    CREATE_POST_BAR = (By.XPATH, "//*[@content-desc=\"What's on your mind?\" or @text=\"What's on your mind?\"]")
+    CREATE_POST_BAR = (
+        By.XPATH,
+        '//*[@content-desc="What\'s on your mind?" or @text="What\'s on your mind?"]',
+    )
     NOTIFICATIONS_TAB = (By.ACCESSIBILITY_ID, "Notifications")
     MENU_TAB = (By.ACCESSIBILITY_ID, "Menu")
     PROFILE_TAB = (By.ACCESSIBILITY_ID, "Profile")
@@ -42,7 +45,10 @@ class FacebookComposerScreen(BaseScreen):
     STATUS_INPUT = (By.XPATH, "//android.widget.EditText")
     POST_BUTTON = (By.XPATH, "//*[@text='POST' or @text='Publish' or @content-desc='Post']")
     ADD_PHOTO_VIDEO = (By.XPATH, "//*[@content-desc='Photo/video' or @text='Photo/video']")
-    AUDIENCE_SELECTOR = (By.XPATH, "//*[@content-desc='Audience' or @text='Public' or @text='Friends']")
+    AUDIENCE_SELECTOR = (
+        By.XPATH,
+        "//*[@content-desc='Audience' or @text='Public' or @text='Friends']",
+    )
 
     def is_screen_active(self, timeout_seconds: float = 5.0) -> bool:
         try:

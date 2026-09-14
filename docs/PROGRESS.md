@@ -513,6 +513,44 @@ Status: complete
 - Wired `LicensingService` into `ApplicationContext` and `bootstrap.py`.
 - Added 5 automated tests in `tests/test_licensing.py` (total test suite at 268/268 passing).
 
+## Phase 46 — Internationalization
+
+Status: complete
+
+- Implemented multilingual engine with English and Khmer as first-class UI languages, alongside prepared Thai and Vietnamese catalogs.
+- Externalized user-facing strings across navigation, actions, statuses, settings sections, and messages.
+- Created `I18nService` providing key translation `t(...)`, fallback to `en_US`, and variable interpolation.
+- Added Unicode Normalization Form C (NFC) enforcement across all localized text and storage.
+- Added locale-aware date formatting (`YYYY-MM-DD` vs `DD/MM/YYYY`) and number/monetary formatting with custom separators.
+- Implemented UTF-8 BOM encoding utility (`to_utf8_bom`) for clean Excel exports with Southeast Asian scripts.
+- Integrated language selector into `SettingsWorkspace` ("General" section) persisting `general/locale` and dynamically updating navigation buttons and branding.
+- Added 7 automated tests in `tests/test_i18n.py` (total test suite at 275/275 passing).
+
+## Phase 47 — Accessibility and Keyboard Efficiency
+
+Status: complete
+
+- Created dedicated accessibility framework in `sp_farms/app/accessibility.py` supporting `apply_accessibility`, sequential tab chaining `chain_tab_order`, semantic verification `verify_accessible_semantics`, and dialog keyboard handlers.
+- Styled visible 2px high-contrast focus rings (`:focus`) across `QPushButton`, `QLineEdit`, `QComboBox`, `QSpinBox`, `QDateTimeEdit`, `QTextEdit`, `QTableView`, `QListView`, and `QListWidget`.
+- Removed reliance on color alone in `StatusChip`: state is conveyed with semantic visual glyphs (`✓`, `▲`, `✖`, `●`, `○`, `⏸`, `▶`), and accessible names/descriptions.
+- Added accessible names, descriptions, and tooltip shortcut hints to top navigation buttons (`Alt+1` through `Alt+9`), settings search, settings sections, accounts table, and filters.
+- Enforced sequential focus chaining across navigation buttons and settings controls.
+- Added 7 automated tests in `tests/test_accessibility.py` (total test suite at 282/282 passing).
+
+## Phase 48 — Performance and Scale Hardening
+
+Status: complete
+
+- Built synthetic dataset generators for accounts, assets, devices, and jobs to validate high-throughput operations.
+- Implemented in-memory bounded LRU cache (`sp_farms/application/cache.py`) with TTL eviction and dedicated `ThumbnailCache`.
+- Implemented thread-safe asynchronous write batching queue (`sp_farms/application/batch_queue.py`) for high-throughput event ingestion.
+- Added compound query performance indexes in Alembic migration `0018_performance_indexes.py`.
+- Created benchmark profiler in `sp_farms/infrastructure/profiler.py` measuring latency distributions and asserting sub-50ms query response times.
+- Fixed schema parity across append-only log tables (`analytics_snapshots`, `publish_attempts`) removing soft-deletion column drift.
+- Added 6 automated tests in `tests/test_performance.py` (total test suite at 288/288 passing).
+
+
+
 
 
 

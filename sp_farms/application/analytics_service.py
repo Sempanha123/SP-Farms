@@ -72,7 +72,9 @@ class AnalyticsService:
 
         if self._audit_service:
             self._audit_service.record_event(
+                initiator="system",
                 action="analytics.sync.post",
+                target_type="post",
                 target_id=external_post_id,
                 result=AuditResult.SUCCESS,
                 details={
@@ -99,7 +101,9 @@ class AnalyticsService:
         published_attempts = []
         with self._uow() as uow:
             p_repo = self._publish_repo_factory(uow)
-            published_attempts = list(p_repo.list_recent(limit=limit, status=PublishStatus.PUBLISHED))
+            published_attempts = list(
+                p_repo.list_recent(limit=limit, status=PublishStatus.PUBLISHED)
+            )
 
         snapshots = []
         for attempt in published_attempts:
@@ -120,7 +124,9 @@ class AnalyticsService:
                 )
                 snapshots.append(snap)
             except Exception as e:
-                logger.warning("Failed syncing metrics for post %s: %s", attempt.external_post_id, e)
+                logger.warning(
+                    "Failed syncing metrics for post %s: %s", attempt.external_post_id, e
+                )
 
         return snapshots
 

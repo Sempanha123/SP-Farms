@@ -39,6 +39,7 @@ class SettingsWorkspace(QWidget):
 
     theme_requested = Signal(str)
     queue_visibility_requested = Signal(bool)
+    locale_requested = Signal(str)
 
     SECTION_NAMES = (
         "General",
@@ -95,6 +96,8 @@ class SettingsWorkspace(QWidget):
         self.search = QLineEdit()
         self.search.setPlaceholderText("🔍 Search settings by name or keyword...")
         self.search.setFixedWidth(320)
+        self.search.setAccessibleName("Search Settings")
+        self.search.setAccessibleDescription("Filter settings by name or description")
         self.search.textChanged.connect(self._filter_settings)
         header_row.addWidget(self.search)
 
@@ -113,12 +116,15 @@ class SettingsWorkspace(QWidget):
 
         self.nav_list = QListWidget()
         self.nav_list.setFrameShape(QFrame.Shape.NoFrame)
+        self.nav_list.setAccessibleName("Settings Sections")
+        self.nav_list.setAccessibleDescription("List of available configuration sections")
         for section in self.SECTION_NAMES:
             item = QListWidgetItem(section)
             self.nav_list.addItem(item)
         self.nav_list.currentRowChanged.connect(self._on_section_selected)
         nav_layout.addWidget(self.nav_list)
         content_split.addWidget(nav_panel)
+        QWidget.setTabOrder(self.search, self.nav_list)
 
         # Right Form Stack inside ScrollArea
         self.stack = QStackedWidget()
@@ -193,6 +199,20 @@ class SettingsWorkspace(QWidget):
                 "Application Name",
                 "Official SP-Farms title",
                 self.app_name_input,
+            )
+
+            self.language_selector = QComboBox()
+            self.language_selector.addItem("English (United States)", "en_US")
+            self.language_selector.addItem("ភាសាខ្មែរ (Khmer)", "km_KH")
+            self.language_selector.addItem("ไทย (Thai)", "th_TH")
+            self.language_selector.addItem("Tiếng Việt (Vietnamese)", "vi_VN")
+            self._add_field(
+                form,
+                section,
+                "general/locale",
+                "Display Language",
+                "User interface language catalog (English, Khmer, Thai, Vietnamese)",
+                self.language_selector,
             )
 
             self.start_minimized = QCheckBox("Start minimized to system tray")
@@ -623,6 +643,9 @@ class SettingsWorkspace(QWidget):
         lbl_container = QWidget()
         lbl_container.setLayout(label_col)
 
+        widget.setAccessibleName(title)
+        widget.setAccessibleDescription(description)
+
         form.addRow(lbl_container, widget)
         meta = SettingFieldMeta(section, key, title, description, restart)
         self._field_meta.append((meta, widget))
@@ -689,6 +712,13 @@ class SettingsWorkspace(QWidget):
 
         return (len(errors) == 0, errors)
 
+    def _read_int(self, key: str, default: int) -> int:
+        val = self._settings.value(key, default)
+        try:
+            return int(str(val))
+        except (ValueError, TypeError):
+            return default
+
     def load_all_settings(self) -> None:
         """Load values from QSettings into UI controls."""
         saved_theme = str(self._settings.value("appearance/theme", ThemeMode.DARK.value)).title()
@@ -700,16 +730,17 @@ class SettingsWorkspace(QWidget):
         self.compact_density.setChecked(
             bool(self._settings.value("appearance/compact_density", False, type=bool))
         )
+        saved_locale = str(self._settings.value("general/locale", "en_US"))
+        idx = self.language_selector.findData(saved_locale)
+        if idx >= 0:
+            self.language_selector.setCurrentIndex(idx)
+
         self.start_minimized.setChecked(
             bool(self._settings.value("general/start_minimized", False, type=bool))
         )
-        self.auto_sync_interval.setValue(
-            int(self._settings.value("general/sync_interval", 30, type=int))
-        )
+        self.auto_sync_interval.setValue(self._read_int("general/sync_interval", 30))
 
-        self.max_active_accounts.setValue(
-            int(self._settings.value("accounts/max_active", 5, type=int))
-        )
+        self.max_active_accounts.setValue(self._read_int("accounts/max_active", 5))
         self.strict_fingerprinting.setChecked(
             bool(self._settings.value("accounts/strict_fingerprint", True, type=bool))
         )
@@ -718,37 +749,29 @@ class SettingsWorkspace(QWidget):
         self.default_provider.setCurrentText(
             str(self._settings.value("devices/default_provider", "Auto-Detect"))
         )
-        self.device_timeout.setValue(int(self._settings.value("devices/timeout", 30, type=int)))
+        self.device_timeout.setValue(self._read_int("devices/timeout", 30))
 
         self.meta_app_id.setText(str(self._settings.value("meta/app_id", "")))
         self.meta_redirect_uri.setText(
             str(self._settings.value("meta/redirect_uri", "https://localhost/oauth/callback"))
         )
-        self.meta_api_version.setCurrentText(
-            str(self._settings.value("meta/api_version", "v21.0"))
-        )
+        self.meta_api_version.setCurrentText(str(self._settings.value("meta/api_version", "v21.0")))
 
         self.db_path_input.setText(str(self._settings.value("storage/database_path", "")))
-        self.asset_cache_limit.setValue(
-            int(self._settings.value("storage/cache_limit", 2048, type=int))
-        )
+        self.asset_cache_limit.setValue(self._read_int("storage/cache_limit", 2048))
 
         self.auto_lock_vault.setChecked(
             bool(self._settings.value("security/auto_lock", True, type=bool))
         )
-        self.idle_lock_minutes.setValue(
-            int(self._settings.value("security/idle_timeout", 15, type=int))
-        )
+        self.idle_lock_minutes.setValue(self._read_int("security/idle_timeout", 15))
         self.enforce_https.setChecked(
             bool(self._settings.value("security/enforce_https", True, type=bool))
         )
 
-        self.scheduler_poll_rate.setValue(
-            int(self._settings.value("scheduler/poll_rate", 5, type=int))
-        )
-        self.max_retries.setValue(int(self._settings.value("scheduler/max_retries", 3, type=int)))
+        self.scheduler_poll_rate.setValue(self._read_int("scheduler/poll_rate", 5))
+        self.max_retries.setValue(self._read_int("scheduler/max_retries", 3))
 
-        self.network_timeout.setValue(int(self._settings.value("network/timeout", 30, type=int)))
+        self.network_timeout.setValue(self._read_int("network/timeout", 30))
         self.proxy_url.setText(str(self._settings.value("network/proxy", "")))
 
         self.desktop_notifications.setChecked(
@@ -761,12 +784,8 @@ class SettingsWorkspace(QWidget):
         self.auto_backup_enabled.setChecked(
             bool(self._settings.value("backup/auto_enabled", True, type=bool))
         )
-        self.backup_retention_count.setValue(
-            int(self._settings.value("backup/retention_count", 10, type=int))
-        )
-        self.backup_retention_days.setValue(
-            int(self._settings.value("backup/retention_days", 30, type=int))
-        )
+        self.backup_retention_count.setValue(self._read_int("backup/retention_count", 10))
+        self.backup_retention_days.setValue(self._read_int("backup/retention_days", 30))
 
         self.allow_plugins.setChecked(
             bool(self._settings.value("plugins/enabled", False, type=bool))
@@ -797,6 +816,12 @@ class SettingsWorkspace(QWidget):
         self._settings.setValue("appearance/theme", theme)
         self._settings.setValue("window/jobQueueVisible", self.queue_visible.isChecked())
         self._settings.setValue("appearance/compact_density", self.compact_density.isChecked())
+        selected_locale = self.language_selector.currentData() or "en_US"
+        self._settings.setValue("general/locale", selected_locale)
+        if self._context and self._context.i18n_service:
+            self._context.i18n_service.set_locale(selected_locale)
+        self.locale_requested.emit(str(selected_locale))
+
         self._settings.setValue("general/start_minimized", self.start_minimized.isChecked())
         self._settings.setValue("general/sync_interval", self.auto_sync_interval.value())
 
@@ -859,6 +884,9 @@ class SettingsWorkspace(QWidget):
         section = current_item.text()
 
         if section == "General":
+            idx = self.language_selector.findData("en_US")
+            if idx >= 0:
+                self.language_selector.setCurrentIndex(idx)
             self.start_minimized.setChecked(False)
             self.auto_sync_interval.setValue(30)
         elif section == "Appearance":

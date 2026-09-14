@@ -2,7 +2,6 @@
 
 import logging
 import time
-from typing import Any
 
 from sp_farms.application.automation.mobile_driver import MobileDriver
 from sp_farms.domain.composer import PostType, PublishDestinationType

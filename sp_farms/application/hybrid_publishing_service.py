@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class HybridPublishingService:
-    """Orchestrates hybrid publishing using official Meta Graph API with automatic Appium fallback."""
+    """Orchestrates hybrid publishing using Meta Graph API with Appium fallback."""
 
     def __init__(
         self,
@@ -59,7 +59,7 @@ class HybridPublishingService:
         execution_context: JobExecutionContext | None = None,
         initiator: str = "operator",
     ) -> PublishAttempt:
-        """Execute publishing using selected strategy (API, Appium, or Hybrid with auto-fallback)."""
+        """Execute publishing using selected strategy (API, Appium, or Hybrid)."""
         caption = str(payload.get("caption", payload.get("message", "")))
         api_supported = is_api_supported_destination(destination_type, post_type)
 
@@ -67,7 +67,11 @@ class HybridPublishingService:
         if strategy == PublishExecutionStrategy.APPIUM_ONLY or (
             strategy == PublishExecutionStrategy.HYBRID_AUTO and not api_supported
         ):
-            reason = "Destination or format not supported by Meta Graph API" if not api_supported else "Appium only strategy requested"
+            reason = (
+                "Destination or format not supported by Meta Graph API"
+                if not api_supported
+                else "Appium only strategy requested"
+            )
             logger.info("Publishing directly via Appium Android UI automation: %s", reason)
             return self._publish_via_appium(
                 destination_type=destination_type,
@@ -103,7 +107,10 @@ class HybridPublishingService:
         )
 
         # If API succeeded or strategy is strictly API_ONLY, return as-is
-        if attempt.status == PublishStatus.PUBLISHED or strategy == PublishExecutionStrategy.API_ONLY:
+        if (
+            attempt.status == PublishStatus.PUBLISHED
+            or strategy == PublishExecutionStrategy.API_ONLY
+        ):
             return attempt
 
         # 3. Hybrid Fallback: If API failed due to permission denial or unsupported payload
@@ -112,12 +119,17 @@ class HybridPublishingService:
             PublishErrorCode.INVALID_PAYLOAD,
             PublishErrorCode.UNKNOWN,
         ):
-            fallback_reason = f"Graph API returned {attempt.error_code.value}: {attempt.error_message}. Falling back to Appium automation."
+            fallback_reason = (
+                f"Graph API returned {attempt.error_code.value}: {attempt.error_message}. "
+                "Falling back to Appium automation."
+            )
             logger.warning(fallback_reason)
 
             if self.audit_service:
                 self.audit_service.record_event(
+                    initiator=initiator,
                     action="publish.hybrid.fallback_to_appium",
+                    target_type="publish_attempt",
                     target_id=attempt.id,
                     result=AuditResult.WARNING,
                     details={
@@ -125,7 +137,6 @@ class HybridPublishingService:
                         "destination_id": destination_id,
                         "reason": fallback_reason,
                     },
-                    initiator=initiator,
                 )
 
             return self._publish_via_appium(
@@ -166,7 +177,7 @@ class HybridPublishingService:
         initiator: str,
         fallback_reason: str,
     ) -> PublishAttempt:
-        """Execute Android mobile publishing action via Appium executor and update attempt record."""
+        """Execute Android mobile publishing action via Appium executor."""
         attempt = PublishAttempt.create(
             destination_type=destination_type,
             destination_id=destination_id,
@@ -225,7 +236,9 @@ class HybridPublishingService:
 
             if self.audit_service:
                 self.audit_service.record_event(
+                    initiator=initiator,
                     action="publish.appium.success",
+                    target_type="publish_attempt",
                     target_id=published_attempt.id,
                     result=AuditResult.SUCCESS,
                     details={
@@ -236,7 +249,6 @@ class HybridPublishingService:
                         "post_ref": post_ref,
                         "fallback_reason": fallback_reason,
                     },
-                    initiator=initiator,
                 )
 
             return published_attempt

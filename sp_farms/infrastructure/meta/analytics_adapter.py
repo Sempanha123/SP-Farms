@@ -1,6 +1,5 @@
 """Adapter for fetching post engagement and reach metrics from Meta Graph API."""
 
-import logging
 from collections.abc import Mapping
 from typing import Any
 
@@ -21,7 +20,9 @@ class MetaAnalyticsAdapter(AnalyticsPort):
         config: MetaOAuthConfig | None = None,
         http_client: httpx.Client | None = None,
     ) -> None:
-        self._config = config or MetaOAuthConfig(client_id="default", client_secret="secret", redirect_uri="")
+        self._config = config or MetaOAuthConfig(
+            client_id="default", client_secret="secret", redirect_uri=""
+        )
         self._client = http_client or httpx.Client(timeout=30.0)
 
     def fetch_post_metrics(
@@ -31,15 +32,21 @@ class MetaAnalyticsAdapter(AnalyticsPort):
     ) -> Mapping[str, int]:
         """Fetch likes, comments, shares, views, and reach using Graph API post insights."""
         url = f"{self._config.base_url}/{self._config.graph_version}/{external_post_id}"
+        metrics_fields = (
+            "likes.summary(true),comments.summary(true),shares,"
+            "insights.metric(post_impressions,post_impressions_unique,post_video_views)"
+        )
         params = {
-            "fields": "likes.summary(true),comments.summary(true),shares,insights.metric(post_impressions,post_impressions_unique,post_video_views)",
+            "fields": metrics_fields,
             "access_token": access_token,
         }
 
         try:
             resp = self._client.get(url, params=params)
             if resp.status_code != 200:
-                logger.warning("Graph API returned %d for post %s metrics", resp.status_code, external_post_id)
+                logger.warning(
+                    "Graph API returned %d for post %s metrics", resp.status_code, external_post_id
+                )
                 return self._parse_fallback_response(resp.json() if resp.content else {})
             data = resp.json()
             return self._parse_metrics_payload(data)

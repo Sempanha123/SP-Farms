@@ -109,9 +109,7 @@ class SecurityService:
             delta = now - account.last_verified_at
             if delta > timedelta(days=14):
                 session_stale = True
-                warnings.append(
-                    f"Account session verification is stale ({delta.days} days old)."
-                )
+                warnings.append(f"Account session verification is stale ({delta.days} days old).")
                 remediation.append("Perform routine session check or re-verification.")
         else:
             session_stale = True
@@ -139,9 +137,7 @@ class SecurityService:
                     repo = repo_fn(None)  # type: ignore[arg-type]
                     secret_refs = list(repo.list_by_owner_ids([account.id]))
 
-                token_refs = [
-                    r for r in secret_refs if r.secret_type == SecretType.ACCESS_TOKEN
-                ]
+                token_refs = [r for r in secret_refs if r.secret_type == SecretType.ACCESS_TOKEN]
                 if token_refs and self._secret_service:
                     ref = token_refs[0]
                     raw_token = self._secret_service.reveal(ref)
@@ -207,12 +203,8 @@ class SecurityService:
         # If account status is disabled/attention
         if account.status == AccountStatus.ATTENTION:
             auth_state = AuthState.CHALLENGE_REQUIRED
-            warnings.append(
-                "Account flagged for operator attention (checkpoint or prompt)."
-            )
-            remediation.append(
-                "Open account on device to review Meta security prompt manually."
-            )
+            warnings.append("Account flagged for operator attention (checkpoint or prompt).")
+            remediation.append("Open account on device to review Meta security prompt manually.")
         elif account.status == AccountStatus.DISABLED:
             auth_state = AuthState.REVOKED
             warnings.append("Account is disabled or suspended by Meta.")
@@ -256,16 +248,12 @@ class SecurityService:
         secure_count = sum(1 for a in audits if a.security_score >= 80)
         warning_count = sum(1 for a in audits if 50 <= a.security_score < 80)
         critical_count = sum(1 for a in audits if a.security_score < 50)
-        expiring_tokens = sum(
-            1 for a in audits if a.token_health == TokenHealthState.EXPIRING_SOON
-        )
+        expiring_tokens = sum(1 for a in audits if a.token_health == TokenHealthState.EXPIRING_SOON)
         expired_tokens = sum(1 for a in audits if a.token_health == TokenHealthState.EXPIRED)
         missing_2fa = sum(1 for a in audits if not a.two_factor_enabled)
         stale_sessions = sum(1 for a in audits if a.session_stale)
 
-        avg_score = (
-            int(sum(a.security_score for a in audits) / len(audits)) if audits else 100
-        )
+        avg_score = int(sum(a.security_score for a in audits) / len(audits)) if audits else 100
 
         return SystemSecurityReport(
             total_accounts=len(accounts),

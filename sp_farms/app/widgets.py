@@ -49,6 +49,17 @@ class StatusChip(QLabel):
         "neutral": "muted_text",
         "active": "info",
     }
+    _STATE_ICONS = {
+        "success": "✓",
+        "warning": "▲",
+        "error": "✖",
+        "danger": "✖",
+        "active": "●",
+        "info": "●",
+        "neutral": "○",
+        "paused": "⏸",
+        "running": "▶",
+    }
 
     def __init__(
         self,
@@ -67,9 +78,18 @@ class StatusChip(QLabel):
         text: str | None = None,
         mode: ThemeMode | None = None,
     ) -> None:
-        if text is not None:
-            self.setText(text)
+        raw_text = text if text is not None else self.text()
+        icon = self._STATE_ICONS.get(state.lower(), "")
+        # Avoid double-prefixing if icon already present
+        display_text = raw_text
+        if icon and not any(raw_text.startswith(ic) for ic in self._STATE_ICONS.values()):
+            display_text = f"{icon} {raw_text}"
+
+        self.setText(display_text)
         self.setProperty("state", state)
+        self.setAccessibleName(f"Status: {raw_text}")
+        self.setAccessibleDescription(f"Current status is {state} ({raw_text})")
+
         if mode is not None:
             colors = palette(mode)
             color = getattr(colors, self._COLORS.get(state, "muted_text"))
@@ -131,8 +151,8 @@ class MetricRow(QWidget):
         if not self.value_labels or len(self.value_labels) != len(metrics):
             while self._layout.count():
                 item = self._layout.takeAt(0)
-                w = item.widget()
-                if w:
+                w = item.widget() if item else None
+                if w is not None:
                     w.deleteLater()
             self.value_labels.clear()
             self.name_labels.clear()

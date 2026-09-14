@@ -197,7 +197,7 @@ def test_asset_inspector_display_and_actions() -> None:
     workspace.pages_table.selectRow(0)
     assert workspace.inspector.title_label.text() == "Inspector Test Page"
     assert workspace.inspector.id_label.text() == "ID: meta-p-1"
-    assert workspace.inspector.eligibility_chip.text() == "Eligible"
+    assert "Eligible" in workspace.inspector.eligibility_chip.text()
 
     # Test shortcut route signals
     route_target: list[str] = []

@@ -1,6 +1,5 @@
 """Hexagonal port and abstract client interface for Appium 2 driver operations."""
 
-from collections.abc import Mapping
 from typing import Any, Protocol
 
 from sp_farms.domain.automation import (

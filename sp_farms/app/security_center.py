@@ -84,7 +84,9 @@ class SecurityFilterProxyModel(QSortFilterProxyModel):
                         Qt.ItemDataRole.DisplayRole,
                     )
                     or "0"
-                ).replace("/ 100", "").strip()
+                )
+                .replace("/ 100", "")
+                .strip()
             )
             auth_val = str(
                 model.data(
@@ -125,10 +127,7 @@ class SecurityFilterProxyModel(QSortFilterProxyModel):
                 return False
             if self._filter_mode == "Stale Sessions" and "Stale" not in session_val:
                 return False
-            if (
-                self._filter_mode == "Challenge Required"
-                and "Challenge" not in auth_val
-            ):
+            if self._filter_mode == "Challenge Required" and "Challenge" not in auth_val:
                 return False
 
         # Text search
@@ -264,9 +263,7 @@ class SecurityInspectorPanel(Panel):
             self.score_chip.update_state("error", f"{audit.security_score} / 100")
 
         self.auth_label.setText(audit.auth_state.value.replace("_", " ").title())
-        self.two_fa_label.setText(
-            "Enabled (2FA)" if audit.two_factor_enabled else "Disabled ⚠️"
-        )
+        self.two_fa_label.setText("Enabled (2FA)" if audit.two_factor_enabled else "Disabled ⚠️")
         self.token_label.setText(audit.token_health.value.replace("_", " ").title())
 
         if audit.days_until_expiration is not None:
@@ -274,14 +271,10 @@ class SecurityInspectorPanel(Panel):
         else:
             self.expires_label.setText("Never / Unknown")
 
-        scopes_str = (
-            ", ".join(audit.granted_scopes) if audit.granted_scopes else "None"
-        )
+        scopes_str = ", ".join(audit.granted_scopes) if audit.granted_scopes else "None"
         self.scopes_label.setText(scopes_str)
 
-        self.session_label.setText(
-            "Stale (>14 days)" if audit.session_stale else "Active / Fresh"
-        )
+        self.session_label.setText("Stale (>14 days)" if audit.session_stale else "Active / Fresh")
         self.vault_label.setText(
             "Secured in OS Keyring" if audit.vault_synced else "Missing Vault Secret"
         )
@@ -397,9 +390,7 @@ class SecurityCenterWorkspace(QWidget):
         toolbar.setSpacing(6)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText(
-            "Search account security status by name or UID..."
-        )
+        self.search_input.setPlaceholderText("Search account security status by name or UID...")
         self.search_input.textChanged.connect(self.proxy.setFilterRegularExpression)
         toolbar.addWidget(self.search_input, stretch=2)
 
@@ -457,9 +448,7 @@ class SecurityCenterWorkspace(QWidget):
         if self._security_service is None:
             return
 
-        report: SystemSecurityReport = (
-            self._security_service.generate_system_report()
-        )
+        report: SystemSecurityReport = self._security_service.generate_system_report()
         self.metrics_bar.value_labels[0].setText(str(report.total_accounts))
         self.metrics_bar.value_labels[1].setText(str(report.secure_accounts))
         self.metrics_bar.value_labels[2].setText(str(report.missing_2fa_count))
@@ -512,9 +501,7 @@ class SecurityCenterWorkspace(QWidget):
             return
         res = self._security_service.generate_reauth_url_or_guidance(account_id)
         if res.get("status") == "error":
-            QMessageBox.critical(
-                self, "Re-Authentication Error", res.get("message", "Error")
-            )
+            QMessageBox.critical(self, "Re-Authentication Error", res.get("message", "Error"))
             return
 
         oauth_url = res.get("oauth_url", "")
@@ -526,9 +513,7 @@ class SecurityCenterWorkspace(QWidget):
         msg_box.setInformativeText(guidance)
 
         if oauth_url:
-            open_btn = msg_box.addButton(
-                "Open in Browser", QMessageBox.ButtonRole.ActionRole
-            )
+            open_btn = msg_box.addButton("Open in Browser", QMessageBox.ButtonRole.ActionRole)
         msg_box.addButton("Close", QMessageBox.ButtonRole.RejectRole)
 
         msg_box.exec()
@@ -577,9 +562,7 @@ class SecurityCenterWorkspace(QWidget):
                             a.auth_state.value,
                             a.two_factor_enabled,
                             a.token_health.value,
-                            a.days_until_expiration
-                            if a.days_until_expiration is not None
-                            else "",
+                            a.days_until_expiration if a.days_until_expiration is not None else "",
                             a.session_stale,
                             a.vault_synced,
                             "; ".join(a.warnings),

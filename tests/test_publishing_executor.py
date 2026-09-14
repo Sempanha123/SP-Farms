@@ -1,6 +1,5 @@
 """Tests for Phase 36: Official Publishing Executor."""
 
-from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -12,12 +11,7 @@ from sp_farms.application.ports import Clock
 from sp_farms.application.publish_repository import PublishRepositoryPort
 from sp_farms.application.publishing_service import PublishingService
 from sp_farms.domain.campaigns import (
-    ApprovalPolicy,
-    Campaign,
     CampaignStatus,
-    CampaignTarget,
-    RetryPolicy,
-    SchedulePolicy,
     TargetStatus,
 )
 from sp_farms.domain.composer import PostType, PublishDestinationType

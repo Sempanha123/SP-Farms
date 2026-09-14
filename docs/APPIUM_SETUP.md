@@ -110,6 +110,7 @@ All UI interaction workflows should inherit from `BaseScreen` and use structured
 from sp_farms.application.automation.mobile_driver import MobileDriver
 from sp_farms.infrastructure.appium.page_objects.facebook_screen import FacebookHomeScreen
 
+
 def run_post_flow(driver: MobileDriver):
     home = FacebookHomeScreen(driver)
     home.wait_for_screen(timeout_seconds=10.0)

@@ -41,6 +41,7 @@ from sp_farms.app.widgets import (
     SecondaryButton,
     StatusChip,
 )
+from sp_farms.application.cache import LRUCache
 from sp_farms.application.composer_service import ComposerService
 from sp_farms.application.media_prep_service import (
     MediaInspectionService,
@@ -81,7 +82,7 @@ class MediaAssetTableModel(QAbstractTableModel):
     ) -> None:
         super().__init__(parent)
         self._assets = list(assets)
-        self._pixmap_cache: dict[str, QPixmap] = {}
+        self._pixmap_cache: LRUCache[str, QPixmap] = LRUCache(capacity=500)
 
     def rowCount(self, parent: QModelIndex | QPersistentModelIndex = _ROOT_INDEX) -> int:
         return 0 if parent.isValid() else len(self._assets)
@@ -121,16 +122,20 @@ class MediaAssetTableModel(QAbstractTableModel):
         elif role == Qt.ItemDataRole.DecorationRole and col == 0:
             thumb_path = asset.thumbnail_path or asset.file_path
             if thumb_path:
-                if thumb_path not in self._pixmap_cache:
-                    pix = QPixmap(thumb_path)
-                    if not pix.isNull():
-                        self._pixmap_cache[thumb_path] = pix.scaled(
-                            36,
-                            36,
-                            Qt.AspectRatioMode.KeepAspectRatio,
-                            Qt.TransformationMode.SmoothTransformation,
-                        )
-                return self._pixmap_cache.get(thumb_path)
+                cached = self._pixmap_cache.get(thumb_path)
+                if cached is not None:
+                    return cached
+                pix = QPixmap(thumb_path)
+                if not pix.isNull():
+                    scaled = pix.scaled(
+                        36,
+                        36,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                    self._pixmap_cache.set(thumb_path, scaled)
+                    return scaled
+                return None
         elif role == Qt.ItemDataRole.TextAlignmentRole:
             if col in (0, 2, 3, 4, 5, 7, 8):
                 return int(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)

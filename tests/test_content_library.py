@@ -109,7 +109,10 @@ def test_caption_template_rendering() -> None:
             "link": "https://spfarms.example/honey",
         }
     )
-    assert rendered == "Don't miss out! Get 25% off our Organic Honey today only! Visit https://spfarms.example/honey"
+    assert (
+        rendered
+        == "Don't miss out! Get 25% off our Organic Honey today only! Visit https://spfarms.example/honey"
+    )
 
 
 def test_hashtag_set_normalization() -> None:

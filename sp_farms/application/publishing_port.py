@@ -1,6 +1,6 @@
 """Protocols for official Meta Graph API publishing."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol
 

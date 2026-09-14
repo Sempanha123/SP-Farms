@@ -75,9 +75,7 @@ def upgrade() -> None:
         sa.Column("enabled", sa.Boolean(), nullable=False),
         sa.Column("last_verified", sa.DateTime(timezone=True), nullable=False),
         sa.Column("test_profile_id", sa.String(length=36), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["test_profile_id"], ["qa_profiles.id"], ondelete="SET NULL"
-        ),
+        sa.ForeignKeyConstraint(["test_profile_id"], ["qa_profiles.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("package_id"),
     )
     op.create_table(

@@ -404,9 +404,7 @@ class ComposerDialog(QDialog):
                     "First comment not supported on this destination"
                 )
             else:
-                self.txt_first_comment.setPlaceholderText(
-                    "First comment on Page post (Optional)"
-                )
+                self.txt_first_comment.setPlaceholderText("First comment on Page post (Optional)")
         self._on_draft_changed()
 
     def _on_post_type_changed(self) -> None:
@@ -625,9 +623,7 @@ class ComposerDialog(QDialog):
                 icon = "❌" if issue.severity == "error" else "⚠️"
                 item = QListWidgetItem(f"{icon} [{issue.field}] {issue.message}")
                 color = (
-                    Qt.GlobalColor.red
-                    if issue.severity == "error"
-                    else Qt.GlobalColor.darkYellow
+                    Qt.GlobalColor.red if issue.severity == "error" else Qt.GlobalColor.darkYellow
                 )
                 item.setForeground(color)
                 self.list_issues.addItem(item)
