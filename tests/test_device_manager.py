@@ -171,7 +171,6 @@ def test_large_device_list_performance(qapp: QApplication, tmp_path: Path) -> No
     selection = view.table.selectionModel()
     selection.select(
         view.proxy_model.index(0, 0),
-        QItemSelectionModel.SelectionFlag.ClearAndSelect
-        | QItemSelectionModel.SelectionFlag.Rows,
+        QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows,
     )
     assert view.restart_btn.isEnabled()

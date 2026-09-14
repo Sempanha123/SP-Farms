@@ -280,6 +280,7 @@ def test_http_meta_client_transient_retry(monkeypatch: pytest.MonkeyPatch) -> No
 
     # Speed up sleep during test
     import time
+
     monkeypatch.setattr(time, "sleep", lambda _sec: None)
 
     mock_client = httpx.Client(transport=FailThenSucceedTransport())

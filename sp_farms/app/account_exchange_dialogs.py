@@ -283,9 +283,7 @@ class AccountImportDialog(QDialog):
             return
 
         try:
-            dry_run = self._exchange.dry_run_import(
-                self._raw_file_bytes, filename=self._filename
-            )
+            dry_run = self._exchange.dry_run_import(self._raw_file_bytes, filename=self._filename)
             self._dry_run_result = dry_run
             self._render_dry_run(dry_run)
             self.import_btn.setEnabled(dry_run.valid_count > 0)

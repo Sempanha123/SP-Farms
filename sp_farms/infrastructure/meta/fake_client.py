@@ -48,6 +48,18 @@ class FakeMetaApiClient(MetaClientPort):
                 "access_token": "EAA_fake_page_token_101",
                 "category": "Agriculture",
                 "tasks": ["MANAGE", "CREATE_CONTENT", "MODERATE"],
+                "fan_count": 1250,
+                "followers_count": 1400,
+                "link": "https://facebook.com/spfarmsofficial",
+            }
+        ]
+        self.simulated_groups: list[dict[str, Any]] = [
+            {
+                "id": "group-202",
+                "name": "SP Farms Community",
+                "privacy": "CLOSED",
+                "administrator": True,
+                "member_count": 520,
             }
         ]
 
@@ -134,9 +146,7 @@ class FakeMetaApiClient(MetaClientPort):
             raw_debug_info={"type": "USER", "is_valid": True},
         )
 
-    def get_user_profile(
-        self, token: str, fields: Sequence[str] | None = None
-    ) -> dict[str, Any]:
+    def get_user_profile(self, token: str, fields: Sequence[str] | None = None) -> dict[str, Any]:
         self.recorded_calls.append({"method": "get_user_profile"})
         if self.simulated_auth_expired or "expired" in token.lower():
             raise MetaAuthError(
@@ -159,6 +169,16 @@ class FakeMetaApiClient(MetaClientPort):
                 status_code=401,
             )
         return list(self.simulated_pages)
+
+    def get_user_groups(self, token: str) -> list[dict[str, Any]]:
+        self.recorded_calls.append({"method": "get_user_groups"})
+        if self.simulated_auth_expired or "expired" in token.lower():
+            raise MetaAuthError(
+                "Session has expired.",
+                code=MetaErrorCode.EXPIRED_TOKEN,
+                status_code=401,
+            )
+        return list(self.simulated_groups)
 
     def get_rate_limit_info(self) -> MetaRateLimitInfo:
         return self.simulated_rate_limit or MetaRateLimitInfo()

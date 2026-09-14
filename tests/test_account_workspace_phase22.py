@@ -198,7 +198,7 @@ def test_table_sorting(
     # Sort ascending by Pages (Col 9) - numeric check
     workspace.table.sortByColumn(9, Qt.SortOrder.AscendingOrder)
     assert workspace.model.item(0, 0).text() == "Alpha Account"  # 2 pages
-    assert workspace.model.item(1, 0).text() == "Zeta Account"   # 10 pages
+    assert workspace.model.item(1, 0).text() == "Zeta Account"  # 10 pages
 
 
 def test_bulk_actions_and_context_menu(

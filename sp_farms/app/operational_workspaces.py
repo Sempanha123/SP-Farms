@@ -145,9 +145,7 @@ class SettingsWorkspace(QWidget):
         saved_theme = str(settings.value("appearance/theme", ThemeMode.DARK.value))
         self.theme.setCurrentText(saved_theme.title())
         self.queue_visible = QCheckBox("Show job queue drawer")
-        self.queue_visible.setChecked(
-            bool(settings.value("window/jobQueueVisible", False, bool))
-        )
+        self.queue_visible.setChecked(bool(settings.value("window/jobQueueVisible", False, bool)))
         form.addRow("Appearance", self.theme)
         form.addRow("Workspace", self.queue_visible)
         root.addWidget(general)

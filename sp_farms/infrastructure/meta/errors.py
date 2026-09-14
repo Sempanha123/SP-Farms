@@ -43,11 +43,7 @@ def map_meta_error(
 
     # 2. Authentication / Token Expiration (Error code 190 or HTTP 401)
     if status_code == 401 or code_val == 190:
-        err_code = (
-            MetaErrorCode.EXPIRED_TOKEN
-            if subcode == 463
-            else MetaErrorCode.INVALID_OAUTH
-        )
+        err_code = MetaErrorCode.EXPIRED_TOKEN if subcode == 463 else MetaErrorCode.INVALID_OAUTH
         return MetaAuthError(
             message=message,
             code=err_code,

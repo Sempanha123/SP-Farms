@@ -820,9 +820,7 @@ class AccountWorkspace(QWidget):
                     if d.current_account_id
                 }
                 cur_dev = locks.get(primary_id)
-                self.insp_current_device.setText(
-                    cur_dev.device_key if cur_dev else "None"
-                )
+                self.insp_current_device.setText(cur_dev.device_key if cur_dev else "None")
 
                 q_items = [q for q in self._pool_service.list_queue() if q.account_id == primary_id]
                 if q_items:
@@ -964,13 +962,9 @@ class AccountWorkspace(QWidget):
                 and (now - account.last_login_at).days < 30
             ):
                 continue
-            if (
-                smart_filter == "Permission Issue"
-                and account.permission_state
-                not in (
-                    PermissionState.LIMITED,
-                    PermissionState.REVOKED,
-                )
+            if smart_filter == "Permission Issue" and account.permission_state not in (
+                PermissionState.LIMITED,
+                PermissionState.REVOKED,
             ):
                 continue
             if smart_filter == "Needs Review":
@@ -998,9 +992,7 @@ class AccountWorkspace(QWidget):
                 else "Never"
             )
             created_str = (
-                account.created_at.astimezone().strftime("%Y-%m-%d")
-                if account.created_at
-                else "—"
+                account.created_at.astimezone().strftime("%Y-%m-%d") if account.created_at else "—"
             )
             verified_str = (
                 account.last_verified_at.astimezone().strftime("%Y-%m-%d")

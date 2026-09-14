@@ -118,12 +118,8 @@ def test_authorized_push_reload_verify_and_restore(
         "com.example.ownedapp",
         reload_profile=True,
     )
-    verified = service.verify(
-        "emulator-5554", "ldplayer", "0", "com.example.ownedapp"
-    )
-    restored = service.restore(
-        "emulator-5554", "ldplayer", "0", "com.example.ownedapp"
-    )
+    verified = service.verify("emulator-5554", "ldplayer", "0", "com.example.ownedapp")
+    restored = service.restore("emulator-5554", "ldplayer", "0", "com.example.ownedapp")
 
     assert pushed.is_success and pushed.value.loaded
     assert verified.is_success and verified.value.profile_id == profile.id

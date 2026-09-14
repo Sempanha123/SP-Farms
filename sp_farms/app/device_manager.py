@@ -440,8 +440,7 @@ class DeviceManagerView(QWidget):
         self.start_btn.setEnabled(
             bool(selected)
             and all(
-                device.capabilities.can_start_stop and not device.is_online
-                for device in selected
+                device.capabilities.can_start_stop and not device.is_online for device in selected
             )
         )
         self.stop_btn.setEnabled(
@@ -481,9 +480,7 @@ class DeviceManagerView(QWidget):
         }
         self._submit(operations[action], lambda _result: self.refresh())
 
-    def collect_device_artifacts(
-        self, action: str, devices: Sequence[ManagedDevice]
-    ) -> None:
+    def collect_device_artifacts(self, action: str, devices: Sequence[ManagedDevice]) -> None:
         if self._service is None or not devices:
             return
         selected = tuple(devices)

@@ -114,15 +114,9 @@ class MetaHttpClient(MetaClientPort):
         issued_ts = data.get("issued_at")
         expires_ts = data.get("expires_at")
 
-        issued_at = (
-            datetime.fromtimestamp(issued_ts, UTC)
-            if issued_ts and issued_ts > 0
-            else None
-        )
+        issued_at = datetime.fromtimestamp(issued_ts, UTC) if issued_ts and issued_ts > 0 else None
         expires_at = (
-            datetime.fromtimestamp(expires_ts, UTC)
-            if expires_ts and expires_ts > 0
-            else None
+            datetime.fromtimestamp(expires_ts, UTC) if expires_ts and expires_ts > 0 else None
         )
 
         scopes = MetaScopeSet(frozenset(data.get("scopes", [])))
@@ -138,9 +132,7 @@ class MetaHttpClient(MetaClientPort):
             raw_debug_info=data,
         )
 
-    def get_user_profile(
-        self, token: str, fields: Sequence[str] | None = None
-    ) -> dict[str, Any]:
+    def get_user_profile(self, token: str, fields: Sequence[str] | None = None) -> dict[str, Any]:
         """Fetch basic authorized profile information for /me."""
         field_list = fields or ("id", "name", "email")
         url = self._build_graph_url("me")
@@ -153,11 +145,26 @@ class MetaHttpClient(MetaClientPort):
         """Fetch managed Facebook Pages authorized for the token."""
         url = self._build_graph_url("me/accounts")
         headers = {"Authorization": f"Bearer {token}"}
-        params = {"fields": "id,name,access_token,category,tasks,verification_status"}
+        fields = (
+            "id,name,access_token,category,tasks,verification_status,"
+            "fan_count,followers_count,link"
+        )
+        params = {"fields": fields}
         data = self._request("GET", url, headers=headers, params=params)
         pages = data.get("data", [])
         if isinstance(pages, list):
             return [p for p in pages if isinstance(p, dict)]
+        return []
+
+    def get_user_groups(self, token: str) -> list[dict[str, Any]]:
+        """Fetch managed Facebook Groups authorized for the token."""
+        url = self._build_graph_url("me/groups")
+        headers = {"Authorization": f"Bearer {token}"}
+        params = {"fields": "id,name,privacy,administrator,member_count"}
+        data = self._request("GET", url, headers=headers, params=params)
+        groups = data.get("data", [])
+        if isinstance(groups, list):
+            return [g for g in groups if isinstance(g, dict)]
         return []
 
     def get_rate_limit_info(self) -> MetaRateLimitInfo:
@@ -184,7 +191,11 @@ class MetaHttpClient(MetaClientPort):
         # Sanitize log statements to never leak credentials or tokens
         safe_params = dict(params or {})
         for secret_key in (
-            "client_secret", "code", "input_token", "fb_exchange_token", "access_token"
+            "client_secret",
+            "code",
+            "input_token",
+            "fb_exchange_token",
+            "access_token",
         ):
             if secret_key in safe_params:
                 safe_params[secret_key] = "[REDACTED]"

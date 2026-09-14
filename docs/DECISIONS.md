@@ -96,6 +96,10 @@ The accounts workspace follows a strict Model-View-Proxy separation: `QStandardI
 
 Meta Graph API integration uses an explicit client port (`MetaClientPort`) with an implementation based on `httpx` (`MetaHttpClient`) and a deterministic test double (`FakeMetaApiClient`). Access tokens are treated as strictly confidential credentials and stored exclusively in the OS Keyring (`KeyringVault` using Windows Credential Manager), never in SQLite or plaintext configuration files. All HTTP request logging redacts sensitive tokens, and the client implements automatic exponential backoff for transient 5xx errors and rate limits (`x-app-usage`).
 
+## Facebook Pages and Groups Asset Synchronization
+
+Authorized Facebook Pages and Groups are modeled as immutable domain entities with explicit eligibility logic based on Meta tasks (`MANAGE`, `CREATE_CONTENT`) and group roles (`ADMIN`, `MODERATOR`). All page-specific access tokens returned by Meta are vaulted in the OS keyring alongside user tokens. Asset synchronization tolerates partial failures (e.g. Rate Limit on Groups preserves Page updates) and marks removed/inaccessible assets as `AssetHealthState.STALE` rather than immediately deleting them, preserving audit trails and operator context.
+
 
 
 

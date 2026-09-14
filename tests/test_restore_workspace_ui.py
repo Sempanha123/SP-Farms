@@ -155,4 +155,3 @@ def test_account_workspace_multi_selection_and_inspector(
     assert view.selected_account_id == acct1.id
     assert view.insp_bound_device.text() == "None"
     assert "Selected: 1" in view.bottom_strip.text()
-

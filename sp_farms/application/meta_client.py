@@ -30,14 +30,16 @@ class MetaClientPort(Protocol):
         """Inspect and validate access token metadata via debug_token endpoint."""
         ...
 
-    def get_user_profile(
-        self, token: str, fields: Sequence[str] | None = None
-    ) -> dict[str, Any]:
+    def get_user_profile(self, token: str, fields: Sequence[str] | None = None) -> dict[str, Any]:
         """Fetch basic authorized profile information for /me."""
         ...
 
     def get_accounts_pages(self, token: str) -> list[dict[str, Any]]:
         """Fetch managed Facebook Pages authorized for the token."""
+        ...
+
+    def get_user_groups(self, token: str) -> list[dict[str, Any]]:
+        """Fetch managed Facebook Groups authorized for the token."""
         ...
 
     def get_rate_limit_info(self) -> MetaRateLimitInfo:

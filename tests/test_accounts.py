@@ -133,9 +133,7 @@ def test_health_rules_are_deterministic() -> None:
     attention = calculate_account_health(
         replace(account, status=AccountStatus.ATTENTION, two_factor_enabled=False)
     )
-    critical = calculate_account_health(
-        replace(account, security_state=SecurityState.COMPROMISED)
-    )
+    critical = calculate_account_health(replace(account, security_state=SecurityState.COMPROMISED))
 
     assert healthy.score == 95
     assert healthy.state is AccountHealthState.HEALTHY

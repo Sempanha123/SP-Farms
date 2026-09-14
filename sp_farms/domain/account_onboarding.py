@@ -332,9 +332,7 @@ def _datetime_value(value: dict[str, object], key: str) -> datetime | None:
     return parsed
 
 
-def _enum[EnumT: StrEnum](
-    enum_type: type[EnumT], value: object, field: str
-) -> EnumT:
+def _enum[EnumT: StrEnum](enum_type: type[EnumT], value: object, field: str) -> EnumT:
     if not isinstance(value, str):
         raise ValueError(f"{field} must be a string")
     try:

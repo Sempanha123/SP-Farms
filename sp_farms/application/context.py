@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from sp_farms.application.account_onboarding_service import AccountOnboardingService
     from sp_farms.application.account_service import AccountService
     from sp_farms.application.adb import AdbPort
+    from sp_farms.application.asset_sync_service import AssetSyncService
     from sp_farms.application.device_pool_service import DevicePoolService
     from sp_farms.application.device_service import DeviceService
     from sp_farms.application.job_service import JobService
@@ -44,6 +45,7 @@ class ApplicationContext:
     snapshot_service: "SnapshotService | None" = None
     meta_client: "MetaClientPort | None" = None
     meta_service: "MetaIntegrationService | None" = None
+    asset_sync_service: "AssetSyncService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

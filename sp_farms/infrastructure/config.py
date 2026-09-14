@@ -23,9 +23,7 @@ _ENVIRONMENT_KEYS = {
     "SP_FARMS_META_REDIRECT_URI": "meta_redirect_uri",
     "SP_FARMS_META_API_VERSION": "meta_api_version",
 }
-_ALLOWED_FILE_KEYS = frozenset(
-    k for k in _ENVIRONMENT_KEYS.values() if k != "meta_app_secret"
-)
+_ALLOWED_FILE_KEYS = frozenset(k for k in _ENVIRONMENT_KEYS.values() if k != "meta_app_secret")
 _SECRET_MARKERS = ("authorization", "cookie", "password", "secret", "token")
 
 

@@ -354,13 +354,15 @@ class AccountExchangeService:
                     continue
                 val = self._secrets.reveal(ref)
                 if val is not None:
-                    payload_items.append({
-                        "account_id": account.id,
-                        "platform_uid": account.platform_uid,
-                        "display_name": account.display_name,
-                        "secret_type": ref.secret_type.value,
-                        "value": val,
-                    })
+                    payload_items.append(
+                        {
+                            "account_id": account.id,
+                            "platform_uid": account.platform_uid,
+                            "display_name": account.display_name,
+                            "secret_type": ref.secret_type.value,
+                            "value": val,
+                        }
+                    )
 
         container = {
             "version": 1,
@@ -504,9 +506,7 @@ class AccountExchangeService:
             for r_idx, row_vals in enumerate(all_rows, start=1):
                 sheet_lines.append(f'<row r="{r_idx}">')
                 for c_idx, val in enumerate(row_vals, start=1):
-                    col_letter = (
-                        chr(64 + c_idx) if c_idx <= 26 else f"A{chr(64 + c_idx - 26)}"
-                    )
+                    col_letter = chr(64 + c_idx) if c_idx <= 26 else f"A{chr(64 + c_idx - 26)}"
                     ref = f"{col_letter}{r_idx}"
                     escaped = (
                         val.replace("&", "&amp;")
@@ -514,9 +514,7 @@ class AccountExchangeService:
                         .replace(">", "&gt;")
                         .replace('"', "&quot;")
                     )
-                    sheet_lines.append(
-                        f'<c r="{ref}" t="inlineStr"><is><t>{escaped}</t></is></c>'
-                    )
+                    sheet_lines.append(f'<c r="{ref}" t="inlineStr"><is><t>{escaped}</t></is></c>')
                 sheet_lines.append("</row>")
             sheet_lines.append("</sheetData></worksheet>")
             zf.writestr("xl/worksheets/sheet1.xml", "".join(sheet_lines))

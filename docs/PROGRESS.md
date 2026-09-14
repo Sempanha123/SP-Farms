@@ -283,5 +283,18 @@ Status: complete
 - Ensured sensitive tokens and secrets are never logged in URL query parameters or request headers.
 - Documented Meta API setup, configuration, and security rules in `docs/META_API.md` and `.env.example`.
 
+## Phase 25 — Pages & Groups Domain and Sync
+
+Status: complete
+
+- Added domain models for authorized Facebook Pages and Groups (`Page`, `Group`, `AssetPermission`, `AssetHealthState`, `SyncResult`).
+- Implemented task-based and role-based publishing/posting eligibility rules (`is_publishing_eligible`, `is_posting_eligible`).
+- Built `AssetRepository` port and `SqlAlchemyAssetRepository` supporting both active sessions and UnitOfWork contexts.
+- Created Alembic versioned migration (`0009_pages_and_groups.py`) enforcing cascading deletes and unique constraints on `(account_id, page_id)` and `(account_id, group_id)`.
+- Added `AssetSyncService` orchestrating token resolution, incremental synchronization, and stale asset status marking (`AssetHealthState.STALE`).
+- Protected page-level access tokens via OS Keyring vaulting (`SecretService.create_reference`).
+- Implemented partial API failure containment, ensuring successful page or group sync results are preserved if an endpoint errors (e.g. Rate Limit HTTP 429).
+- Added comprehensive unit and integration tests (`tests/test_asset_sync.py`) covering domain rules, sync persistence, incremental changes, stale detection, and partial failure tolerance.
+
 
 

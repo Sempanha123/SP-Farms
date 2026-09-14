@@ -141,4 +141,3 @@ def test_snapshot_size_cap_enforcement(tmp_path: Path) -> None:
         tiny_snapshot_service.create_snapshot(acct.id)
 
     database.close()
-

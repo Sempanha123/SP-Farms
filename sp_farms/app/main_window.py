@@ -90,13 +90,9 @@ class MainWindow(QMainWindow):
         )
         self.home_dashboard.route_requested.connect(self.navigate)
         self.home_workspace.devices_route_requested.connect(lambda: self.navigate("Devices"))
-        self.home_workspace.automation_route_requested.connect(
-            lambda: self.navigate("Automation")
-        )
+        self.home_workspace.automation_route_requested.connect(lambda: self.navigate("Automation"))
         self._workspace.devices_route_requested.connect(lambda: self.navigate("Devices"))
-        self._workspace.automation_route_requested.connect(
-            lambda: self.navigate("Automation")
-        )
+        self._workspace.automation_route_requested.connect(lambda: self.navigate("Automation"))
         self.account_workspace.success_action_requested.connect(self._route_account_action)
         self.account_workspace.local_navigation_requested.connect(self.navigate)
         self.setObjectName("mainWindow")

@@ -58,9 +58,7 @@ class AccountService:
         platform_uid: str,
         primary_email: str,
     ) -> Account:
-        return self.save_account(
-            self.new_account(display_name, platform_uid, primary_email)
-        )
+        return self.save_account(self.new_account(display_name, platform_uid, primary_email))
 
     def save_account(self, account: Account) -> Account:
         validate_account(account)

@@ -53,15 +53,11 @@ class BatchRestoreDialog(QDialog):
         self.policy_combo.addItem(
             "Bound Device First", userData=SchedulingPolicy.BOUND_DEVICE_FIRST
         )
-        self.policy_combo.addItem(
-            "Any Available Device", userData=SchedulingPolicy.ANY_AVAILABLE
-        )
+        self.policy_combo.addItem("Any Available Device", userData=SchedulingPolicy.ANY_AVAILABLE)
         self.policy_combo.addItem(
             "Least Recently Used", userData=SchedulingPolicy.LEAST_RECENTLY_USED
         )
-        self.policy_combo.addItem(
-            "Round Robin", userData=SchedulingPolicy.ROUND_ROBIN
-        )
+        self.policy_combo.addItem("Round Robin", userData=SchedulingPolicy.ROUND_ROBIN)
         self.policy_combo.addItem(
             "Preferred Provider", userData=SchedulingPolicy.PREFERRED_PROVIDER
         )

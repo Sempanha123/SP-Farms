@@ -3,25 +3,27 @@ from enum import StrEnum
 from typing import Any
 
 # Forbidden secret field names
-FORBIDDEN_SECRET_FIELDS: frozenset[str] = frozenset({
-    "password",
-    "passwords",
-    "token",
-    "access_token",
-    "auth_token",
-    "session_token",
-    "cookie",
-    "cookies",
-    "secret",
-    "secrets",
-    "recovery_secret",
-    "recovery_code",
-    "recovery_codes",
-    "private_key",
-    "secret_key",
-    "two_factor_secret",
-    "totp_secret",
-})
+FORBIDDEN_SECRET_FIELDS: frozenset[str] = frozenset(
+    {
+        "password",
+        "passwords",
+        "token",
+        "access_token",
+        "auth_token",
+        "session_token",
+        "cookie",
+        "cookies",
+        "secret",
+        "secrets",
+        "recovery_secret",
+        "recovery_code",
+        "recovery_codes",
+        "private_key",
+        "secret_key",
+        "two_factor_secret",
+        "totp_secret",
+    }
+)
 
 
 class ExportFormat(StrEnum):

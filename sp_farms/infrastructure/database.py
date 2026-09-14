@@ -286,9 +286,7 @@ class DevicePoolPolicyModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     def to_policy(self) -> DevicePoolPolicy:
-        providers = tuple(
-            p.strip() for p in self.preferred_provider_order.split(",") if p.strip()
-        )
+        providers = tuple(p.strip() for p in self.preferred_provider_order.split(",") if p.strip())
         return DevicePoolPolicy(
             id=self.id,
             name=self.name,
@@ -1112,9 +1110,7 @@ class SqlAlchemyDevicePoolRepository(DevicePoolRepository):
 
     def get_lock_by_device(self, device_key: str) -> AccountWorkspaceLock | None:
         model = (
-            self._session.query(AccountWorkspaceLockModel)
-            .filter_by(device_key=device_key)
-            .first()
+            self._session.query(AccountWorkspaceLockModel).filter_by(device_key=device_key).first()
         )
         return model.to_lock() if model else None
 
@@ -1199,9 +1195,7 @@ class SqlAlchemyDevicePoolRepository(DevicePoolRepository):
         model = self._session.get(AccountWorkspaceSnapshotModel, snapshot_id)
         return model.to_record() if model else None
 
-    def list_snapshots_for_account(
-        self, account_id: str
-    ) -> Sequence[SnapshotMetadataRecord]:
+    def list_snapshots_for_account(self, account_id: str) -> Sequence[SnapshotMetadataRecord]:
         models = (
             self._session.query(AccountWorkspaceSnapshotModel)
             .filter_by(account_id=account_id)
@@ -1226,9 +1220,7 @@ class SqlAlchemyDevicePoolRepository(DevicePoolRepository):
             return True
         return False
 
-    def update_snapshot_last_restored(
-        self, snapshot_id: str, restored_at: datetime
-    ) -> None:
+    def update_snapshot_last_restored(self, snapshot_id: str, restored_at: datetime) -> None:
         model = self._session.get(AccountWorkspaceSnapshotModel, snapshot_id)
         if model is not None:
             model.last_restored_at = _as_utc(restored_at)
@@ -1239,11 +1231,7 @@ class SqlAlchemyDevicePoolRepository(DevicePoolRepository):
         return model.to_policy() if model else None
 
     def get_active_policy(self) -> DevicePoolPolicy | None:
-        model = (
-            self._session.query(DevicePoolPolicyModel)
-            .filter_by(is_active=True)
-            .first()
-        )
+        model = self._session.query(DevicePoolPolicyModel).filter_by(is_active=True).first()
         return model.to_policy() if model else None
 
     def save_policy(self, policy: DevicePoolPolicy) -> None:

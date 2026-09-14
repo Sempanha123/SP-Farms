@@ -48,7 +48,6 @@ class PoolDevice:
     reservation_expires_at: datetime | None = None
 
 
-
 @dataclass(slots=True)
 class AccountWorkspaceLock:
     account_id: str
@@ -129,4 +128,3 @@ class DevicePoolPolicy:
     is_active: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-

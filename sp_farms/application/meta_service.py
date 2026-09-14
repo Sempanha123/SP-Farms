@@ -43,9 +43,7 @@ class MetaIntegrationService:
                 )
             )
         else:
-            perms = [
-                s.value if isinstance(s, MetaPermission) else str(s) for s in scopes
-            ]
+            perms = [s.value if isinstance(s, MetaPermission) else str(s) for s in scopes]
             scope_set = MetaScopeSet(frozenset(perms))
 
         return self._client.get_authorization_url(state=state, scopes=scope_set)

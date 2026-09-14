@@ -210,9 +210,7 @@ def test_duplicate_detection_and_conflict_strategies(
     exchange, accounts, _, _ = exchange_service
     orig = accounts.create_account("Original Name", "6001", "orig@example.com")
 
-    import_data = (
-        b"Name,UID,Email,Notes\nUpdated Name,6001,updated@example.com,New note\n"
-    )
+    import_data = b"Name,UID,Email,Notes\nUpdated Name,6001,updated@example.com,New note\n"
 
     # 1. SKIP strategy
     dry_run = exchange.dry_run_import(import_data, file_format=ExportFormat.CSV)

@@ -103,15 +103,11 @@ def test_imports_strict_versioned_authorized_metadata(
     "onboarding_request, error",
     [
         (
-            AccountOnboardingRequest(
-                OnboardingSource.MANUAL, "", "fb-003", "valid@example.com"
-            ),
+            AccountOnboardingRequest(OnboardingSource.MANUAL, "", "fb-003", "valid@example.com"),
             "Display name",
         ),
         (
-            AccountOnboardingRequest(
-                OnboardingSource.MANUAL, "Invalid", "fb-003", "not-email"
-            ),
+            AccountOnboardingRequest(OnboardingSource.MANUAL, "Invalid", "fb-003", "not-email"),
             "valid email",
         ),
         (

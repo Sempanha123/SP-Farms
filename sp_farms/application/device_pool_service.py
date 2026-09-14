@@ -89,8 +89,7 @@ class DevicePoolService:
         discovered = self._devices.discover()
         with self._unit_of_work() as uow:
             active_locks = {
-                lock.device_key: lock
-                for lock in self._pool_repo(uow).list_active_locks(now)
+                lock.device_key: lock for lock in self._pool_repo(uow).list_active_locks(now)
             }
 
         pool_devices: list[PoolDevice] = []

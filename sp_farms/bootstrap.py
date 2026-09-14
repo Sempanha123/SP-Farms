@@ -3,6 +3,7 @@ from pathlib import Path
 from sp_farms.application.account_exchange_service import AccountExchangeService
 from sp_farms.application.account_onboarding_service import AccountOnboardingService
 from sp_farms.application.account_service import AccountService
+from sp_farms.application.asset_sync_service import AssetSyncService
 from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_pool_service import DevicePoolService
 from sp_farms.application.device_service import DeviceService
@@ -16,6 +17,7 @@ from sp_farms.application.snapshot_service import SnapshotService
 from sp_farms.application.worker import FakeStressJobHandler, WorkerSupervisor
 from sp_farms.domain.meta import MetaOAuthConfig
 from sp_farms.infrastructure.adb import SubprocessAdbClient
+from sp_farms.infrastructure.assets_repository import SqlAlchemyAssetRepository
 from sp_farms.infrastructure.clock import SystemClock
 from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import (
@@ -131,6 +133,15 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         secret_service=secret_service,
     )
 
+    asset_sync_service = AssetSyncService(
+        unit_of_work=database.unit_of_work,
+        asset_repository_factory=SqlAlchemyAssetRepository,
+        meta_client=meta_client,
+        secret_service=secret_service,
+        secret_repository_factory=SqlAlchemySecretRepository,
+        clock=clock,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -150,6 +161,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         snapshot_service=snapshot_service,
         meta_client=meta_client,
         meta_service=meta_service,
+        asset_sync_service=asset_sync_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

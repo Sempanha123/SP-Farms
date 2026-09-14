@@ -175,9 +175,7 @@ class SnapshotService:
         with self._unit_of_work() as uow:
             return self._pool_repo(uow).get_snapshot_record(snapshot_id)
 
-    def list_snapshots_for_account(
-        self, account_id: str
-    ) -> Sequence[SnapshotMetadataRecord]:
+    def list_snapshots_for_account(self, account_id: str) -> Sequence[SnapshotMetadataRecord]:
         with self._unit_of_work() as uow:
             return self._pool_repo(uow).list_snapshots_for_account(account_id)
 

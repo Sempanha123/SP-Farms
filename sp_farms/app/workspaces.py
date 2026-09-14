@@ -289,9 +289,7 @@ class JobQueueDrawer(Panel):
             "error" if failed else "active" if running else "neutral",
             f"{running} running",
         )
-        self.summary.setText(
-            f"{queued} queued • {failed} failed" if jobs else "Queue is clear"
-        )
+        self.summary.setText(f"{queued} queued • {failed} failed" if jobs else "Queue is clear")
         return jobs
 
 
@@ -320,9 +318,7 @@ class WorkspaceLayout(QWidget):
         splitter.addWidget(self.device_rail)
         splitter.addWidget(content or ManagementWorkspace())
         self.job_queue = JobQueueDrawer(job_service)
-        self.job_queue.automation_route_requested.connect(
-            self.automation_route_requested.emit
-        )
+        self.job_queue.automation_route_requested.connect(self.automation_route_requested.emit)
         splitter.addWidget(self.job_queue)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
@@ -374,16 +370,9 @@ class WorkspaceLayout(QWidget):
         self.footer_labels["Success"].setText(
             str(sum(job.state is JobState.SUCCEEDED for job in jobs))
         )
-        self.footer_labels["Failed"].setText(
-            str(sum(job.state is JobState.FAILED for job in jobs))
-        )
+        self.footer_labels["Failed"].setText(str(sum(job.state is JobState.FAILED for job in jobs)))
         self.footer_labels["Queue"].setText(
-            str(
-                sum(
-                    job.state in (JobState.PENDING, JobState.QUEUED)
-                    for job in jobs
-                )
-            )
+            str(sum(job.state in (JobState.PENDING, JobState.QUEUED) for job in jobs))
         )
 
     def _update_device_status(self, devices: object) -> None:
