@@ -3,8 +3,10 @@ from pathlib import Path
 from sp_farms.application.account_exchange_service import AccountExchangeService
 from sp_farms.application.account_onboarding_service import AccountOnboardingService
 from sp_farms.application.account_service import AccountService
+from sp_farms.application.approval_service import ApprovalService
 from sp_farms.application.asset_sync_service import AssetSyncService
 from sp_farms.application.audit_service import AuditService
+from sp_farms.application.campaign_service import CampaignService
 from sp_farms.application.caption_ai_service import CaptionAIService
 from sp_farms.application.composer_service import ComposerService
 from sp_farms.application.content_service import ContentService
@@ -18,6 +20,7 @@ from sp_farms.application.meta_client import MetaClientPort
 from sp_farms.application.meta_service import MetaIntegrationService
 from sp_farms.application.qa_profile_service import QAProfileService
 from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
+from sp_farms.application.scheduler_service import SchedulerService
 from sp_farms.application.secret_service import SecretService
 from sp_farms.application.security_service import SecurityService
 from sp_farms.application.snapshot_service import SnapshotService
@@ -30,12 +33,15 @@ from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import (
     Database,
     SqlAlchemyAccountRepository,
+    SqlAlchemyApprovalRepository,
     SqlAlchemyAuditRepository,
+    SqlAlchemyCampaignRepository,
     SqlAlchemyContentRepository,
     SqlAlchemyDevicePoolRepository,
     SqlAlchemyDeviceProfileRepository,
     SqlAlchemyJobRepository,
     SqlAlchemyQAProfileRepository,
+    SqlAlchemySchedulerRepository,
     SqlAlchemySecretRepository,
     run_migrations,
 )
@@ -195,6 +201,26 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         ai_provider=fake_ai_provider,
     )
 
+    campaign_service = CampaignService(
+        unit_of_work=database.unit_of_work,
+        campaign_repo_factory=SqlAlchemyCampaignRepository,
+        content_service=content_service,
+    )
+
+    scheduler_service = SchedulerService(
+        unit_of_work=database.unit_of_work,
+        scheduler_repo_factory=SqlAlchemySchedulerRepository,
+        clock=clock,
+    )
+
+    approval_service = ApprovalService(
+        unit_of_work=database.unit_of_work,
+        approval_repo_factory=SqlAlchemyApprovalRepository,
+        clock=clock,
+        audit_service=audit_service,
+        job_service=job_service,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -220,6 +246,9 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         content_service=content_service,
         composer_service=composer_service,
         caption_ai_service=caption_ai_service,
+        campaign_service=campaign_service,
+        scheduler_service=scheduler_service,
+        approval_service=approval_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

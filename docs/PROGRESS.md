@@ -369,6 +369,44 @@ Status: complete
 - Integrated AI assist and template injection into `ComposerDialog` and wired `CaptionAIService` into `ApplicationContext`.
 - Added 6 comprehensive automated tests in `tests/test_ai_assist.py` covering Unicode NFC handling, template rendering, offline AI generation, vault credentials, and UI dialog workflows.
 
+## Phase 33 — Campaign Manager
+
+Status: complete
+
+- Built multi-destination publishing campaign domain (`Campaign`, `CampaignTarget`, `SchedulePolicy`, `RetryPolicy`, `ApprovalPolicy`).
+- Added Alembic migration `0012_campaign_management.py` and `SqlAlchemyCampaignRepository` with comprehensive target status tracking.
+- Created `CampaignService` orchestrator with target addition/removal, pause/resume, individual target retry, and live summary aggregation.
+- Implemented `CampaignWorkspace` PySide6 UI with status metrics, filter proxy model, target breakdown table, and campaign creation dialog.
+- Wired Campaign workspace into `MainWindow` navigation and `ApplicationContext`.
+- Added 4 tests in `tests/test_campaigns.py` verifying status transitions, partial failure retry aggregation, service pause/resume, and UI interaction.
+
+## Phase 34 — Scheduler and Calendar
+
+Status: complete
+
+- Implemented `ScheduledItem`, `PublishingWindow`, and `ScheduleConflict` domain models.
+- Added support for quiet hours, per-destination timezones with DST safety, and publishing window slot calculation.
+- Built same-destination interval collision detection (`detect_conflicts`).
+- Created Alembic migration `0013_scheduler_and_calendar.py` and `SqlAlchemySchedulerRepository`.
+- Built `SchedulerService` orchestrator supporting Day/Week/Month/Agenda views, drag/drop reschedule, missed-task recovery, and pause-all execution.
+- Developed `SchedulerWorkspace` PySide6 UI featuring view switching, period navigation, conflict alerts, metrics, and reschedule/new post dialogs.
+- Wired `SchedulerService` into `ApplicationContext` and `bootstrap.py`.
+- Added 5 automated tests in `tests/test_scheduler.py` covering timezone/DST windows, collision detection, lifecycle/reschedule, missed task recovery, and UI workspace.
+
+## Phase 35 — Approval Queue
+
+Status: complete
+
+- Implemented `ApprovalRequest`, `ApprovalStatus`, `ApprovalActionType`, and `ApprovalPolicyRule` domain models.
+- Added pattern matching (`fnmatch`) for granular destination and target authorization policies.
+- Created Alembic migration `0014_approval_queue.py` and `SqlAlchemyApprovalRepository`.
+- Implemented `ApprovalService` orchestrating request creation, sign-off approval, rejection with job cancellation, stale expiration, and audit trail logging.
+- Built PySide6 `ApprovalWorkspace` featuring filter bar, metrics, compact request table, inspector panel with JSON payload viewer, and decision dialogs.
+- Integrated `ApprovalWorkspace` and `SchedulerWorkspace` into `MainWindow` navigation within the Automation workspace tab group.
+- Added 5 automated tests in `tests/test_approvals.py` verifying domain transitions, audit integration, expiration, job coordination, and UI workspace.
+
+
+
 
 
 
