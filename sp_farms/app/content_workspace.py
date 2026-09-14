@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from sp_farms.app.media_preview import MediaPreviewDialog
 from sp_farms.app.widgets import (
     CompactTable,
     MetricRow,
@@ -38,6 +39,10 @@ from sp_farms.app.widgets import (
     PrimaryButton,
     SecondaryButton,
     StatusChip,
+)
+from sp_farms.application.media_prep_service import (
+    MediaInspectionService,
+    MediaPreparationService,
 )
 from sp_farms.domain.content import (
     CaptionTemplate,
@@ -250,6 +255,10 @@ class MediaInspectorPanel(Panel):
         preview_box.addWidget(self.preview_label)
         layout.addWidget(self.preview_frame)
 
+        self.inspect_btn = SecondaryButton("Inspect & Prepare")
+        self.inspect_btn.clicked.connect(self._on_open_preview_dialog)
+        layout.addWidget(self.inspect_btn)
+
         # Details Form
         form = QFormLayout()
         form.setSpacing(8)
@@ -325,12 +334,14 @@ class MediaInspectorPanel(Panel):
             self.fav_btn.setEnabled(False)
             self.archive_btn.setEnabled(False)
             self.delete_btn.setEnabled(False)
+            self.inspect_btn.setEnabled(False)
             return
 
         self.save_btn.setEnabled(True)
         self.fav_btn.setEnabled(True)
         self.archive_btn.setEnabled(True)
         self.delete_btn.setEnabled(True)
+        self.inspect_btn.setEnabled(True)
 
         self.name_label.setText(asset.file_name)
         type_tone = "success" if asset.media_type == MediaType.IMAGE else "active"
@@ -414,6 +425,20 @@ class MediaInspectorPanel(Panel):
             self._content_service.delete_asset(self._current_asset.id)
             self.set_asset(None)
             self.asset_updated.emit()
+
+    def _on_open_preview_dialog(self) -> None:
+        if not self._current_asset:
+            return
+        output_dir = Path(self._current_asset.file_path).parent / "prepared"
+        inspector = MediaInspectionService()
+        prep = MediaPreparationService(output_dir=output_dir)
+        dialog = MediaPreviewDialog(
+            file_path=self._current_asset.file_path,
+            inspection_service=inspector,
+            prep_service=prep,
+            parent=self,
+        )
+        dialog.exec()
 
 
 class ContentWorkspace(QWidget):
