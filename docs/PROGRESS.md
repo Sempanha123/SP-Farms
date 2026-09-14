@@ -393,6 +393,19 @@ Status: complete
 - Wired `SchedulerService` into `ApplicationContext` and `bootstrap.py`.
 - Added 5 automated tests in `tests/test_scheduler.py` covering timezone/DST windows, collision detection, lifecycle/reschedule, missed task recovery, and UI workspace.
 
+## Phase 35 — Approval Queue
+
+Status: complete
+
+- Implemented `ApprovalRequest`, `ApprovalStatus`, `ApprovalActionType`, and `ApprovalPolicyRule` domain models.
+- Added pattern matching (`fnmatch`) for granular destination and target authorization policies.
+- Created Alembic migration `0014_approval_queue.py` and `SqlAlchemyApprovalRepository`.
+- Implemented `ApprovalService` orchestrating request creation, sign-off approval, rejection with job cancellation, stale expiration, and audit trail logging.
+- Built PySide6 `ApprovalWorkspace` featuring filter bar, metrics, compact request table, inspector panel with JSON payload viewer, and decision dialogs.
+- Integrated `ApprovalWorkspace` and `SchedulerWorkspace` into `MainWindow` navigation within the Automation workspace tab group.
+- Added 5 automated tests in `tests/test_approvals.py` verifying domain transitions, audit integration, expiration, job coordination, and UI workspace.
+
+
 
 
 

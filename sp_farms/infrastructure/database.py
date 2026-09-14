@@ -31,6 +31,7 @@ from sqlalchemy.engine import URL
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from sp_farms.application.accounts import AccountRepository
+from sp_farms.application.approval_repository import ApprovalRepositoryPort
 from sp_farms.application.audit_repository import AuditRepository
 from sp_farms.application.campaign_repository import CampaignRepositoryPort
 from sp_farms.application.content_repository import ContentRepositoryPort
@@ -51,6 +52,12 @@ from sp_farms.domain.accounts import (
     PermissionState,
     PreferredApp,
     SecurityState,
+)
+from sp_farms.domain.approvals import (
+    ApprovalActionType,
+    ApprovalPolicyRule,
+    ApprovalRequest,
+    ApprovalStatus,
 )
 from sp_farms.domain.audit import AuditEvent, AuditResult
 from sp_farms.domain.campaigns import (
@@ -2444,6 +2451,200 @@ class SqlAlchemySchedulerRepository(ScheduledItemRepositoryPort):
             .all()
         )
         return tuple(m.to_item() for m in models)
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class ApprovalRequestModel(Base, EntityMixin):
+    __tablename__ = "approval_requests"
+
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    summary: Mapped[str] = mapped_column(String(1000), nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    campaign_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    requested_by: Mapped[str] = mapped_column(String(64), nullable=False, default="system")
+    reviewed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @classmethod
+    def from_request(cls, request: ApprovalRequest) -> "ApprovalRequestModel":
+        return cls(
+            id=request.id,
+            action_type=request.action_type.value,
+            target_id=request.target_id,
+            target_name=request.target_name,
+            summary=request.summary,
+            payload=json.dumps(dict(request.payload)),
+            campaign_id=request.campaign_id,
+            job_id=request.job_id,
+            status=request.status.value,
+            requested_by=request.requested_by,
+            reviewed_by=request.reviewed_by,
+            review_notes=request.review_notes,
+            expires_at=_optional_utc(request.expires_at),
+            decided_at=_optional_utc(request.decided_at),
+            created_at=_as_utc(request.created_at),
+            updated_at=_as_utc(request.updated_at),
+        )
+
+    def to_request(self) -> ApprovalRequest:
+        try:
+            payload = json.loads(self.payload) if self.payload else {}
+        except Exception:
+            payload = {}
+        return ApprovalRequest(
+            id=self.id,
+            action_type=ApprovalActionType(self.action_type),
+            target_id=self.target_id,
+            target_name=self.target_name,
+            summary=self.summary,
+            payload=payload,
+            campaign_id=self.campaign_id,
+            job_id=self.job_id,
+            status=ApprovalStatus(self.status),
+            requested_by=self.requested_by,
+            reviewed_by=self.reviewed_by,
+            review_notes=self.review_notes,
+            expires_at=_optional_utc(self.expires_at),
+            decided_at=_optional_utc(self.decided_at),
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
+        )
+
+
+class ApprovalPolicyRuleModel(Base, EntityMixin):
+    __tablename__ = "approval_policy_rules"
+
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_pattern: Mapped[str] = mapped_column(String(255), nullable=False, default="*")
+    require_reason: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    max_pending_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=48)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    @classmethod
+    def from_rule(cls, rule: ApprovalPolicyRule) -> "ApprovalPolicyRuleModel":
+        now = datetime.now(UTC)
+        return cls(
+            id=rule.id,
+            action_type=rule.action_type.value,
+            target_pattern=rule.target_pattern,
+            require_reason=rule.require_reason,
+            max_pending_hours=rule.max_pending_hours,
+            enabled=rule.enabled,
+            created_at=now,
+            updated_at=now,
+        )
+
+    def to_rule(self) -> ApprovalPolicyRule:
+        return ApprovalPolicyRule(
+            id=self.id,
+            action_type=ApprovalActionType(self.action_type),
+            target_pattern=self.target_pattern,
+            require_reason=self.require_reason,
+            max_pending_hours=self.max_pending_hours,
+            enabled=self.enabled,
+        )
+
+
+class SqlAlchemyApprovalRepository(ApprovalRepositoryPort):
+    def __init__(self, unit_of_work: "SqlAlchemyUnitOfWork") -> None:
+        self._unit_of_work = unit_of_work
+
+    def save_request(self, request: ApprovalRequest) -> ApprovalRequest:
+        model = self._session.get(ApprovalRequestModel, request.id)
+        if model is None:
+            model = ApprovalRequestModel.from_request(request)
+            self._session.add(model)
+        else:
+            model.action_type = request.action_type.value
+            model.target_id = request.target_id
+            model.target_name = request.target_name
+            model.summary = request.summary
+            model.payload = json.dumps(dict(request.payload))
+            model.campaign_id = request.campaign_id
+            model.job_id = request.job_id
+            model.status = request.status.value
+            model.requested_by = request.requested_by
+            model.reviewed_by = request.reviewed_by
+            model.review_notes = request.review_notes
+            model.expires_at = _optional_utc(request.expires_at)
+            model.decided_at = _optional_utc(request.decided_at)
+            model.updated_at = _as_utc(request.updated_at)
+        self._session.flush()
+        return model.to_request()
+
+    def get_request(self, request_id: str) -> ApprovalRequest | None:
+        model = self._session.get(ApprovalRequestModel, request_id)
+        return model.to_request() if model is not None else None
+
+    def list_requests(
+        self,
+        status: ApprovalStatus | None = None,
+        action_type: ApprovalActionType | None = None,
+        campaign_id: str | None = None,
+        job_id: str | None = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> Sequence[ApprovalRequest]:
+        query = self._session.query(ApprovalRequestModel)
+        if status is not None:
+            query = query.filter(ApprovalRequestModel.status == status.value)
+        if action_type is not None:
+            query = query.filter(ApprovalRequestModel.action_type == action_type.value)
+        if campaign_id is not None:
+            query = query.filter(ApprovalRequestModel.campaign_id == campaign_id)
+        if job_id is not None:
+            query = query.filter(ApprovalRequestModel.job_id == job_id)
+        models = (
+            query.order_by(ApprovalRequestModel.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return tuple(m.to_request() for m in models)
+
+    def delete_request(self, request_id: str) -> None:
+        model = self._session.get(ApprovalRequestModel, request_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
+
+    def save_policy_rule(self, rule: ApprovalPolicyRule) -> ApprovalPolicyRule:
+        model = self._session.get(ApprovalPolicyRuleModel, rule.id)
+        if model is None:
+            model = ApprovalPolicyRuleModel.from_rule(rule)
+            self._session.add(model)
+        else:
+            model.action_type = rule.action_type.value
+            model.target_pattern = rule.target_pattern
+            model.require_reason = rule.require_reason
+            model.max_pending_hours = rule.max_pending_hours
+            model.enabled = rule.enabled
+            model.updated_at = _as_utc(datetime.now(UTC))
+        self._session.flush()
+        return model.to_rule()
+
+    def list_policy_rules(self) -> Sequence[ApprovalPolicyRule]:
+        models = (
+            self._session.query(ApprovalPolicyRuleModel)
+            .order_by(ApprovalPolicyRuleModel.action_type.asc())
+            .all()
+        )
+        return tuple(m.to_rule() for m in models)
+
+    def delete_policy_rule(self, rule_id: str) -> None:
+        model = self._session.get(ApprovalPolicyRuleModel, rule_id)
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
 
     @property
     def _session(self) -> Session:

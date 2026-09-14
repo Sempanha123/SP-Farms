@@ -3,6 +3,7 @@ from pathlib import Path
 from sp_farms.application.account_exchange_service import AccountExchangeService
 from sp_farms.application.account_onboarding_service import AccountOnboardingService
 from sp_farms.application.account_service import AccountService
+from sp_farms.application.approval_service import ApprovalService
 from sp_farms.application.asset_sync_service import AssetSyncService
 from sp_farms.application.audit_service import AuditService
 from sp_farms.application.campaign_service import CampaignService
@@ -32,6 +33,7 @@ from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import (
     Database,
     SqlAlchemyAccountRepository,
+    SqlAlchemyApprovalRepository,
     SqlAlchemyAuditRepository,
     SqlAlchemyCampaignRepository,
     SqlAlchemyContentRepository,
@@ -211,6 +213,14 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         clock=clock,
     )
 
+    approval_service = ApprovalService(
+        unit_of_work=database.unit_of_work,
+        approval_repo_factory=SqlAlchemyApprovalRepository,
+        clock=clock,
+        audit_service=audit_service,
+        job_service=job_service,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -238,6 +248,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         caption_ai_service=caption_ai_service,
         campaign_service=campaign_service,
         scheduler_service=scheduler_service,
+        approval_service=approval_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)
