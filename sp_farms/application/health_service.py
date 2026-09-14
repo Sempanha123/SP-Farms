@@ -5,6 +5,7 @@ import sqlite3
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sp_farms.application.config import AppConfig
 from sp_farms.domain.health import HealthCheckResult, HealthStatus, HealthSummary

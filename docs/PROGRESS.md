@@ -561,6 +561,21 @@ Status: complete
 - Added interactive update check, live health check display, and diagnostics bundle export to Settings Center (`sp_farms/app/settings_workspace.py`).
 - Added 6 automated tests in `tests/test_health_and_diagnostics.py` (total test suite at 294/294 passing).
 
+## Phase 50 — Windows Packaging and Installer
+
+Status: complete
+
+- Created vector/raster high-resolution application icon generator (`scripts/generate_icons.py`) producing multi-resolution Windows icon containers (`assets/icons/sp_farms.ico` with sizes 16, 32, 48, 64, 128, 256) and master PNGs matching the SP-Farms modern mint/lime design.
+- Integrated Windows taskbar and application window icons in `sp_farms/app/main.py`.
+- Defined reproducible PyInstaller packaging specification (`packaging_windows/sp_farms.spec`) bundling Qt plugins (platforms, styles, icon engines), migrations, and metadata without UPX false-positive interference.
+- Embedded Windows PE version resource structure (`packaging_windows/windows_version_info.txt`) with FileVersion, ProductVersion, and copyright metadata.
+- Implemented upgrade-safe data storage and uninstall data preservation policy (`sp_farms/application/packaging.py`) ensuring user databases, vault tokens, and snapshots in `%APPDATA%\SP-Farms` are retained during updates and uninstallation unless explicitly opted into purging.
+- Created dual installer definitions: Inno Setup script (`packaging_windows/installer.iss`) with modern wizard, desktop/start menu shortcuts, and user data retention prompt, and NSIS Modern UI script (`packaging_windows/installer.nsi`).
+- Implemented Authenticode code-signing utility and hooks (`sp_farms/infrastructure/signing.py`) supporting `signtool.exe`, timestamping authorities (DigiCert/Sectigo), environment variables, and dry-run verification without inventing fake certificates.
+- Added automated packaging pipeline script (`scripts/build_windows_dist.py`) and updated `scripts/package.ps1`.
+- Authored production signing and packaging documentation in `docs/CODE_SIGNING.md`.
+- Added 9 automated tests in `tests/test_packaging.py` (total test suite at 303/303 passing).
+
 
 
 

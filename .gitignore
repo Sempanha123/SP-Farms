@@ -15,6 +15,7 @@ build/
 dist/
 *.egg-info/
 *.spec
+!packaging_windows/*.spec
 
 # Local runtime data
 *.db
