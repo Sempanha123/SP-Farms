@@ -191,3 +191,13 @@ Status: complete
 - Added domain, persistence, denylist, ADB cleanup, permission, bridge, assignment, and UI smoke coverage.
 - Documented operator scope and the version 1 module contract in `docs/QA_DEVICE_PROFILE_LAB.md` and `docs/LSPOSED_QA_BRIDGE.md`.
 
+## Phase 18 — Account Domain Rich Metadata
+
+Status: complete
+
+- Added rich account, category, tag, and stable provider-device assignment domain models.
+- Persisted profile, contact, lifecycle, status, 2FA indicator, grouping, app preference, activity counts, permission state, and security state metadata through migration 0006.
+- Added account CRUD, category/tag assignment, device reassignment, deterministic health scoring, and archive-by-default application services.
+- Kept credentials, tokens, cookies, recovery codes, and 2FA seeds outside account persistence behind the existing vault boundary.
+- Added repository round-trip, category/tag, assignment, health-rule, and archive-preservation coverage.
+

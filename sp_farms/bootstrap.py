@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from sp_farms.application.account_service import AccountService
 from sp_farms.application.context import ApplicationContext
 from sp_farms.application.device_service import DeviceService
 from sp_farms.application.job_service import JobService
@@ -10,6 +11,7 @@ from sp_farms.infrastructure.clock import SystemClock
 from sp_farms.infrastructure.config import load_config
 from sp_farms.infrastructure.database import (
     Database,
+    SqlAlchemyAccountRepository,
     SqlAlchemyDeviceProfileRepository,
     SqlAlchemyJobRepository,
     SqlAlchemyQAProfileRepository,
@@ -53,6 +55,11 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         AdbQAProfileReloadBridge(adb),
         clock,
     )
+    account_service = AccountService(
+        database.unit_of_work,
+        SqlAlchemyAccountRepository,
+        clock,
+    )
 
     context = ApplicationContext(
         clock=clock,
@@ -65,6 +72,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         physical=physical,
         device_service=device_service,
         qa_profile_service=qa_profile_service,
+        account_service=account_service,
     )
     context.add_shutdown_hook(log_handler.close)
     context.add_shutdown_hook(database.close)

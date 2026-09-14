@@ -1,6 +1,6 @@
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from shutil import copy2
 from types import TracebackType
@@ -13,6 +13,7 @@ from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Engine,
     Float,
@@ -28,10 +29,22 @@ from sqlalchemy import (
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
+from sp_farms.application.accounts import AccountRepository
 from sp_farms.application.device_profiles import DeviceProfileRepository
 from sp_farms.application.jobs import JobRepository
 from sp_farms.application.qa_profiles import QAProfileRepository
 from sp_farms.application.unit_of_work import UnitOfWork
+from sp_farms.domain.accounts import (
+    Account,
+    AccountCategory,
+    AccountDeviceAssignment,
+    AccountGender,
+    AccountStatus,
+    AccountTag,
+    PermissionState,
+    PreferredApp,
+    SecurityState,
+)
 from sp_farms.domain.device_management import DeviceProfile
 from sp_farms.domain.jobs import Job, JobEvent, JobState
 from sp_farms.domain.providers import DeviceProviderType
@@ -221,6 +234,81 @@ class QAProfileAuditModel(EntityMixin, Base):
     result: Mapped[str] = mapped_column(String(100), nullable=False)
 
 
+class AccountCategoryModel(EntityMixin, Base):
+    __tablename__ = "account_categories"
+
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    color: Mapped[str] = mapped_column(String(30), nullable=False)
+
+
+class AccountTagModel(EntityMixin, Base):
+    __tablename__ = "account_tags"
+
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    color: Mapped[str] = mapped_column(String(30), nullable=False)
+
+
+class AccountModel(EntityMixin, Base):
+    __tablename__ = "accounts"
+
+    avatar_ref: Mapped[str | None] = mapped_column(String(500))
+    display_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    platform_uid: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    birthday: Mapped[date | None] = mapped_column(Date())
+    gender: Mapped[str | None] = mapped_column(String(30))
+    primary_email: Mapped[str] = mapped_column(String(320), nullable=False)
+    recovery_email: Mapped[str | None] = mapped_column(String(320))
+    phone: Mapped[str] = mapped_column(String(50), nullable=False)
+    country: Mapped[str] = mapped_column(String(100), nullable=False)
+    locale: Mapped[str] = mapped_column(String(50), nullable=False)
+    timezone: Mapped[str] = mapped_column(String(100), nullable=False)
+    account_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(30), nullable=False)
+    two_factor_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    category_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("account_categories.id", ondelete="SET NULL")
+    )
+    notes: Mapped[str] = mapped_column(Text, nullable=False)
+    preferred_app: Mapped[str] = mapped_column(String(30), nullable=False)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    page_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    group_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    permission_state: Mapped[str] = mapped_column(String(30), nullable=False)
+    security_state: Mapped[str] = mapped_column(String(30), nullable=False)
+
+
+class AccountTagAssignmentModel(Base):
+    __tablename__ = "account_tag_assignments"
+
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True
+    )
+    tag_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("account_tags.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
+class AccountDeviceAssignmentModel(EntityMixin, Base):
+    __tablename__ = "account_device_assignments"
+    __table_args__ = (
+        Index(
+            "ux_account_device_assignments_device",
+            "provider",
+            "external_id",
+            unique=True,
+        ),
+    )
+
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("accounts.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
 class JobModel(EntityMixin, Base):
     __tablename__ = "jobs"
     __table_args__ = (Index("ix_jobs_target", "target_type", "target_id"),)
@@ -322,12 +410,50 @@ class JobEventModel(EntityMixin, Base):
         )
 
 
+def _account_values(account: Account) -> dict[str, object]:
+    return {
+        "id": account.id,
+        "avatar_ref": account.avatar_ref,
+        "display_name": account.display_name,
+        "first_name": account.first_name,
+        "last_name": account.last_name,
+        "platform_uid": account.platform_uid,
+        "birthday": account.birthday,
+        "gender": account.gender.value if account.gender else None,
+        "primary_email": account.primary_email,
+        "recovery_email": account.recovery_email,
+        "phone": account.phone,
+        "country": account.country,
+        "locale": account.locale,
+        "timezone": account.timezone,
+        "account_created_at": account.account_created_at,
+        "status": account.status.value,
+        "two_factor_enabled": account.two_factor_enabled,
+        "category_id": account.category_id,
+        "notes": account.notes,
+        "preferred_app": account.preferred_app.value,
+        "last_login_at": account.last_login_at,
+        "last_verified_at": account.last_verified_at,
+        "page_count": account.page_count,
+        "group_count": account.group_count,
+        "permission_state": account.permission_state.value,
+        "security_state": account.security_state.value,
+        "created_at": account.created_at,
+        "updated_at": account.updated_at,
+        "archived_at": account.archived_at,
+    }
+
+
 def _qa_profile_values(profile: QAProfile) -> dict[str, object]:
     return {
         key: getattr(profile, key)
         for key in QAProfile.__dataclass_fields__
         if key != "updated_at"
     } | {"updated_at": profile.updated_at}
+
+
+def _optional_utc(value: datetime | None) -> datetime | None:
+    return _as_utc(value) if value is not None else None
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -374,6 +500,147 @@ class SqlAlchemyDeviceProfileRepository(DeviceProfileRepository):
         else:
             model.alias = profile.alias
             model.notes = profile.notes
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class SqlAlchemyAccountRepository(AccountRepository):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyAccountRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def list_accounts(self, include_archived: bool = False) -> Sequence[Account]:
+        query = self._session.query(AccountModel)
+        if not include_archived:
+            query = query.filter(AccountModel.archived_at.is_(None))
+        return tuple(self._to_account(model) for model in query.order_by(AccountModel.display_name))
+
+    def get_account(self, account_id: str) -> Account | None:
+        model = self._session.get(AccountModel, account_id)
+        return self._to_account(model) if model else None
+
+    def save_account(self, account: Account) -> None:
+        model = self._session.get(AccountModel, account.id)
+        values = _account_values(account)
+        if model is None:
+            self._session.add(AccountModel(**values))
+        else:
+            for key, value in values.items():
+                setattr(model, key, value)
+
+    def list_categories(self) -> Sequence[AccountCategory]:
+        models = self._session.query(AccountCategoryModel).order_by(AccountCategoryModel.name)
+        return tuple(AccountCategory(model.id, model.name, model.color) for model in models)
+
+    def save_category(self, category: AccountCategory) -> None:
+        model = self._session.get(AccountCategoryModel, category.id)
+        if model is None:
+            self._session.add(
+                AccountCategoryModel(id=category.id, name=category.name, color=category.color)
+            )
+        else:
+            model.name = category.name
+            model.color = category.color
+
+    def list_tags(self) -> Sequence[AccountTag]:
+        models = self._session.query(AccountTagModel).order_by(AccountTagModel.name)
+        return tuple(AccountTag(model.id, model.name, model.color) for model in models)
+
+    def save_tag(self, tag: AccountTag) -> None:
+        model = self._session.get(AccountTagModel, tag.id)
+        if model is None:
+            self._session.add(AccountTagModel(id=tag.id, name=tag.name, color=tag.color))
+        else:
+            model.name = tag.name
+            model.color = tag.color
+
+    def set_tags(self, account_id: str, tag_ids: Sequence[str]) -> None:
+        self._session.query(AccountTagAssignmentModel).filter_by(account_id=account_id).delete()
+        self._session.add_all(
+            AccountTagAssignmentModel(account_id=account_id, tag_id=tag_id)
+            for tag_id in dict.fromkeys(tag_ids)
+        )
+
+    def assign_device(self, assignment: AccountDeviceAssignment) -> None:
+        device_owner = (
+            self._session.query(AccountDeviceAssignmentModel)
+            .filter_by(provider=assignment.provider, external_id=assignment.external_id)
+            .one_or_none()
+        )
+        if device_owner is not None and device_owner.account_id != assignment.account_id:
+            self._session.delete(device_owner)
+            self._session.flush()
+        model = (
+            self._session.query(AccountDeviceAssignmentModel)
+            .filter_by(account_id=assignment.account_id)
+            .one_or_none()
+        )
+        if model is None:
+            self._session.add(
+                AccountDeviceAssignmentModel(
+                    account_id=assignment.account_id,
+                    provider=assignment.provider,
+                    external_id=assignment.external_id,
+                )
+            )
+        else:
+            model.provider = assignment.provider
+            model.external_id = assignment.external_id
+
+    def _to_account(self, model: AccountModel) -> Account:
+        tag_ids = tuple(
+            row[0]
+            for row in self._session.query(AccountTagAssignmentModel.tag_id)
+            .filter_by(account_id=model.id)
+            .order_by(AccountTagAssignmentModel.tag_id)
+            .all()
+        )
+        device = (
+            self._session.query(AccountDeviceAssignmentModel)
+            .filter_by(account_id=model.id)
+            .one_or_none()
+        )
+        assignment = (
+            AccountDeviceAssignment(model.id, device.provider, device.external_id)
+            if device
+            else None
+        )
+        return Account(
+            id=model.id,
+            avatar_ref=model.avatar_ref,
+            display_name=model.display_name,
+            first_name=model.first_name,
+            last_name=model.last_name,
+            platform_uid=model.platform_uid,
+            birthday=model.birthday,
+            gender=AccountGender(model.gender) if model.gender else None,
+            primary_email=model.primary_email,
+            recovery_email=model.recovery_email,
+            phone=model.phone,
+            country=model.country,
+            locale=model.locale,
+            timezone=model.timezone,
+            account_created_at=_optional_utc(model.account_created_at),
+            status=AccountStatus(model.status),
+            two_factor_enabled=model.two_factor_enabled,
+            category_id=model.category_id,
+            tag_ids=tag_ids,
+            notes=model.notes,
+            assigned_device=assignment,
+            preferred_app=PreferredApp(model.preferred_app),
+            last_login_at=_optional_utc(model.last_login_at),
+            last_verified_at=_optional_utc(model.last_verified_at),
+            page_count=model.page_count,
+            group_count=model.group_count,
+            permission_state=PermissionState(model.permission_state),
+            security_state=SecurityState(model.security_state),
+            created_at=_as_utc(model.created_at),
+            updated_at=_as_utc(model.updated_at),
+            archived_at=_optional_utc(model.archived_at),
+        )
 
     @property
     def _session(self) -> Session:
