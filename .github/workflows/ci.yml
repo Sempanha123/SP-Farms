@@ -1,0 +1,119 @@
+name: CI Quality Gates
+
+"on":
+  push:
+    branches:
+      - main
+      - ai/full-production-build
+      - "feature/**"
+      - "fix/**"
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Checks
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e ".[dev]"
+
+      - name: Run Ruff Lint
+        run: |
+          python -m ruff check .
+
+      - name: Run Mypy Type Check
+        run: |
+          python -m mypy sp_farms
+
+  unit-and-regression-tests:
+    name: Unit & Regression Tests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e ".[dev]"
+
+      - name: Run Pytest Suite with Coverage
+        run: |
+          python -m pytest --cov=sp_farms --cov-report=xml --cov-report=term
+
+  migration-verification:
+    name: Database Migration Verification
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e ".[dev]"
+
+      - name: Verify Clean Database Migration
+        run: |
+          python -c "from pathlib import Path; from sp_farms.infrastructure.database import Database, run_migrations; db = Database(Path('test_ci.db')); run_migrations(db, Path('migrations')); db.close(); print('Migrations verified successfully')"
+
+  package-smoke-test:
+    name: Windows Package Build Smoke
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e ".[dev]"
+
+      - name: Build Standalone Windows Distribution
+        run: |
+          python scripts/build_windows_dist.py --skip-installer
+
+      - name: Verify Distributable Executable Exists
+        shell: pwsh
+        run: |
+          $exe = "dist\SP-Farms\SP-Farms.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "SP-Farms.exe was not created by PyInstaller!"
+            exit 1
+          }
+          Write-Host "SP-Farms.exe built successfully ($((Get-Item $exe).Length) bytes)"
