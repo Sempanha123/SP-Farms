@@ -12,8 +12,10 @@ from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Engine,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -28,10 +30,17 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sess
 
 from sp_farms.application.device_profiles import DeviceProfileRepository
 from sp_farms.application.jobs import JobRepository
+from sp_farms.application.qa_profiles import QAProfileRepository
 from sp_farms.application.unit_of_work import UnitOfWork
 from sp_farms.domain.device_management import DeviceProfile
 from sp_farms.domain.jobs import Job, JobEvent, JobState
 from sp_farms.domain.providers import DeviceProviderType
+from sp_farms.domain.qa_profiles import (
+    QADeviceAssignment,
+    QAProfile,
+    QAProfileAudit,
+    QATargetPackage,
+)
 from sp_farms.domain.secrets import SecretReference, SecretType
 
 
@@ -107,6 +116,109 @@ class DeviceProfileModel(EntityMixin, Base):
             alias=self.alias,
             notes=self.notes,
         )
+
+
+class QAProfileModel(EntityMixin, Base):
+    __tablename__ = "qa_profiles"
+
+    profile_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    manufacturer: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    model: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    market_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    product: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    hardware: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    board: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    bootloader: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    build_fingerprint: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    test_android_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_serial_number: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_imei: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_meid: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_gsf_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_advertising_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_mac: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_bluetooth_mac: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_wifi_ssid: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_wifi_bssid: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_network_generation: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    test_imsi: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_sim_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_mobile_number: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_esim_eid: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_sim_operator: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_sim_operator_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    test_sim_country_iso: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    timezone: Mapped[str] = mapped_column(String(100), nullable=False, default="UTC")
+    latitude: Mapped[float | None] = mapped_column(Float)
+    longitude: Mapped[float | None] = mapped_column(Float)
+
+    @classmethod
+    def from_profile(cls, profile: QAProfile) -> "QAProfileModel":
+        return cls(**_qa_profile_values(profile))
+
+    def update_from_profile(self, profile: QAProfile) -> None:
+        for key, value in _qa_profile_values(profile).items():
+            setattr(self, key, value)
+
+    def to_profile(self) -> QAProfile:
+        values = {
+            key: getattr(self, key)
+            for key in QAProfile.__dataclass_fields__
+            if key not in {"created_at", "updated_at"}
+        }
+        return QAProfile(
+            **values,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
+        )
+
+
+class QATargetPackageModel(Base):
+    __tablename__ = "qa_target_packages"
+
+    package_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    display_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    ownership_note: Mapped[str] = mapped_column(Text, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    last_verified: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    test_profile_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("qa_profiles.id", ondelete="SET NULL")
+    )
+
+    def to_target(self) -> QATargetPackage:
+        return QATargetPackage(
+            package_id=self.package_id,
+            display_name=self.display_name,
+            ownership_note=self.ownership_note,
+            enabled=self.enabled,
+            last_verified=_as_utc(self.last_verified),
+            test_profile_id=self.test_profile_id,
+        )
+
+
+class QADeviceAssignmentModel(EntityMixin, Base):
+    __tablename__ = "qa_device_assignments"
+    __table_args__ = (
+        Index("ux_qa_device_assignments_identity", "provider", "external_id", unique=True),
+    )
+
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    profile_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("qa_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+
+
+class QAProfileAuditModel(EntityMixin, Base):
+    __tablename__ = "qa_profile_audits"
+
+    actor: Mapped[str] = mapped_column(String(100), nullable=False)
+    operation: Mapped[str] = mapped_column(String(30), nullable=False)
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    package_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    profile_id: Mapped[str | None] = mapped_column(String(36))
+    result: Mapped[str] = mapped_column(String(100), nullable=False)
 
 
 class JobModel(EntityMixin, Base):
@@ -210,6 +322,14 @@ class JobEventModel(EntityMixin, Base):
         )
 
 
+def _qa_profile_values(profile: QAProfile) -> dict[str, object]:
+    return {
+        key: getattr(profile, key)
+        for key in QAProfile.__dataclass_fields__
+        if key != "updated_at"
+    } | {"updated_at": profile.updated_at}
+
+
 def _as_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value
 
@@ -254,6 +374,112 @@ class SqlAlchemyDeviceProfileRepository(DeviceProfileRepository):
         else:
             model.alias = profile.alias
             model.notes = profile.notes
+
+    @property
+    def _session(self) -> Session:
+        return self._unit_of_work._active_session()
+
+
+class SqlAlchemyQAProfileRepository(QAProfileRepository):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyQAProfileRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+
+    def list_profiles(self) -> Sequence[QAProfile]:
+        models = self._session.query(QAProfileModel).order_by(QAProfileModel.profile_name).all()
+        return tuple(model.to_profile() for model in models)
+
+    def get_profile(self, profile_id: str) -> QAProfile | None:
+        model = self._session.get(QAProfileModel, profile_id)
+        return model.to_profile() if model else None
+
+    def save_profile(self, profile: QAProfile) -> None:
+        model = self._session.get(QAProfileModel, profile.id)
+        if model is None:
+            self._session.add(QAProfileModel.from_profile(profile))
+        else:
+            model.update_from_profile(profile)
+
+    def delete_profile(self, profile_id: str) -> None:
+        model = self._session.get(QAProfileModel, profile_id)
+        if model is not None:
+            self._session.delete(model)
+
+    def list_targets(self) -> Sequence[QATargetPackage]:
+        models = (
+            self._session.query(QATargetPackageModel)
+            .order_by(QATargetPackageModel.package_id)
+            .all()
+        )
+        return tuple(model.to_target() for model in models)
+
+    def get_target(self, package_id: str) -> QATargetPackage | None:
+        model = self._session.get(QATargetPackageModel, package_id)
+        return model.to_target() if model else None
+
+    def save_target(self, target: QATargetPackage) -> None:
+        model = self._session.get(QATargetPackageModel, target.package_id)
+        if model is None:
+            self._session.add(
+                QATargetPackageModel(
+                    package_id=target.package_id,
+                    display_name=target.display_name,
+                    ownership_note=target.ownership_note,
+                    enabled=target.enabled,
+                    last_verified=target.last_verified,
+                    test_profile_id=target.test_profile_id,
+                )
+            )
+        else:
+            model.display_name = target.display_name
+            model.ownership_note = target.ownership_note
+            model.enabled = target.enabled
+            model.last_verified = target.last_verified
+            model.test_profile_id = target.test_profile_id
+
+    def get_assignment(self, provider: str, external_id: str) -> QADeviceAssignment | None:
+        model = (
+            self._session.query(QADeviceAssignmentModel)
+            .filter_by(provider=provider, external_id=external_id)
+            .one_or_none()
+        )
+        if model is None:
+            return None
+        return QADeviceAssignment(model.provider, model.external_id, model.profile_id)
+
+    def save_assignment(self, assignment: QADeviceAssignment) -> None:
+        model = (
+            self._session.query(QADeviceAssignmentModel)
+            .filter_by(provider=assignment.provider, external_id=assignment.external_id)
+            .one_or_none()
+        )
+        if model is None:
+            self._session.add(
+                QADeviceAssignmentModel(
+                    provider=assignment.provider,
+                    external_id=assignment.external_id,
+                    profile_id=assignment.profile_id,
+                )
+            )
+        else:
+            model.profile_id = assignment.profile_id
+
+    def add_audit(self, audit: QAProfileAudit) -> None:
+        self._session.add(
+            QAProfileAuditModel(
+                id=audit.id,
+                actor=audit.actor,
+                operation=audit.operation,
+                provider=audit.provider,
+                external_id=audit.external_id,
+                package_id=audit.package_id,
+                profile_id=audit.profile_id,
+                result=audit.result,
+                created_at=audit.timestamp,
+                updated_at=audit.timestamp,
+            )
+        )
 
     @property
     def _session(self) -> Session:

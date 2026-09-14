@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QPushButton,
     QStackedWidget,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -15,6 +16,7 @@ from sp_farms.app.device_manager import DeviceManagerView
 from sp_farms.app.job_queue import JobQueueView
 from sp_farms.app.navigation import Command, NavigationService
 from sp_farms.app.notifications import NotificationCenterModel
+from sp_farms.app.qa_profile_lab import QAProfileLab
 from sp_farms.app.shortcut_help import ShortcutHelpDialog
 from sp_farms.app.theme import ThemeMode, style_sheet
 from sp_farms.app.workspaces import WorkspaceLayout
@@ -51,6 +53,12 @@ class MainWindow(QMainWindow):
             self._context.device_service,
             self._settings,
         )
+        self.qa_profile_lab = QAProfileLab(self._context.qa_profile_service)
+        self.device_manager_view.devices_changed.connect(self.qa_profile_lab.set_devices)
+        self.devices_workspace = QTabWidget()
+        self.devices_workspace.setObjectName("devicesWorkspace")
+        self.devices_workspace.addTab(self.device_manager_view, "Device Manager")
+        self.devices_workspace.addTab(self.qa_profile_lab, "QA Profile Lab")
         self._workspace = WorkspaceLayout(self.device_manager_view.rail_model)
         self.setObjectName("mainWindow")
         self.setWindowTitle("SP-Farms")
@@ -124,7 +132,7 @@ class MainWindow(QMainWindow):
                 self.job_queue_view = JobQueueView(self._context.job_service)
                 self._pages.addWidget(self.job_queue_view)
             elif section == "Devices":
-                self._pages.addWidget(self.device_manager_view)
+                self._pages.addWidget(self.devices_workspace)
             else:
                 placeholder = QLabel(f"{section} workspace")
                 placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)

@@ -52,6 +52,10 @@ The operator job queue presentation relies on a clean Qt Model-View-Proxy archit
 
 Provider discovery is projected into immutable `ManagedDevice` rows keyed by provider and stable ADB identity. Qt models consume those rows but never execute provider subprocesses; discovery and device actions run through `DeviceService` on worker threads. Alias and notes are durable domain profile data in SQLite, while saved filters remain local `QSettings` presentation preferences. Optional metrics remain absent rather than triggering one health-check subprocess per table row. Emulator window arrangement stays unavailable until the provider port exposes it uniformly.
 
+## QA profile isolation and reload bridge
+
+Synthetic QA fixtures are stored in dedicated profile, target, assignment, and audit records; actual ADB/provider inventory is never mutated. All operations require an enabled exact package allowlist entry after a hard denylist check. Application/domain layers depend only on the versioned `QAProfileReloadBridge`, while infrastructure uses argument-array ADB push and fixed remote commands. Compatibility randomization is limited to harmless device-catalog fields; identity generation is excluded, while explicit authorized fixtures retain clearly marked `test_*` names. Bridge audits store no fixture values.
+
 ## ADB Abstraction and Discovery
 
 Direct subprocess execution is strictly encapsulated behind the `AdbPort` protocol. Neither UI components nor higher-level automation services invoke the `adb` binary or parse command-line output directly. Executable resolution checks user overrides, environment variables, and standard Windows SDK paths. Stderr error categorization converts CLI error strings into typed domain exceptions (`AdbTimeoutError`, `AdbUnauthorizedError`, `AdbOfflineError`, `AdbDeviceNotFoundError`). Deterministic simulation through `FakeAdbAdapter` provides complete offline testability across device authorization and failure scenarios without hardware dependencies.

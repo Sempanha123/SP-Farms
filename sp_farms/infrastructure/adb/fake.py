@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sp_farms.application.adb import (
     AdbCommandError,
@@ -25,6 +26,8 @@ class SimulatedDevice:
     properties: dict[str, str] = field(default_factory=dict)
     timeout_on_commands: bool = False
     fail_on_commands: bool = False
+    remote_files: dict[str, str] = field(default_factory=dict)
+    qa_bridge_loaded: bool = False
 
 
 class FakeAdbAdapter(AdbPort):
@@ -91,6 +94,14 @@ class FakeAdbAdapter(AdbPort):
                 stdout=f"[Logcat output for {serial}]\n", stderr="", returncode=0
             )
 
+        if args and args[0] == "push" and serial is not None:
+            if len(args) != 3:
+                raise AdbCommandError("Invalid push arguments", returncode=1)
+            self._devices[serial].remote_files[str(args[2])] = Path(args[1]).read_text(
+                encoding="utf-8"
+            )
+            return AdbCommandResult(stdout="1 file pushed\n", stderr="", returncode=0)
+
         return AdbCommandResult(stdout="OK\n", stderr="", returncode=0)
 
     def shell(
@@ -134,6 +145,40 @@ class FakeAdbAdapter(AdbPort):
 
         if command.strip() == "echo 1":
             return "1\n"
+
+        if command.startswith("mkdir -p ") or command.startswith("chmod 600 "):
+            return ""
+
+        if command.startswith("test -f ") and command.endswith(" && echo OK"):
+            path = command.removeprefix("test -f ").removesuffix(" && echo OK")
+            return "OK\n" if path in dev.remote_files else ""
+
+        if command.startswith("am broadcast -a "):
+            profile = dev.remote_files.get("/data/local/tmp/sp_farms_qa/profile.json")
+            if profile is not None:
+                from json import dumps, loads
+
+                document = loads(profile)
+                dev.qa_bridge_loaded = True
+                dev.remote_files["/data/local/tmp/sp_farms_qa/status.json"] = dumps(
+                    {
+                        "bridge_version": 1,
+                        "loaded": True,
+                        "profile_id": document["profile"]["id"],
+                        "target_package": document["target_package"],
+                    }
+                )
+            return "Broadcast completed: result=0\n"
+
+        if command.startswith("cat "):
+            return dev.remote_files.get(command.removeprefix("cat "), "")
+
+        if command.startswith("rm -f "):
+            path = command.removeprefix("rm -f ")
+            dev.remote_files.pop(path, None)
+            dev.remote_files.pop("/data/local/tmp/sp_farms_qa/status.json", None)
+            dev.qa_bridge_loaded = False
+            return ""
 
         return ""
 

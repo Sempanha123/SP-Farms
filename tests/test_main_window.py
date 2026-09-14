@@ -49,7 +49,9 @@ def test_navigation_changes_workspace(tmp_path: Path) -> None:
 
     assert window.current_section == "Devices"
     assert window._nav_buttons["Devices"].isChecked()
-    assert window._pages.currentWidget() is window.device_manager_view
+    assert window._pages.currentWidget() is window.devices_workspace
+    assert window.devices_workspace.widget(0) is window.device_manager_view
+    assert window.devices_workspace.widget(1) is window.qa_profile_lab
     assert window.findChild(QTableView, "deviceTable") is not None
     window.close()
 

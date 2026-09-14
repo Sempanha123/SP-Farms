@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from sp_farms.application.device_service import DeviceService
     from sp_farms.application.job_service import JobService
     from sp_farms.application.providers import DeviceProviderPort
+    from sp_farms.application.qa_profile_service import QAProfileService
     from sp_farms.application.worker import WorkerSupervisor
 
 ShutdownHook = Callable[[], None]
@@ -26,6 +27,7 @@ class ApplicationContext:
     mumu: "DeviceProviderPort | None" = None
     physical: "DeviceProviderPort | None" = None
     device_service: "DeviceService | None" = None
+    qa_profile_service: "QAProfileService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

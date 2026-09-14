@@ -178,3 +178,16 @@ Status: complete
 - Kept optional emulator window arrangement disabled because no unified provider capability exists.
 - Added mixed-provider, action-state, persistence, filter, artifact, and 1,500-device performance tests.
 
+## Phase 17 — LSPosed QA Device Profile Lab and Hot Reload
+
+Status: complete
+
+- Added isolated, versioned QA profile records with explicit `test_*` fixture fields; actual device inventory remains unchanged.
+- Added persistent authorized-package allowlists, per-device QA assignments, and masked operation audits through migration 0005.
+- Enforced package syntax, authorization notes, denylist-before-allowlist checks, and refusal of known social, payment, banking, authenticator, and integrity targets.
+- Added strict JSON import/export plus safe compatibility-only catalog randomization; identity generators are intentionally excluded.
+- Added an abstract reload bridge with safe ADB argument-array push, mode `600`, remote verification, versioned acknowledgement, typed failures, guaranteed temporary-file cleanup, and restore-default behavior.
+- Added a Devices tab containing the three-pane QA Profile Lab, profile editor, package authorization, bridge state, assignment, and background push/reload/verify/restore actions.
+- Added domain, persistence, denylist, ADB cleanup, permission, bridge, assignment, and UI smoke coverage.
+- Documented operator scope and the version 1 module contract in `docs/QA_DEVICE_PROFILE_LAB.md` and `docs/LSPOSED_QA_BRIDGE.md`.
+
