@@ -116,7 +116,7 @@ class ContextActionDialog(QDialog):
 
         self.setObjectName("contextActionDialog")
         self.setWindowTitle(f"Actions — {self.context.summary_header}")
-        self.resize(960, 680)
+        self.resize(1120, 740)
         self.setMinimumSize(800, 560)
 
         self._init_ui()
@@ -124,8 +124,8 @@ class ContextActionDialog(QDialog):
 
     def _init_ui(self) -> None:
         root = QVBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(12)
+        root.setContentsMargins(12, 12, 12, 12)
+        root.setSpacing(9)
 
         # 1. Header with metadata, target summary, and health badges
         header_panel = Panel()
@@ -135,7 +135,7 @@ class ContextActionDialog(QDialog):
 
         title_row = QHBoxLayout()
         self.title_label = QLabel(self.context.summary_header)
-        self.title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.title_label.setProperty("heading", True)
         title_row.addWidget(self.title_label, stretch=1)
 
         # Health badge
@@ -166,6 +166,9 @@ class ContextActionDialog(QDialog):
         # 2. Main Tab Widget
         self.tabs = QTabWidget()
         self.tabs.setObjectName("contextTabs")
+        self.tabs.setTabPosition(QTabWidget.TabPosition.West)
+        self.tabs.setMovable(False)
+        self.tabs.setUsesScrollButtons(True)
         self._build_tabs()
         root.addWidget(self.tabs, stretch=1)
 
