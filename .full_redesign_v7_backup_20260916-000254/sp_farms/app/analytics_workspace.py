@@ -201,7 +201,7 @@ class AnalyticsWorkspace(QWidget):
             self.device_service = None
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(12)
 
         # Tab widget for Social Posts and Device Reliability
@@ -241,11 +241,11 @@ class AnalyticsWorkspace(QWidget):
         # Toolbar
         toolbar = QHBoxLayout()
         title_lbl = QLabel("Engagement Performance & Insights")
-        title_lbl.setProperty("sectionTitle", True)
+        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #ECEFF4;")
         toolbar.addWidget(title_lbl)
         toolbar.addStretch()
 
-        self.btn_refresh_social = PrimaryButton("Refresh Insights")
+        self.btn_refresh_social = PrimaryButton("🔄 Refresh Insights")
         self.btn_refresh_social.clicked.connect(self.reload_social_data)
         toolbar.addWidget(self.btn_refresh_social)
         layout.addLayout(toolbar)
@@ -277,13 +277,13 @@ class AnalyticsWorkspace(QWidget):
         insp_layout.setSpacing(8)
 
         self.lbl_insp_title = QLabel("Select a post to inspect details")
-        self.lbl_insp_title.setProperty("sectionTitle", True)
+        self.lbl_insp_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #88C0D0;")
         self.lbl_insp_title.setWordWrap(True)
         insp_layout.addWidget(self.lbl_insp_title)
 
         self.lbl_insp_details = QLabel()
         self.lbl_insp_details.setWordWrap(True)
-        self.lbl_insp_details.setProperty("muted", True)
+        self.lbl_insp_details.setStyleSheet("color: #D8DEE9; line-height: 1.4;")
         insp_layout.addWidget(self.lbl_insp_details)
         insp_layout.addStretch()
 
@@ -303,19 +303,19 @@ class AnalyticsWorkspace(QWidget):
 
         toolbar = QHBoxLayout()
         title_lbl = QLabel("Device Fleet & Provider Reliability")
-        title_lbl.setProperty("sectionTitle", True)
+        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #ECEFF4;")
         toolbar.addWidget(title_lbl)
         toolbar.addStretch()
 
-        self.btn_export_csv = SecondaryButton("Export CSV")
+        self.btn_export_csv = SecondaryButton("📥 Export CSV")
         self.btn_export_csv.clicked.connect(self._export_device_csv)
         toolbar.addWidget(self.btn_export_csv)
 
-        self.btn_export_json = SecondaryButton("Export JSON")
+        self.btn_export_json = SecondaryButton("📄 Export JSON")
         self.btn_export_json.clicked.connect(self._export_device_json)
         toolbar.addWidget(self.btn_export_json)
 
-        self.btn_refresh_devices = PrimaryButton("Refresh Fleet")
+        self.btn_refresh_devices = PrimaryButton("🔄 Refresh Fleet")
         self.btn_refresh_devices.clicked.connect(self.reload_device_data)
         toolbar.addWidget(self.btn_refresh_devices)
         layout.addLayout(toolbar)
@@ -345,13 +345,15 @@ class AnalyticsWorkspace(QWidget):
         insp_layout.setSpacing(8)
 
         self.lbl_device_insp_title = QLabel("Select a device to view diagnostics")
-        self.lbl_device_insp_title.setProperty("sectionTitle", True)
+        self.lbl_device_insp_title.setStyleSheet(
+            "font-size: 13px; font-weight: bold; color: #A3BE8C;"
+        )
         self.lbl_device_insp_title.setWordWrap(True)
         insp_layout.addWidget(self.lbl_device_insp_title)
 
         self.lbl_device_insp_details = QLabel()
         self.lbl_device_insp_details.setWordWrap(True)
-        self.lbl_device_insp_details.setProperty("muted", True)
+        self.lbl_device_insp_details.setStyleSheet("color: #D8DEE9; line-height: 1.4;")
         insp_layout.addWidget(self.lbl_device_insp_details)
         insp_layout.addStretch()
 

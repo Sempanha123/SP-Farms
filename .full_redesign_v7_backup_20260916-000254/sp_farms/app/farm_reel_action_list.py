@@ -10,13 +10,13 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
     QMessageBox,
     QSpinBox,
-    QSplitter,
     QStackedWidget,
     QTextEdit,
     QTreeWidget,
@@ -629,76 +629,58 @@ class FarmReelActionListWorkspace(QWidget):
         header = QHBoxLayout()
         title_stack = QVBoxLayout()
         title_stack.setSpacing(0)
-
-        title = QLabel("Automation Actions")
+        title = QLabel("Action List")
         title.setProperty("heading", True)
         title_stack.addWidget(title)
-
         subtitle = QLabel(
-            "Select accounts, choose actions, configure, dry-run, then start."
+            "Farm-Reel-style selection, using SP-Farms' existing authorized workflow engine."
         )
         subtitle.setProperty("muted", True)
         title_stack.addWidget(subtitle)
-
         header.addLayout(title_stack)
         header.addStretch()
-
         self.status = StatusChip("0 actions selected", "neutral")
         header.addWidget(self.status)
         root.addLayout(header)
 
         target_panel = Panel()
-        target_layout = QHBoxLayout(target_panel)
+        target_layout = QGridLayout(target_panel)
         target_layout.setContentsMargins(9, 7, 9, 7)
-        target_layout.setSpacing(6)
+        target_layout.setHorizontalSpacing(8)
+        target_layout.setVerticalSpacing(6)
 
-        target_layout.addWidget(QLabel("Accounts"))
         self.account_ids = QLineEdit()
-        self.account_ids.setPlaceholderText("Selected account IDs")
-        target_layout.addWidget(self.account_ids, stretch=2)
-
-        target_layout.addWidget(QLabel("Destinations"))
+        self.account_ids.setPlaceholderText("Account IDs, comma separated")
         self.destination_ids = QLineEdit()
-        self.destination_ids.setPlaceholderText("Authorized Page / Group IDs")
-        target_layout.addWidget(self.destination_ids, stretch=2)
-
+        self.destination_ids.setPlaceholderText("Authorized Page / Group IDs, comma separated")
         self.device_policy = QComboBox()
         self.device_policy.addItem("Bound device first", "bound_first")
         self.device_policy.addItem("Any available device", "any_available")
         self.device_policy.addItem("Preferred provider order", "preferred_order")
-        target_layout.addWidget(self.device_policy)
-
         self.concurrency = QSpinBox()
         self.concurrency.setRange(1, 32)
         self.concurrency.setValue(4)
-        self.concurrency.setPrefix("Devices ")
-        target_layout.addWidget(self.concurrency)
 
+        target_layout.addWidget(QLabel("Accounts"), 0, 0)
+        target_layout.addWidget(self.account_ids, 0, 1)
+        target_layout.addWidget(QLabel("Destinations"), 0, 2)
+        target_layout.addWidget(self.destination_ids, 0, 3)
+        target_layout.addWidget(QLabel("Device policy"), 1, 0)
+        target_layout.addWidget(self.device_policy, 1, 1)
+        target_layout.addWidget(QLabel("Concurrency"), 1, 2)
+        target_layout.addWidget(self.concurrency, 1, 3)
         root.addWidget(target_panel)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setChildrenCollapsible(False)
+        body = QHBoxLayout()
+        body.setSpacing(7)
 
         available = Panel()
         available_layout = QVBoxLayout(available)
         available_layout.setContentsMargins(8, 8, 8, 8)
         available_layout.setSpacing(5)
-
-        available_header = QHBoxLayout()
         available_title = QLabel("Available Actions")
         available_title.setProperty("sectionTitle", True)
-        available_header.addWidget(available_title)
-        available_header.addStretch()
-
-        clear = SecondaryButton("Clear")
-        clear.clicked.connect(self.clear_actions)
-        available_header.addWidget(clear)
-        available_layout.addLayout(available_header)
-
-        self.action_search = QLineEdit()
-        self.action_search.setPlaceholderText("Search actions...")
-        self.action_search.textChanged.connect(self._filter_actions)
-        available_layout.addWidget(self.action_search)
+        available_layout.addWidget(available_title)
 
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
@@ -708,98 +690,71 @@ class FarmReelActionListWorkspace(QWidget):
         available_layout.addWidget(self.tree, stretch=1)
 
         self._building_tree = True
-
         for group_name, step_types in ACTION_GROUPS:
             group_item = QTreeWidgetItem([group_name])
-            group_item.setFlags(
-                group_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable
-            )
+            group_item.setFlags(group_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
             group_item.setExpanded(True)
             self.tree.addTopLevelItem(group_item)
-
             for step_type in step_types:
                 info = CAPABILITY_MATRIX[step_type]
                 child = QTreeWidgetItem([info.title])
-                child.setData(
-                    0,
-                    Qt.ItemDataRole.UserRole,
-                    step_type.value,
-                )
-                child.setFlags(
-                    child.flags() | Qt.ItemFlag.ItemIsUserCheckable
-                )
+                child.setData(0, Qt.ItemDataRole.UserRole, step_type.value)
+                child.setFlags(child.flags() | Qt.ItemFlag.ItemIsUserCheckable)
                 child.setCheckState(0, Qt.CheckState.Unchecked)
                 child.setToolTip(0, info.description)
                 group_item.addChild(child)
                 self._tree_items[step_type] = child
-
         self._building_tree = False
 
-        basic = SecondaryButton("Select Basic Setup")
-        basic.clicked.connect(self._select_common_flow)
-        available_layout.addWidget(basic)
-        splitter.addWidget(available)
+        quick_select = QHBoxLayout()
+        select_safe = SecondaryButton("Common Actions")
+        select_safe.clicked.connect(self._select_common_flow)
+        clear = SecondaryButton("Clear")
+        clear.clicked.connect(self.clear_actions)
+        quick_select.addWidget(select_safe)
+        quick_select.addWidget(clear)
+        available_layout.addLayout(quick_select)
+        body.addWidget(available, stretch=2)
 
         selected_panel = Panel()
         selected_layout = QVBoxLayout(selected_panel)
         selected_layout.setContentsMargins(8, 8, 8, 8)
         selected_layout.setSpacing(5)
-
-        selected_title = QLabel("Selected Actions")
+        selected_title = QLabel("Selected Actions · Execution Order")
         selected_title.setProperty("sectionTitle", True)
         selected_layout.addWidget(selected_title)
 
-        selected_hint = QLabel("Execution order is top to bottom.")
-        selected_hint.setProperty("muted", True)
-        selected_layout.addWidget(selected_hint)
-
         self.selected_list = QListWidget()
-        self.selected_list.currentRowChanged.connect(
-            self._selected_row_changed
-        )
+        self.selected_list.currentRowChanged.connect(self._selected_row_changed)
         selected_layout.addWidget(self.selected_list, stretch=1)
 
         order_row = QHBoxLayout()
-
-        up = SecondaryButton("Up")
-        down = SecondaryButton("Down")
+        up = SecondaryButton("↑ Up")
+        down = SecondaryButton("↓ Down")
         remove = SecondaryButton("Remove")
-
         up.clicked.connect(lambda: self._move_selected(-1))
         down.clicked.connect(lambda: self._move_selected(1))
         remove.clicked.connect(self._remove_selected)
-
         order_row.addWidget(up)
         order_row.addWidget(down)
         order_row.addWidget(remove)
         selected_layout.addLayout(order_row)
 
         verification = QLabel(
-            "If verification is required, the job waits for operator action "
-            "and resumes after verification succeeds."
+            "Verification/checkpoint: workflow pauses for operator action, "
+            "then resumes after successful verification."
         )
         verification.setProperty("muted", True)
         verification.setWordWrap(True)
         selected_layout.addWidget(verification)
-
-        splitter.addWidget(selected_panel)
+        body.addWidget(selected_panel, stretch=2)
 
         self.config_editor = ActionConfigEditor()
         self.config_editor.changed.connect(self._refresh_status)
-        splitter.addWidget(self.config_editor)
+        body.addWidget(self.config_editor, stretch=3)
+        root.addLayout(body, stretch=1)
 
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 3)
-        splitter.setStretchFactor(2, 4)
-        splitter.setSizes([330, 330, 470])
-
-        root.addWidget(splitter, stretch=1)
-
-        footer_panel = Panel()
-        footer = QHBoxLayout(footer_panel)
-        footer.setContentsMargins(8, 6, 8, 6)
-        footer.setSpacing(6)
-
+        footer = QHBoxLayout()
         self.preset_name = QLineEdit()
         self.preset_name.setPlaceholderText("Preset name")
         self.preset_name.setText("Custom Action List")
@@ -814,42 +769,15 @@ class FarmReelActionListWorkspace(QWidget):
         dry.clicked.connect(self._dry_run)
         footer.addWidget(dry)
 
-        queue = SecondaryButton("Queue")
-        queue.clicked.connect(self.queue_requested.emit)
-        footer.addWidget(queue)
-
-        run = PrimaryButton("Start")
+        run = PrimaryButton("▶ Start")
         run.setProperty("successAction", True)
         run.clicked.connect(self._run)
         footer.addWidget(run)
 
-        root.addWidget(footer_panel)
-
-    def _filter_actions(self, text: str) -> None:
-        query = text.strip().lower()
-
-        for group_index in range(self.tree.topLevelItemCount()):
-            group_item = self.tree.topLevelItem(group_index)
-            if group_item is None:
-                continue
-
-            group_text = group_item.text(0).lower()
-            any_visible = False
-
-            for child_index in range(group_item.childCount()):
-                child = group_item.child(child_index)
-                if child is None:
-                    continue
-
-                visible = (
-                    not query
-                    or query in group_text
-                    or query in child.text(0).lower()
-                )
-                child.setHidden(not visible)
-                any_visible = any_visible or visible
-
-            group_item.setHidden(not any_visible)
+        queue = SecondaryButton("Open Queue")
+        queue.clicked.connect(self.queue_requested.emit)
+        footer.addWidget(queue)
+        root.addLayout(footer)
 
     @staticmethod
     def _parse_ids(value: str) -> tuple[str, ...]:

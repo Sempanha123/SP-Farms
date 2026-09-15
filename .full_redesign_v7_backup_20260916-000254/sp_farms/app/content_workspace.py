@@ -253,9 +253,9 @@ class MediaInspectorPanel(Panel):
 
         # Preview Thumbnail Box
         self.preview_frame = QFrame()
-        self.preview_frame.setProperty("softPanel", True)
-        self.preview_frame.setMinimumHeight(180)
-        self.preview_frame.setMaximumHeight(220)
+        self.preview_frame.setStyleSheet(
+            "background-color: #1e293b; border-radius: 8px; min-height: 180px; max-height: 220px;"
+        )
         preview_box = QVBoxLayout(self.preview_frame)
         preview_box.setContentsMargins(4, 4, 4, 4)
         self.preview_label = QLabel()
@@ -470,7 +470,7 @@ class ContentWorkspace(QWidget):
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 9, 10, 9)
+        layout.setContentsMargins(14, 10, 14, 12)
         layout.setSpacing(10)
 
         # Top Bar: Header + Metrics + Quick Import
@@ -487,11 +487,11 @@ class ContentWorkspace(QWidget):
         top_bar.addLayout(header_box)
         top_bar.addStretch()
 
-        self.import_btn = SecondaryButton("Import Media")
+        self.import_btn = SecondaryButton("+ Import Media")
         self.import_btn.clicked.connect(self._on_import_dialog)
         top_bar.addWidget(self.import_btn)
 
-        self.composer_btn = PrimaryButton("Compose Post / Reel")
+        self.composer_btn = PrimaryButton("✨ Compose Post/Reel")
         self.composer_btn.clicked.connect(self._on_open_composer)
         top_bar.addWidget(self.composer_btn)
 
@@ -508,11 +508,11 @@ class ContentWorkspace(QWidget):
 
         # Tab 2: Caption Templates & Hashtags
         self.templates_tab = self._build_templates_tab()
-        self.tabs.addTab(self.templates_tab, "Captions")
+        self.tabs.addTab(self.templates_tab, "Captions & Hashtags")
 
         # Tab 3: Content Items
         self.items_tab = self._build_items_tab()
-        self.tabs.addTab(self.items_tab, "Drafts")
+        self.tabs.addTab(self.items_tab, "Drafts / Composed")
 
         layout.addWidget(self.tabs)
 
@@ -593,7 +593,7 @@ class ContentWorkspace(QWidget):
         # Left Column: Caption Templates
         left_box = QVBoxLayout()
         lbl1 = QLabel("Caption Templates")
-        lbl1.setProperty("sectionTitle", True)
+        lbl1.setStyleSheet("font-weight: 600; font-size: 14px;")
         left_box.addWidget(lbl1)
 
         self.template_list = QListWidget()
@@ -625,7 +625,7 @@ class ContentWorkspace(QWidget):
         # Right Column: Hashtag Sets
         right_box = QVBoxLayout()
         lbl2 = QLabel("Hashtag Sets")
-        lbl2.setProperty("sectionTitle", True)
+        lbl2.setStyleSheet("font-weight: 600; font-size: 14px;")
         right_box.addWidget(lbl2)
 
         self.hashtag_list = QListWidget()
@@ -662,7 +662,7 @@ class ContentWorkspace(QWidget):
         layout.setSpacing(8)
 
         lbl = QLabel("Composed Content Items")
-        lbl.setProperty("sectionTitle", True)
+        lbl.setStyleSheet("font-weight: 600; font-size: 14px;")
         layout.addWidget(lbl)
 
         self.items_list = QListWidget()

@@ -1,0 +1,64 @@
+V7 REDESIGN MAP
+
+REMOVE / DE-EMPHASIZE
+---------------------
+- Quick Actions cards
+- QUICK FLOW / ACCOUNT FLOW / CONTENT FLOW strips
+- duplicate Quick Mode automation tab
+- heavy blue/slate hard-coded panels
+- oversized padding
+- repeated shortcut sections
+
+NORMAL USER PATH
+----------------
+1. Accounts
+2. Select rows
+3. Action List
+4. Choose actions
+5. Configure selected action
+6. Dry Run
+7. Start
+8. Queue / monitor
+
+DIRECT DEVICE PATH
+------------------
+Device rail
+  -> select device
+  -> Start / Stop / Restart
+  -> app package + Launch
+  -> Screenshot
+  -> Open Device for full manager
+
+CONTENT PATH
+------------
+Content
+  -> Media / Captions / Drafts
+  -> Compose Post / Reel
+  -> existing composer service
+
+ADVANCED PATH
+-------------
+Automation
+  -> Task Builder
+  -> full capability-aware preset editor
+
+DESIGN TOKENS
+-------------
+Background  #0B0F11
+Surface     #111619
+Raised      #141A1D
+Border      #2C3539
+Text        #F3F5F5
+Muted       #929DA2
+Primary     #F4C915
+Success     #28C96F
+Info        #4B87EA
+Danger      #EF5C62
+
+DENSITY
+-------
+Navigation: 34px
+Inputs:     29px
+Table rows: 32px
+Metrics:    54px minimum
+Radius:     6-7px

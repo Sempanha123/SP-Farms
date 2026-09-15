@@ -18,7 +18,7 @@ from sp_farms.domain.jobs import JobState
 
 
 class HomeDashboard(QWidget):
-    """Direct monitoring dashboard: no quick-action cards or step-flow strip."""
+    """Compact monitoring dashboard without shortcut cards or step-flow UI."""
 
     route_requested = Signal(str)
 
@@ -40,16 +40,15 @@ class HomeDashboard(QWidget):
         root.setSpacing(8)
 
         header = QHBoxLayout()
-
         title_stack = QVBoxLayout()
         title_stack.setSpacing(0)
 
-        title = QLabel("Dashboard")
+        title = QLabel("Dashboard Overview")
         title.setProperty("heading", True)
         title_stack.addWidget(title)
 
         subtitle = QLabel(
-            "Current accounts, devices, queue state, failures, and recent activity."
+            "Accounts, device state, running work, failures, and recent activity."
         )
         subtitle.setProperty("muted", True)
         title_stack.addWidget(subtitle)
@@ -57,18 +56,17 @@ class HomeDashboard(QWidget):
         header.addLayout(title_stack)
         header.addStretch()
 
-        refresh = PrimaryButton("Refresh")
+        refresh = PrimaryButton("↻ Refresh")
         refresh.clicked.connect(self.refresh)
         header.addWidget(refresh)
-
         root.addLayout(header)
 
         self.metrics = MetricRow(
             (
-                ("Accounts", "0"),
-                ("Online Devices", "0"),
-                ("Running", "0"),
-                ("Queued", "0"),
+                ("Total Accounts", "0"),
+                ("Devices Online", "0"),
+                ("Running Tasks", "0"),
+                ("Queue", "0"),
                 ("Success", "0"),
                 ("Failed", "0"),
             )
@@ -78,12 +76,12 @@ class HomeDashboard(QWidget):
         body = QGridLayout()
         body.setSpacing(8)
 
-        activity = Panel()
-        activity_layout = QVBoxLayout(activity)
+        activities = Panel()
+        activity_layout = QVBoxLayout(activities)
         activity_layout.setContentsMargins(10, 9, 10, 9)
         activity_layout.setSpacing(6)
 
-        activity_title = QLabel("Recent Activity")
+        activity_title = QLabel("Recent Activities")
         activity_title.setProperty("sectionTitle", True)
         activity_layout.addWidget(activity_title)
 
@@ -91,33 +89,31 @@ class HomeDashboard(QWidget):
         self.recent_jobs.setObjectName("homeRecentJobs")
         self.recent_jobs.setUniformItemSizes(True)
         activity_layout.addWidget(self.recent_jobs, stretch=1)
+        body.addWidget(activities, 0, 0, 2, 1)
 
-        body.addWidget(activity, 0, 0, 2, 1)
+        system = Panel()
+        system_layout = QVBoxLayout(system)
+        system_layout.setContentsMargins(10, 9, 10, 9)
+        system_layout.setSpacing(6)
 
-        health = Panel()
-        health_layout = QVBoxLayout(health)
-        health_layout.setContentsMargins(10, 9, 10, 9)
-        health_layout.setSpacing(6)
-
-        health_title = QLabel("System Status")
-        health_title.setProperty("sectionTitle", True)
-        health_layout.addWidget(health_title)
+        system_title = QLabel("System Status")
+        system_title.setProperty("sectionTitle", True)
+        system_layout.addWidget(system_title)
 
         self.device_health = StatusChip("No devices", "neutral")
         self.job_health = StatusChip("No jobs", "neutral")
         self.account_health = StatusChip("No accounts", "neutral")
         self.queue_health = StatusChip("Queue clear", "success")
 
-        health_layout.addWidget(self.device_health)
-        health_layout.addWidget(self.job_health)
-        health_layout.addWidget(self.account_health)
-        health_layout.addWidget(self.queue_health)
-        health_layout.addStretch()
+        system_layout.addWidget(self.device_health)
+        system_layout.addWidget(self.job_health)
+        system_layout.addWidget(self.account_health)
+        system_layout.addWidget(self.queue_health)
+        system_layout.addStretch()
+        body.addWidget(system, 0, 1)
 
-        body.addWidget(health, 0, 1)
-
-        devices = Panel()
-        device_layout = QVBoxLayout(devices)
+        device_panel = Panel()
+        device_layout = QVBoxLayout(device_panel)
         device_layout.setContentsMargins(10, 9, 10, 9)
         device_layout.setSpacing(6)
 
@@ -129,29 +125,22 @@ class HomeDashboard(QWidget):
         self.device_list.setObjectName("homeDeviceSnapshot")
         self.device_list.setUniformItemSizes(True)
         device_layout.addWidget(self.device_list, stretch=1)
-
-        body.addWidget(devices, 1, 1)
+        body.addWidget(device_panel, 1, 1)
 
         body.setColumnStretch(0, 3)
         body.setColumnStretch(1, 2)
         body.setRowStretch(0, 1)
         body.setRowStretch(1, 2)
-
         root.addLayout(body, stretch=1)
 
-    def set_devices(
-        self,
-        devices: tuple[ManagedDevice, ...],
-    ) -> None:
+    def set_devices(self, devices: tuple[ManagedDevice, ...]) -> None:
         self._devices = devices
         self.refresh()
 
     @staticmethod
     def _state_text(state: object) -> str:
         value = getattr(state, "value", None)
-        return str(
-            value if value is not None else state
-        ).replace("_", " ").title()
+        return str(value if value is not None else state).replace("_", " ").title()
 
     def refresh(self) -> None:
         accounts = (
@@ -165,40 +154,17 @@ class HomeDashboard(QWidget):
             else ()
         )
 
-        online = sum(
-            bool(device.is_online)
-            for device in self._devices
-        )
-        running = sum(
-            job.state is JobState.RUNNING
-            for job in jobs
-        )
+        online = sum(bool(device.is_online) for device in self._devices)
+        running = sum(job.state is JobState.RUNNING for job in jobs)
         queued = sum(
             job.state in (JobState.PENDING, JobState.QUEUED)
             for job in jobs
         )
-        succeeded = sum(
-            job.state is JobState.SUCCEEDED
-            for job in jobs
-        )
-        failed = sum(
-            job.state is JobState.FAILED
-            for job in jobs
-        )
+        succeeded = sum(job.state is JobState.SUCCEEDED for job in jobs)
+        failed = sum(job.state is JobState.FAILED for job in jobs)
 
-        values = (
-            len(accounts),
-            online,
-            running,
-            queued,
-            succeeded,
-            failed,
-        )
-        for label, value in zip(
-            self.metrics.value_labels,
-            values,
-            strict=True,
-        ):
+        values = (len(accounts), online, running, queued, succeeded, failed)
+        for label, value in zip(self.metrics.value_labels, values, strict=True):
             label.setText(str(value))
 
         self.device_health.update_state(
@@ -215,30 +181,22 @@ class HomeDashboard(QWidget):
         )
         self.queue_health.update_state(
             "warning" if queued else "success",
-            f"Queue: {queued} waiting"
-            if queued
-            else "Queue is clear",
+            f"Queue: {queued} waiting" if queued else "Queue is clear",
         )
 
         self.recent_jobs.clear()
-        recent = list(jobs[-12:])
-
+        recent = list(jobs[-10:])
         if not recent:
             self.recent_jobs.addItem("No recent jobs.")
         else:
             for job in reversed(recent):
-                state = self._state_text(
-                    getattr(job, "state", "unknown")
-                )
+                state = self._state_text(getattr(job, "state", "unknown"))
                 job_type = str(
                     getattr(job, "job_type", None)
                     or getattr(job, "type", None)
                     or "Job"
                 ).replace("_", " ")
-                short_id = str(
-                    getattr(job, "id", "")
-                )[:8]
-
+                short_id = str(getattr(job, "id", ""))[:8]
                 self.recent_jobs.addItem(
                     QListWidgetItem(
                         f"{state:12}  {job_type}  {short_id}"
@@ -246,22 +204,19 @@ class HomeDashboard(QWidget):
                 )
 
         self.device_list.clear()
-
         if not self._devices:
             self.device_list.addItem("No devices discovered.")
-            return
-
-        for device in self._devices[:14]:
-            provider = getattr(
-                getattr(device, "provider", None),
-                "value",
-                "device",
-            )
-            account = device.assigned_account or "Unassigned"
-            network = device.network_state or "System"
-
-            self.device_list.addItem(
-                f"{'●' if device.is_online else '○'} "
-                f"{device.display_name} · {provider} · "
-                f"{account} · {network}"
-            )
+        else:
+            for device in self._devices[:12]:
+                provider = getattr(
+                    getattr(device, "provider", None),
+                    "value",
+                    "device",
+                )
+                account = device.assigned_account or "Unassigned"
+                network = device.network_state or "System"
+                self.device_list.addItem(
+                    f"{'●' if device.is_online else '○'} "
+                    f"{device.display_name} · {provider} · "
+                    f"{account} · {network}"
+                )

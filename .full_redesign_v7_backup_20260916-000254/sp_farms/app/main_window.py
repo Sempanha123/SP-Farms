@@ -198,8 +198,8 @@ class MainWindow(QMainWindow):
             self.error_center_workspace.route_requested.connect(self.navigate)
         self.setObjectName("mainWindow")
         self.setWindowTitle("SP-Farms")
-        self.setMinimumSize(1180, 720)
-        self.resize(1520, 930)
+        self.setMinimumSize(1024, 680)
+        self.resize(1440, 900)
         self._build_shell()
         self._create_actions()
         self.command_palette = CommandPalette(self.navigation, self)
@@ -305,8 +305,8 @@ class MainWindow(QMainWindow):
         navigation = QWidget()
         navigation.setObjectName("topNavigation")
         navigation_layout = QHBoxLayout(navigation)
-        navigation_layout.setContentsMargins(12, 6, 12, 6)
-        navigation_layout.setSpacing(3)
+        navigation_layout.setContentsMargins(10, 7, 12, 7)
+        navigation_layout.setSpacing(4)
 
         brand_block = QWidget()
         brand_block.setObjectName("brandBlock")
@@ -376,11 +376,11 @@ class MainWindow(QMainWindow):
                 if self.campaign_workspace is not None:
                     automation_tabs.addTab(self.campaign_workspace, "Campaigns")
                 if self.scheduler_workspace is not None:
-                    automation_tabs.addTab(self.scheduler_workspace, "Schedule")
+                    automation_tabs.addTab(self.scheduler_workspace, "Scheduler & Calendar")
                 if self.approval_workspace is not None:
-                    automation_tabs.addTab(self.approval_workspace, "Approvals")
+                    automation_tabs.addTab(self.approval_workspace, "Approval Queue")
                 self.job_queue_view = JobQueueView(self._context.job_service)
-                automation_tabs.addTab(self.job_queue_view, "Queue")
+                automation_tabs.addTab(self.job_queue_view, "Job Execution Queue")
                 self._pages.addWidget(automation_tabs)
             elif section == "Devices":
                 self._pages.addWidget(self.devices_workspace)

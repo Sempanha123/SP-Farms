@@ -30,7 +30,7 @@ class UnavailableWorkspace(QWidget):
         super().__init__(parent)
         self.setObjectName(f"{title.casefold()}Workspace")
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 10, 10, 10)
+        root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(8)
         heading = QLabel(title)
         heading.setProperty("heading", True)
@@ -60,7 +60,7 @@ class AnalyticsWorkspace(QWidget):
         self.setObjectName("analyticsWorkspace")
         self._context = context
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 10, 10, 10)
+        root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(8)
 
         self.tabs = QTabWidget()
@@ -68,7 +68,7 @@ class AnalyticsWorkspace(QWidget):
         # Tab 1: Live Post & Engagement Insights
         if self._context.analytics_service is not None:
             self.post_analytics_view = PostAnalyticsView(self._context.analytics_service)
-            self.tabs.addTab(self.post_analytics_view, "Social Performance")
+            self.tabs.addTab(self.post_analytics_view, "Social Post Performance")
 
         # Tab 2: Operational Infrastructure Metrics
         infra_tab = QWidget()
@@ -97,7 +97,7 @@ class AnalyticsWorkspace(QWidget):
         )
         infra_layout.addWidget(self.metrics)
         infra_layout.addStretch()
-        self.tabs.addTab(infra_tab, "Device & Jobs")
+        self.tabs.addTab(infra_tab, "Device & Job System Metrics")
 
         root.addWidget(self.tabs)
         self.refresh()

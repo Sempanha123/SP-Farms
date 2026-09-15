@@ -201,7 +201,7 @@ class AccountWorkspace(QWidget):
         local_nav_layout.setSpacing(2)
         self.local_nav_buttons: dict[str, QPushButton] = {}
         for index, label in enumerate(
-            ("Accounts", "Security", "Errors", "Pages", "Groups")
+            ("Local Accounts", "Security Center", "Error Center", "Pages", "Groups")
         ):
             button = QPushButton(label)
             button.setObjectName(f"local{label.replace(' ', '')}Button")
@@ -209,11 +209,11 @@ class AccountWorkspace(QWidget):
             button.setCheckable(True)
             button.setAutoExclusive(True)
             button.setChecked(index == 0)
-            if label == "Accounts":
+            if label == "Local Accounts":
                 route = "Accounts"
-            elif label == "Security":
+            elif label == "Security Center":
                 route = "Security"
-            elif label == "Errors":
+            elif label == "Error Center":
                 route = "Error Center"
             else:
                 route = label
@@ -226,9 +226,7 @@ class AccountWorkspace(QWidget):
         listing_layout.addWidget(local_nav)
 
         toolbar = Panel()
-        toolbar_layout = QVBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(8, 7, 8, 7)
-        toolbar_layout.setSpacing(6)
+        toolbar_layout = QHBoxLayout(toolbar)
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search accounts")
         self.search_input.setAccessibleName("Search accounts")
@@ -332,27 +330,18 @@ class AccountWorkspace(QWidget):
         self.bulk_import_action.triggered.connect(self.open_import_metadata_dialog)
         self.bulk_btn.setMenu(self.bulk_menu)
 
-        filter_row = QHBoxLayout()
-        filter_row.setSpacing(6)
-        filter_row.addWidget(self.search_input, stretch=1)
-        filter_row.addWidget(self.smart_filter)
-        filter_row.addWidget(self.category_filter)
-        filter_row.addWidget(self.status_filter)
-        filter_row.addWidget(self.device_filter)
-        filter_row.addWidget(self.network_filter)
-        filter_row.addWidget(self.columns_btn)
-
-        action_row = QHBoxLayout()
-        action_row.setSpacing(6)
-        action_row.addWidget(self.status_chip)
-        action_row.addStretch()
-        action_row.addWidget(self.bulk_btn)
-        action_row.addWidget(self.workflow_btn)
-        action_row.addWidget(self.actions_btn)
-        action_row.addWidget(self.add_btn)
-
-        toolbar_layout.addLayout(filter_row)
-        toolbar_layout.addLayout(action_row)
+        toolbar_layout.addWidget(self.search_input, stretch=1)
+        toolbar_layout.addWidget(self.smart_filter)
+        toolbar_layout.addWidget(self.category_filter)
+        toolbar_layout.addWidget(self.status_filter)
+        toolbar_layout.addWidget(self.device_filter)
+        toolbar_layout.addWidget(self.network_filter)
+        toolbar_layout.addWidget(self.columns_btn)
+        toolbar_layout.addWidget(self.bulk_btn)
+        toolbar_layout.addWidget(self.workflow_btn)
+        toolbar_layout.addWidget(self.actions_btn)
+        toolbar_layout.addWidget(self.status_chip)
+        toolbar_layout.addWidget(self.add_btn)
         listing_layout.addWidget(toolbar)
 
         # Main content area: Table + Right Inspector Splitter
@@ -401,8 +390,8 @@ class AccountWorkspace(QWidget):
 
         self.inspector = Panel()
         self.inspector.setObjectName("accountActions")
-        self.inspector.setMinimumWidth(320)
-        self.inspector.setMaximumWidth(430)
+        self.inspector.setMinimumWidth(345)
+        self.inspector.setMaximumWidth(470)
         inspector_layout = QVBoxLayout(self.inspector)
         inspector_layout.setContentsMargins(9, 9, 9, 9)
         inspector_layout.setSpacing(7)
@@ -438,7 +427,7 @@ class AccountWorkspace(QWidget):
         overview_layout = QVBoxLayout(overview)
         overview_layout.setContentsMargins(0, 0, 0, 0)
         detail_heading = QLabel("Selected Account Workspace")
-        detail_heading.setProperty("sectionTitle", True)
+        detail_heading.setStyleSheet("font-weight: 700;")
         overview_layout.addWidget(detail_heading)
         insp_form = QFormLayout()
         insp_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
@@ -536,7 +525,7 @@ class AccountWorkspace(QWidget):
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
         heading = QLabel(title)
-        heading.setProperty("sectionTitle", True)
+        heading.setStyleSheet("font-weight: 700;")
         layout.addWidget(heading)
         text = QLabel(description)
         text.setProperty("muted", True)

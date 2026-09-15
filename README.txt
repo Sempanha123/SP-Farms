@@ -1,99 +1,120 @@
-SP-Farms Farm Reel Flow V5
-============================
+SP-Farms Full Redesign V7
+==========================
 
-Goal
-----
-Make SP-Farms follow the simple Farm Reel action-list workflow while preserving
-the existing SP-Farms services, job engine, device manager, account context,
-network bindings, content system, and advanced automation builder.
+Target
+------
+Designed for the current SP-Farms architecture on main and for local installs
+that already have the V5/V6 Action List patches.
 
-Main operator flow
-------------------
+V7 is a DIRECT DESKTOP CONSOLE redesign:
+- no Quick Action card wall
+- no visual step-flow strips
+- no duplicate "easy mode" automation screen
+- dense table-first management
+- selected-context inspectors
+- one primary Action List for normal automation
+- Task Builder remains for advanced presets
+
+Visible Layout
+--------------
+Home
+  Metrics
+  Recent Activity
+  System Status
+  Device Status
+
 Accounts
-  -> select one or more rows
-  -> Action List...
-  -> check actions
-  -> configure the selected action on the right
-  -> reorder selected actions
-  -> Dry Run
-  -> Start
-  -> Job Queue
+  Header + metrics
+  Small local tabs
+  Row 1: Search + filters
+  Row 2: status + Bulk + Action List + Account Actions + Add Account
+  Dense accounts table
+  Right selected-account inspector
+
+Pages / Groups
+  Metrics
+  Search/filter toolbar
+  Dense asset table
+  Right asset inspector
+
+Content
+  Header
+  Import Media
+  Compose Post / Reel
+  Tabs:
+    Media
+    Captions
+    Drafts
 
 Automation
-----------
-Adds an "Action List" tab before Quick Mode / Advanced Builder.
+  Action List       <- normal use
+  Task Builder      <- advanced preset building
+  Campaigns
+  Schedule
+  Approvals
+  Queue
 
-The Action List exposes every existing SP-Farms AutomationStepType once:
-- Restore Workspace
-- Open Preferred App
-- Health Check
-- Refresh Authorized Asset Data
-- Publish Text
-- Publish Image
-- Publish Multiple Images
-- Publish Video
-- Publish Reel
-- Publish Story
-- Publish Link
-- Schedule Content
-- Read Comments
-- Reply to Selected Comments
-- Moderate Comments
-- Read Inbox
-- Reply with Saved Reply
-- Assign Inbox Item
-- Add Internal Note
-- Mark Resolved
-- Post Analytics
-- Reaction Analytics
-- Share / View Metrics
-- Follower Growth
-- Backup Workspace
-- Release Device
-- Start Next Account
+Devices
+  Device Manager
+  QA Profile Lab
 
-Each checked action can be configured and ordered. Common controls include:
-- approval
-- retry
-- timeout
-- delay metadata
-- continue-on-error
+Analytics
+  Social Performance
+  Device & Jobs
 
-The workflow is wired to the existing AutomationBuilderService:
-validate_preset -> dry-run -> execute_preset -> persistent job queue.
+Settings
+  compact left section navigation
+  focused form panel
+  persistent Save Settings
 
-Important
----------
-A UI option being visible does not invent provider support. Existing capability
-checks and provider/service configuration still decide whether a live operation
-can execute.
-
-If the platform requires verification/checkpoint handling, the intended flow is:
-User action required -> operator completes verification -> resume.
-
-This patch does not add CAPTCHA/checkpoint bypass, artificial engagement farming,
-bulk friend adding, unsolicited bulk messaging, or fake Facebook device identity
-evasion.
+Design Direction
+----------------
+Dark charcoal desktop UI with:
+- yellow/gold primary actions
+- green success states
+- blue only for informational state
+- compact 32px table rows
+- small 6-7px corner radius
+- subtle borders
+- clear selected rows
+- no neon/glassmorphism
+- no huge empty cards
 
 Apply
 -----
-1. Extract this ZIP.
-2. Put APPLY_FARM_REEL_FLOW_V5.py in the SP-Farms repository root.
-3. Run:
+Extract this ZIP.
+
+Put APPLY_FULL_REDESIGN_V7.py in:
+
+C:\Users\Rg Gear\Desktop\SP-Farms\
+
+Then run:
 
 cd "C:\Users\Rg Gear\Desktop\SP-Farms"
 
-.\.venv\Scripts\python.exe .\APPLY_FARM_REEL_FLOW_V5.py
+.\.venv\Scripts\python.exe .\APPLY_FULL_REDESIGN_V7.py
 
-The script creates:
-.farm_reel_v5_backup_YYYYMMDD-HHMMSS
+Backup
+------
+The installer creates:
+
+.full_redesign_v7_backup_YYYYMMDD-HHMMSS
 
 Validate
 --------
-.\.venv\Scripts\python.exe -m pytest tests/test_design_system.py tests/test_main_window.py tests/test_farm_reel_action_list.py -q
+.\.venv\Scripts\python.exe -m ruff check sp_farms
 
-.\.venv\Scripts\python.exe -m ruff check sp_farms tests/test_farm_reel_action_list.py
+.\.venv\Scripts\python.exe -m pytest tests/test_design_system.py tests/test_main_window.py tests/test_farm_reel_action_list.py -q
 
 Run
 ---
 .\.venv\Scripts\python.exe -m sp_farms.app.main
+
+Important
+---------
+V7 changes UX/UI structure and presentation. It keeps the existing SP-Farms
+services, job engine, device pool, account bindings, content services, analytics,
+settings, and authorization/capability checks.
+
+The Action List still uses the existing AutomationBuilderService and current
+authorized AutomationStepType set.

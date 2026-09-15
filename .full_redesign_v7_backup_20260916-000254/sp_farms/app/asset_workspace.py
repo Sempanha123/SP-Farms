@@ -223,8 +223,8 @@ class AssetInspectorPanel(Panel):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("assetInspectorPanel")
-        self.setMinimumWidth(300)
-        self.setMaximumWidth(390)
+        self.setMinimumWidth(280)
+        self.setMaximumWidth(360)
         self._current_page: Page | None = None
         self._current_group: Group | None = None
 
@@ -237,7 +237,7 @@ class AssetInspectorPanel(Panel):
         header_text = QVBoxLayout()
         header_text.setSpacing(2)
         self.title_label = QLabel("Select an Asset")
-        self.title_label.setProperty("sectionTitle", True)
+        self.title_label.setStyleSheet("font-weight: 700; font-size: 14px;")
         self.title_label.setWordWrap(True)
         self.id_label = QLabel("No selection")
         self.id_label.setProperty("muted", True)
@@ -276,7 +276,7 @@ class AssetInspectorPanel(Panel):
 
         # Shortcuts Section
         shortcuts_heading = QLabel("Operational Shortcuts")
-        shortcuts_heading.setProperty("sectionTitle", True)
+        shortcuts_heading.setStyleSheet("font-weight: 600; margin-top: 4px;")
         layout.addWidget(shortcuts_heading)
 
         shortcuts_layout = QVBoxLayout()
@@ -301,7 +301,7 @@ class AssetInspectorPanel(Panel):
 
         # Notes / Internal Tags Section
         notes_heading = QLabel("Internal Notes & Tags")
-        notes_heading.setProperty("sectionTitle", True)
+        notes_heading.setStyleSheet("font-weight: 600; margin-top: 4px;")
         layout.addWidget(notes_heading)
 
         self.notes_edit = QTextEdit()
@@ -434,7 +434,7 @@ class PagesGroupsWorkspace(QWidget):
 
     def _init_ui(self) -> None:
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 10, 10, 10)
+        root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(8)
 
         # Header title and tab bar
@@ -495,7 +495,7 @@ class PagesGroupsWorkspace(QWidget):
         self.sync_btn.clicked.connect(self._on_sync_clicked)
         toolbar.addWidget(self.sync_btn)
 
-        self.actions_btn = PrimaryButton("Asset Actions")
+        self.actions_btn = PrimaryButton("Actions...")
         self.actions_btn.setObjectName("contextActionsButton")
         self.actions_btn.setEnabled(False)
         self.actions_btn.clicked.connect(self.open_context_actions)

@@ -63,11 +63,11 @@ class DryRunDialog(QDialog):
 
         # Header summary banner
         header = QFrame()
-        header.setProperty("panel", True)
+        header.setStyleSheet("background-color: #1e293b; border-radius: 8px; padding: 12px;")
         h_layout = QVBoxLayout(header)
 
         title = QLabel(f"Simulation Plan for Preset: <b>{report.preset_name}</b>")
-        title.setProperty("heading", True)
+        title.setStyleSheet("font-size: 16px; color: #38bdf8;")
         h_layout.addWidget(title)
 
         stats_row = QHBoxLayout()
@@ -80,21 +80,21 @@ class DryRunDialog(QDialog):
         h_layout.addLayout(stats_row)
 
         safe_chip = QLabel("ZERO SIDE EFFECTS GUARANTEE: Read-only simulation pass.")
-        safe_chip.setProperty("state", "success")
+        safe_chip.setStyleSheet("color: #4ade80; font-weight: bold;")
         h_layout.addWidget(safe_chip)
 
         layout.addWidget(header)
 
         if report.warnings:
             warn_box = QFrame()
-            warn_box.setProperty("softPanel", True)
+            warn_box.setStyleSheet("background-color: #451a03; border-radius: 6px; padding: 8px;")
             w_layout = QVBoxLayout(warn_box)
             w_title = QLabel("Pre-Flight Warnings / Capability Notes:")
-            w_title.setProperty("sectionTitle", True)
+            w_title.setStyleSheet("color: #fbbf24; font-weight: bold;")
             w_layout.addWidget(w_title)
             for w in report.warnings:
                 w_lbl = QLabel(f"• {w}")
-                w_lbl.setProperty("muted", True)
+                w_lbl.setStyleSheet("color: #fef08a;")
                 w_layout.addWidget(w_lbl)
             layout.addWidget(warn_box)
 
@@ -231,7 +231,7 @@ class AutomationBuilderWorkspace(QWidget):
         self._lbl_metrics = QLabel(
             "Accounts: 0 | Devices: 0 | Destinations: 0 | Enabled Functions: 0"
         )
-        self._lbl_metrics.setProperty("sectionTitle", True)
+        self._lbl_metrics.setStyleSheet("color: #38bdf8; font-weight: bold;")
         bot_layout.addWidget(self._lbl_metrics)
 
         main_layout.addWidget(bottom_bar)

@@ -79,8 +79,8 @@ class SettingsWorkspace(QWidget):
 
     def _build_ui(self) -> None:
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 10, 10, 10)
-        root.setSpacing(8)
+        root.setContentsMargins(16, 16, 16, 16)
+        root.setSpacing(12)
 
         # Header with Search
         header_row = QHBoxLayout()
@@ -96,7 +96,7 @@ class SettingsWorkspace(QWidget):
         header_row.addLayout(title_col, stretch=1)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search settings...")
+        self.search.setPlaceholderText("🔍 Search settings by name or keyword...")
         self.search.setFixedWidth(320)
         self.search.setAccessibleName("Search Settings")
         self.search.setAccessibleDescription("Filter settings by name or description")
@@ -107,11 +107,11 @@ class SettingsWorkspace(QWidget):
 
         # Main Body: Split navigation sidebar + detail content
         content_split = QHBoxLayout()
-        content_split.setSpacing(10)
+        content_split.setSpacing(16)
 
         # Left Section Nav
         nav_panel = Panel()
-        nav_panel.setFixedWidth(190)
+        nav_panel.setFixedWidth(200)
         nav_layout = QVBoxLayout(nav_panel)
         nav_layout.setContentsMargins(4, 8, 4, 8)
         nav_layout.setSpacing(4)
@@ -169,11 +169,11 @@ class SettingsWorkspace(QWidget):
 
         panel = Panel()
         panel_layout = QVBoxLayout(panel)
-        panel_layout.setContentsMargins(14, 12, 14, 12)
-        panel_layout.setSpacing(12)
+        panel_layout.setContentsMargins(16, 16, 16, 16)
+        panel_layout.setSpacing(16)
 
         sec_title = QLabel(section)
-        sec_title.setProperty("heading", True)
+        sec_title.setStyleSheet("font-size: 16px; font-weight: bold;")
         panel_layout.addWidget(sec_title)
 
         form = QFormLayout()
