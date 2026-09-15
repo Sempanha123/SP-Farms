@@ -155,9 +155,7 @@ class ContextActionDialog(QDialog):
 
         # Read-only 'Using:' summary bar (zero re-select guarantee)
         self.using_summary_label = QLabel(self.context.read_only_summary)
-        self.using_summary_label.setStyleSheet(
-            "color: #71717a; font-size: 12px; font-family: monospace;"
-        )
+        self.using_summary_label.setProperty("muted", True)
         self.using_summary_label.setWordWrap(True)
         header_layout.addWidget(self.using_summary_label)
 
@@ -179,7 +177,7 @@ class ContextActionDialog(QDialog):
         progress_layout.setSpacing(4)
 
         self.status_stream_label = QLabel("")
-        self.status_stream_label.setStyleSheet("font-size: 12px; color: #3b82f6;")
+        self.status_stream_label.setProperty("muted", True)
         progress_layout.addWidget(self.status_stream_label)
 
         self.progress_bar = QProgressBar()
@@ -367,18 +365,29 @@ class ContextActionDialog(QDialog):
 
     def _create_post_tab(self) -> QWidget:
         panel = QWidget()
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
+        root = QHBoxLayout(panel)
+        root.setContentsMargins(10, 10, 10, 10)
+        root.setSpacing(10)
+
+        editor = Panel()
+        editor_layout = QVBoxLayout(editor)
+        editor_layout.setContentsMargins(10, 9, 10, 9)
+        editor_layout.setSpacing(8)
+
+        editor_title = QLabel("Post Content")
+        editor_title.setProperty("sectionTitle", True)
+        editor_layout.addWidget(editor_title)
 
         form = QFormLayout()
         self.post_type_combo = QComboBox()
-        self.post_type_combo.addItems(["Text Only", "Single Image", "Multi-Image", "Link Share"])
+        self.post_type_combo.addItems(
+            ["Text Only", "Single Image", "Multi-Image", "Video Post", "Link Share"]
+        )
         form.addRow("Post Type:", self.post_type_combo)
 
         self.post_caption_edit = QTextEdit()
         self.post_caption_edit.setPlaceholderText("Write your post caption here...")
-        self.post_caption_edit.setMaximumHeight(100)
+        self.post_caption_edit.setMinimumHeight(130)
         form.addRow("Caption:", self.post_caption_edit)
 
         self.post_media_path = QLineEdit()
@@ -389,8 +398,43 @@ class ContextActionDialog(QDialog):
         self.post_schedule_check.setChecked(True)
         form.addRow("Timing:", self.post_schedule_check)
 
-        layout.addLayout(form)
-        layout.addStretch(1)
+        editor_layout.addLayout(form)
+        editor_layout.addStretch()
+        root.addWidget(editor, stretch=3)
+
+        preview = Panel()
+        preview_layout = QVBoxLayout(preview)
+        preview_layout.setContentsMargins(10, 9, 10, 9)
+        preview_layout.setSpacing(8)
+
+        preview_title = QLabel("Post Preview")
+        preview_title.setProperty("sectionTitle", True)
+        preview_layout.addWidget(preview_title)
+
+        target = self.context.primary_target
+        target_name = target.display_name if target else "Selected destination"
+        self.post_preview_account = QLabel(target_name)
+        self.post_preview_account.setProperty("previewTitle", True)
+        preview_layout.addWidget(self.post_preview_account)
+
+        self.post_preview_text = QTextEdit()
+        self.post_preview_text.setReadOnly(True)
+        self.post_preview_text.setPlaceholderText("Your caption preview appears here.")
+        self.post_preview_text.setMinimumWidth(280)
+        preview_layout.addWidget(self.post_preview_text, stretch=1)
+
+        preview_note = QLabel("Preview only · final rendering depends on the destination platform.")
+        preview_note.setProperty("muted", True)
+        preview_note.setWordWrap(True)
+        preview_layout.addWidget(preview_note)
+
+        self.post_caption_edit.textChanged.connect(
+            lambda: self.post_preview_text.setPlainText(
+                self.post_caption_edit.toPlainText()
+            )
+        )
+
+        root.addWidget(preview, stretch=2)
         return self._create_scrollable(panel)
 
     def _create_video_tab(self) -> QWidget:

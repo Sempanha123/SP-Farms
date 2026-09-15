@@ -477,11 +477,11 @@ class ContentWorkspace(QWidget):
         top_bar = QHBoxLayout()
         header_box = QVBoxLayout()
         title = QLabel("Content Library")
-        title.setStyleSheet("font-size: 18px; font-weight: 700;")
+        title.setProperty("heading", True)
         subtitle = QLabel(
             "Reusable media assets, caption templates, hashtag sets, and composed items."
         )
-        subtitle.setStyleSheet("color: #64748b; font-size: 12px;")
+        subtitle.setProperty("muted", True)
         header_box.addWidget(title)
         header_box.addWidget(subtitle)
         top_bar.addLayout(header_box)
@@ -532,15 +532,11 @@ class ContentWorkspace(QWidget):
 
         # Tab Widget
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(
-            "QTabWidget::pane { border: 1px solid #334155; "
-            "border-radius: 8px; background: #0f172a; }"
-            "QTabBar::tab { padding: 8px 18px; font-weight: 600; }"
-        )
+
 
         # Tab 1: Media Library
         self.media_tab = self._build_media_tab()
-        self.tabs.addTab(self.media_tab, "Media Library")
+        self.tabs.addTab(self.media_tab, "Media")
 
         # Tab 2: Caption Templates & Hashtags
         self.templates_tab = self._build_templates_tab()
@@ -548,7 +544,7 @@ class ContentWorkspace(QWidget):
 
         # Tab 3: Content Items
         self.items_tab = self._build_items_tab()
-        self.tabs.addTab(self.items_tab, "Composed Items")
+        self.tabs.addTab(self.items_tab, "Drafts / Composed")
 
         layout.addWidget(self.tabs)
 

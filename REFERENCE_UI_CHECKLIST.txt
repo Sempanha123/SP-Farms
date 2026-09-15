@@ -1,0 +1,14 @@
+REFERENCE UI CHECKLIST
+
+[ ] Top nav: logo/version, icon tabs, live date/time
+[ ] Home: metrics + Quick Flow + Quick Actions + Recent Activities + Device Snapshot
+[ ] Left rail: device filter/list + selected device + quick controls
+[ ] Accounts: dense table remains primary, Account Flow visible
+[ ] Account Actions: vertical left navigation
+[ ] Account Actions/Post: editor + live text preview
+[ ] Content: visible content lifecycle flow
+[ ] Automation: Quick Mode + Advanced Builder
+[ ] Devices: existing full device table retained
+[ ] Analytics: existing analytics retained with global theme
+[ ] Settings: existing settings retained with global theme
+[ ] Bottom status: Total / Online / Running / Success / Failed / Queue / CPU / RAM

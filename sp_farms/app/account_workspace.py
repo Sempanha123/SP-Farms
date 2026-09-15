@@ -412,8 +412,8 @@ class AccountWorkspace(QWidget):
 
         self.inspector = Panel()
         self.inspector.setObjectName("accountActions")
-        self.inspector.setMinimumWidth(390)
-        self.inspector.setMaximumWidth(520)
+        self.inspector.setMinimumWidth(345)
+        self.inspector.setMaximumWidth(470)
         inspector_layout = QVBoxLayout(self.inspector)
         inspector_layout.setContentsMargins(9, 9, 9, 9)
         inspector_layout.setSpacing(7)
@@ -893,6 +893,25 @@ class AccountWorkspace(QWidget):
         self.restore_selected_btn.setEnabled(bool(count >= 1 and self._pool_service is not None))
         self.backup_btn.setEnabled(bool(count >= 1 and self._snapshot_service is not None))
         self.release_btn.setEnabled(bool(count >= 1 and self._pool_service is not None))
+
+        if hasattr(self, "account_flow_buttons"):
+            states = (
+                "done" if count else "next",
+                "next" if count else "",
+                "",
+                "",
+                "",
+            )
+            for button, state in zip(self.account_flow_buttons, states, strict=True):
+                button.setProperty("flowState", state)
+                button.style().unpolish(button)
+                button.style().polish(button)
+            self.account_flow_resolve.setEnabled(bool(count))
+            self.account_flow_restore.setEnabled(
+                bool(count == 1 and self._restore_service is not None)
+            )
+            self.account_flow_actions.setEnabled(bool(count))
+            self.account_flow_monitor.setEnabled(True)
 
         # Update Inspector
         primary_id = self.selected_account_id

@@ -1,59 +1,50 @@
-SP-Farms UX/UI V3 — FLOW UPDATE
-================================
+SP-Farms Reference UI V4
+========================
 
-This is a CODE PATCH for the currently merged SP-Farms main branch.
+This is a self-contained code patch for the merged SP-Farms project.
 
-Designed against merge:
-43512cf67b25dde47fed7a47fc1322c9e5fdf237
+Reference images included:
+- design/reference/sp-farms-ui-reference.png
+- design/reference/each-tab.png
 
-MAIN FLOW
----------
-Home now makes this normal operator path obvious:
+Main changes
+------------
+- Top navigation gets compact icons + live date/time.
+- Home becomes a dense operational dashboard.
+- Left Device Manager rail is rebuilt closer to the reference:
+  device search/filter, selected device details, CPU/RAM/network/account,
+  Start/Stop/Restart, launch/screenshot, Start All/Stop All, and shortcuts.
+- Accounts gets a visible workflow:
+  Select -> Resolve Device/Network -> Restore -> Actions -> Monitor.
+- Content gets a visible workflow:
+  Media -> Compose -> Destination -> Dry Run -> Publish.
+- Automation gets Quick Mode before the existing Advanced Builder.
+- Context Account Actions uses a left vertical tab rail.
+- Post tab gets a two-column editor + live caption preview.
+- Existing backend/services remain in place.
+- Existing Advanced Builder remains available.
 
-Account
-  -> Device + Network
-  -> Restore Workspace
-  -> Action
-  -> Monitor
-
-UX/UI updates
--------------
-- Home: clickable 5-step Quick Flow
-- Home: compact metrics, Fast Launch, System Health, Recent Jobs, Device Snapshot
-- Accounts: visible Select -> Resolve -> Restore -> Actions -> Monitor flow
-- Content: Media -> Compose -> Destination -> Dry Run -> Publish flow
-- Automation: new Quick Mode before the existing Advanced Builder
-- Context Action dialog: tabs move to a left vertical rail like the reference image
-- Advanced Builder: removes several heavy hard-coded blue/slate panels
-- Device rail / bottom footer: tighter desktop density
-- Theme keeps the locked SP-Farms colors:
-  - #0D1113 background
-  - #121719 surface
-  - #F4C915 yellow
-  - #25D06F green success
-
-APPLY
+Apply
 -----
-1. Extract this ZIP.
-2. Open PowerShell in your real SP-Farms repo:
+Put APPLY_REFERENCE_UI_V4.py in the SP-Farms repository root and run:
 
-cd "C:\Users\Rg Gear\Desktop\SP-Farms"
+    .\.venv\Scripts\python.exe .\APPLY_REFERENCE_UI_V4.py
 
-3. Run the patch:
+The patch creates a rollback folder first:
 
-.\.venv\Scripts\python.exe "C:\PATH\TO\SP-Farms-UX-UI-V3-Flow\APPLY_UX_UI_V3.py"
+    .reference_ui_v4_backup_YYYYMMDD-HHMMSS
 
-The patch automatically creates:
-.ux_ui_v3_backup_YYYYMMDD-HHMMSS
+Then validate:
 
-TEST
-----
-.\.venv\Scripts\python.exe -m pytest tests/test_design_system.py tests/test_main_window.py tests/test_quick_automation_workspace.py -q
+    .\.venv\Scripts\python.exe -m pytest tests/test_design_system.py tests/test_main_window.py -q
+    .\.venv\Scripts\python.exe -m ruff check sp_farms
+    .\.venv\Scripts\python.exe -m sp_farms.app.main
 
-.\.venv\Scripts\python.exe -m ruff check sp_farms tests
+Notes
+-----
+The patch is designed against the currently merged main branch structure discussed
+in chat. It is root-safe: the replacement payloads are embedded inside the script,
+so it does not copy source files onto themselves.
 
-RUN
----
-.\.venv\Scripts\python.exe -m sp_farms.app.main
-
-This patch reuses your existing services and jobs. It does not replace the backend.
+The UI follows the dark charcoal + yellow/gold reference direction and keeps
+tables dense. It does not add security-bypass or artificial-engagement behavior.

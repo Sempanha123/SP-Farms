@@ -35,6 +35,7 @@ from sp_farms.app.scheduler_workspace import SchedulerWorkspace
 from sp_farms.app.shortcut_help import ShortcutHelpDialog
 from sp_farms.app.theme import ThemeMode, style_sheet
 from sp_farms.app.workspaces import WorkspaceLayout
+from sp_farms.app.widgets import ClockWidget
 from sp_farms.application.context import ApplicationContext
 
 NAVIGATION = (
@@ -48,6 +49,18 @@ NAVIGATION = (
     "Analytics",
     "Settings",
 )
+
+NAV_ICONS = {
+    "Home": "⌂",
+    "Accounts": "♙",
+    "Pages": "▦",
+    "Groups": "♧",
+    "Content": "▣",
+    "Automation": "⚡",
+    "Devices": "▤",
+    "Analytics": "⌁",
+    "Settings": "⚙",
+}
 
 
 class MainWindow(QMainWindow):
@@ -104,8 +117,10 @@ class MainWindow(QMainWindow):
         self.home_dashboard.route_requested.connect(self.navigate)
         self.home_workspace.devices_route_requested.connect(lambda: self.navigate("Devices"))
         self.home_workspace.automation_route_requested.connect(lambda: self.navigate("Automation"))
+        self.home_workspace.settings_route_requested.connect(lambda: self.navigate("Settings"))
         self._workspace.devices_route_requested.connect(lambda: self.navigate("Devices"))
         self._workspace.automation_route_requested.connect(lambda: self.navigate("Automation"))
+        self._workspace.settings_route_requested.connect(lambda: self.navigate("Settings"))
         self.account_workspace.success_action_requested.connect(self._route_account_action)
         self.account_workspace.local_navigation_requested.connect(self.navigate)
         self.pages_workspace = PagesGroupsWorkspace(
@@ -234,7 +249,8 @@ class MainWindow(QMainWindow):
             self.brand_subtitle.setText(self._context.i18n_service.t("app.subtitle"))
         for section, btn in self._nav_buttons.items():
             translated = self._context.i18n_service.t(f"nav.{section.casefold()}", default=section)
-            btn.setText(translated)
+            icon = NAV_ICONS.get(section, "")
+            btn.setText(f"{icon}  {translated}".strip())
 
     def set_job_queue_visible(self, visible: bool) -> None:
         self._workspace.job_queue.setVisible(visible)
@@ -266,7 +282,7 @@ class MainWindow(QMainWindow):
         brand_layout = QHBoxLayout(brand_block)
         brand_layout.setContentsMargins(0, 0, 10, 0)
         brand_layout.setSpacing(7)
-        mark = QLabel("♣")
+        mark = QLabel("❧")
         mark.setObjectName("brandMark")
         mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
         mark.setFixedSize(38, 38)
@@ -291,7 +307,7 @@ class MainWindow(QMainWindow):
         navigation_layout.addSpacing(4)
         nav_button_list = []
         for index, section in enumerate(NAVIGATION):
-            button = QPushButton(section)
+            button = QPushButton(f"{NAV_ICONS.get(section, '')}  {section}".strip())
             button.setProperty("nav", True)
             button.setCheckable(True)
             button.setAutoExclusive(True)
@@ -310,6 +326,8 @@ class MainWindow(QMainWindow):
             QWidget.setTabOrder(nav_button_list[i], nav_button_list[i + 1])
 
         navigation_layout.addStretch()
+        self.clock_widget = ClockWidget()
+        navigation_layout.addWidget(self.clock_widget)
         shell_layout.addWidget(navigation)
 
         for section in NAVIGATION:
