@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from sp_farms.app.account_workspace import AccountWorkspace
 from sp_farms.app.approval_workspace import ApprovalWorkspace
 from sp_farms.app.asset_workspace import PagesGroupsWorkspace
+from sp_farms.app.automation_builder_workspace import AutomationBuilderWorkspace
 from sp_farms.app.campaign_workspace import CampaignWorkspace
 from sp_farms.app.command_palette import CommandPalette
 from sp_farms.app.content_workspace import ContentWorkspace
@@ -65,6 +66,8 @@ class MainWindow(QMainWindow):
         self.device_manager_view = DeviceManagerView(
             self._context.device_service,
             self._settings,
+            selection_context_service=self._context.selection_context_service,
+            app_context=self._context,
         )
         self.qa_profile_lab = QAProfileLab(self._context.qa_profile_service)
         self.device_manager_view.devices_changed.connect(self.qa_profile_lab.set_devices)
@@ -80,6 +83,8 @@ class MainWindow(QMainWindow):
             self._context.snapshot_service,
             self._context.account_exchange_service,
             self._context.security_service,
+            selection_context_service=self._context.selection_context_service,
+            app_context=self._context,
         )
         self._workspace = WorkspaceLayout(
             self.device_manager_view.rail_model,
@@ -105,12 +110,16 @@ class MainWindow(QMainWindow):
         self.pages_workspace = PagesGroupsWorkspace(
             self._context.asset_sync_service,
             self._context.account_service,
+            selection_context_service=self._context.selection_context_service,
+            app_context=self._context,
         )
         self.pages_workspace.set_tab("Pages")
         self.pages_workspace.route_requested.connect(self.navigate)
         self.groups_workspace = PagesGroupsWorkspace(
             self._context.asset_sync_service,
             self._context.account_service,
+            selection_context_service=self._context.selection_context_service,
+            app_context=self._context,
         )
         self.groups_workspace.set_tab("Groups")
         self.groups_workspace.route_requested.connect(self.navigate)
@@ -141,6 +150,11 @@ class MainWindow(QMainWindow):
         self.approval_workspace: ApprovalWorkspace | None = (
             ApprovalWorkspace(self._context.approval_service)
             if self._context.approval_service
+            else None
+        )
+        self.automation_builder_workspace: AutomationBuilderWorkspace | None = (
+            AutomationBuilderWorkspace(self._context.automation_builder_service)
+            if self._context.automation_builder_service
             else None
         )
         if self.error_center_workspace:
@@ -297,6 +311,8 @@ class MainWindow(QMainWindow):
                 self._pages.addWidget(self._workspace)
             elif section == "Automation":
                 automation_tabs = QTabWidget()
+                if self.automation_builder_workspace is not None:
+                    automation_tabs.addTab(self.automation_builder_workspace, "Automation Builder")
                 if self.campaign_workspace is not None:
                     automation_tabs.addTab(self.campaign_workspace, "Campaigns")
                 if self.scheduler_workspace is not None:

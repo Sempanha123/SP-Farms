@@ -549,6 +549,101 @@ Status: complete
 - Fixed schema parity across append-only log tables (`analytics_snapshots`, `publish_attempts`) removing soft-deletion column drift.
 - Added 6 automated tests in `tests/test_performance.py` (total test suite at 288/288 passing).
 
+## Phase 49 — Health Checks, Crash-Safe Startup, Safe Mode, and Recovery
+
+Status: complete
+
+- Created domain models for health checks, version information, and safe mode in `sp_farms/domain/health.py`.
+- Built `CrashRecoveryService` in `sp_farms/application/crash_recovery_service.py` with crash-safe startup marker, unclean shutdown detection, automatic safe mode activation upon consecutive crashes, SQLite database integrity check (`PRAGMA quick_check`, `PRAGMA foreign_key_check`, `PRAGMA integrity_check`), and automatic corrupted database quarantining (`.corrupt.<timestamp>`).
+- Built `UpdateService` and semantic version comparison (`parse_semver`, `compare_versions`, `is_newer_version`) in `sp_farms/application/update_service.py`.
+- Implemented comprehensive `HealthService` in `sp_farms/application/health_service.py` running 11 diagnostic probes: database, vault, ADB, LDPlayer, MuMu, physical devices, Meta config, storage, scheduler, workers, and network.
+- Enhanced diagnostics bundle export (`sp_farms/infrastructure/diagnostics.py`) to include `health_report.json` alongside `runtime.json` and redacted logs.
+- Added interactive update check, live health check display, and diagnostics bundle export to Settings Center (`sp_farms/app/settings_workspace.py`).
+- Added 6 automated tests in `tests/test_health_and_diagnostics.py` (total test suite at 294/294 passing).
+
+## Phase 50 — Windows Packaging and Installer
+
+Status: complete
+
+- Created vector/raster high-resolution application icon generator (`scripts/generate_icons.py`) producing multi-resolution Windows icon containers (`assets/icons/sp_farms.ico` with sizes 16, 32, 48, 64, 128, 256) and master PNGs matching the SP-Farms modern mint/lime design.
+- Integrated Windows taskbar and application window icons in `sp_farms/app/main.py`.
+- Defined reproducible PyInstaller packaging specification (`packaging_windows/sp_farms.spec`) bundling Qt plugins (platforms, styles, icon engines), migrations, and metadata without UPX false-positive interference.
+- Embedded Windows PE version resource structure (`packaging_windows/windows_version_info.txt`) with FileVersion, ProductVersion, and copyright metadata.
+- Implemented upgrade-safe data storage and uninstall data preservation policy (`sp_farms/application/packaging.py`) ensuring user databases, vault tokens, and snapshots in `%APPDATA%\SP-Farms` are retained during updates and uninstallation unless explicitly opted into purging.
+- Created dual installer definitions: Inno Setup script (`packaging_windows/installer.iss`) with modern wizard, desktop/start menu shortcuts, and user data retention prompt, and NSIS Modern UI script (`packaging_windows/installer.nsi`).
+- Implemented Authenticode code-signing utility and hooks (`sp_farms/infrastructure/signing.py`) supporting `signtool.exe`, timestamping authorities (DigiCert/Sectigo), environment variables, and dry-run verification without inventing fake certificates.
+- Added automated packaging pipeline script (`scripts/build_windows_dist.py`) and updated `scripts/package.ps1`.
+- Authored production signing and packaging documentation in `docs/CODE_SIGNING.md`.
+- Added 9 automated tests in `tests/test_packaging.py` (total test suite at 303/303 passing).
+
+## Phase 51 — CI CD and Release Automation
+
+Status: complete
+
+- Created GitHub Actions CI workflow (`.github/workflows/ci.yml`) on `windows-latest` running matrix quality gates: dependency caching, Ruff linting, Mypy static typing, Pytest test suite with coverage, clean Alembic database migration validation, and PyInstaller Windows package build smoke tests.
+- Created GitHub Actions release workflow (`.github/workflows/release.yml`) triggered by version tags (`v*.*.*`) building source distributions, Python wheels, standalone Windows executables, code-signing integration, release zip packaging, Inno Setup installer compilation, and automatic GitHub Release publication.
+- Ensured zero hardcoded secrets in workflow definitions with secure injection of Authenticode signing credentials via repository secrets.
+- Created comprehensive production release checklist in `docs/RELEASE_CHECKLIST.md` covering pre-release gates, version bumping, packaging validation, and signing procedures.
+- Created `CONTRIBUTING.md` outlining environment prerequisites, local equivalents for CI commands, and architecture rules.
+## Phase 52 — Visual Automation Builder and Presets
+
+Status: complete
+
+- Implemented drag-and-drop / ordered step visual workflow builder in `AutomationBuilderWorkspace`.
+- Added preset storage, step sequencing, conditional branch simulation, and dry-run execution.
+- Added 16 automated tests in `tests/test_automation_builder.py`.
+
+## Phase 53 — Context-Aware Action Modal
+
+Status: complete
+
+- Built zero-reselect `SelectionContext` resolving target metadata across Accounts, Pages, Groups, and Devices.
+- Integrated read-only persistent `"Using:"` summary bar in `ContextActionDialog`.
+- Implemented capability-gated tabs (Overview, Restore, Content, Post, Video, Reel, Story, Comments, Inbox, Analytics, Schedule, Backup, Device, Release, QA Profile Lab, Advanced).
+- Wired direct action triggers into table selections across Account, Page, Group, and Device workspaces.
+- Added automated tests in `tests/test_selection_context.py` and `tests/test_context_action_dialog_ui.py`.
+
+## Phase 54 — Per-Account VPN and Proxy Network Profiles
+
+Status: complete
+
+- Implemented `NetworkProfile`, `AccountNetworkBinding`, and `PageNetworkOverride` domain models with secure secret references.
+- Implemented `NetworkService` with deterministic resolution order: Page Override -> Account Binding -> System Default.
+- Added pre-restore network verification and ADB proxy routing (`settings put global http_proxy <host>:<port>`).
+- Enforced `FallbackPolicy.STOP` by default to abort workspace restore on network failure, preventing silent network leaks.
+- Integrated `Network` tab into `ContextActionDialog` with live connection testing controls.
+- Enforced strict platform compliance prohibiting random IP rotation and anti-detect fingerprinting.
+- Added automated tests in `tests/test_network_profile.py`.
+
+## Phase 55 — Account Maintenance and Security Automation
+
+Status: complete
+
+- Implemented `MaintenanceAction`, `MaintenanceExecutionResult`, and `MaintenanceTaskType` domain models.
+- Implemented `MaintenanceService` orchestrating authorized profile audits, cache trimming, session health verification, credential synchronization, and RFC 6238 TOTP 2FA setup.
+- Enforced mandatory operator-approval gates and dry-run simulation mode.
+- Integrated `Maintenance` tab into `ContextActionDialog` with explicit security boundaries prohibiting checkpoint/CAPTCHA bypass.
+- Added automated tests in `tests/test_maintenance_service.py`.
+
+## Phase 56 — Visual Reference Fidelity and Theme Lock
+
+Status: complete
+
+- Archived reference screenshots in `design/reference/` matching `sp-farms-ui-reference.png`.
+- Locked dark theme palette (`#0D1113` window, `#121719` surface, `#343C40` border, `#F4C915` yellow brand accent, `#25D06F` success, `#5A4E1B` device rail).
+- Enforced compact table item paddings, header formatting, and read-only monospace `"Using:"` summary styling.
+- Added automated tests in `tests/test_theme.py`.
+
+## Phase 57 — Final Production Review and v1.0.0 Release Readiness
+
+Status: complete
+
+- Bumped project version to `v1.0.0` across `pyproject.toml`, `sp_farms/__init__.py`, and test assertions.
+- Verified Ruff formatting and linting pass with zero errors across the entire codebase.
+- Verified full test suite pass: 349 passed out of 349 tests.
+- Completed all 57 phases of the SP-Farms roadmap.
+
+
 
 
 

@@ -211,3 +211,63 @@ def test_asset_inspector_display_and_actions() -> None:
 
     workspace.inspector.analytics_btn.click()
     assert route_target == ["Content", "Automation", "Analytics"]
+
+
+def test_asset_workspace_context_menus(monkeypatch) -> None:
+    from PySide6.QtCore import QPoint
+    from PySide6.QtWidgets import QMenu
+
+    _get_qapp()
+    now = datetime.now(UTC)
+    page = Page(
+        id="p-ctx",
+        account_id="acc-ctx",
+        page_id="meta-p-ctx",
+        name="Menu Page",
+        category="Tech",
+        tasks=(AssetPermission.CREATE_CONTENT.value,),
+        followers_count=100,
+        likes_count=50,
+        health=AssetHealthState.HEALTHY,
+        last_synced_at=now,
+    )
+    group = Group(
+        id="g-ctx",
+        account_id="acc-ctx",
+        group_id="meta-g-ctx",
+        name="Menu Group",
+        privacy="PUBLIC",
+        role="ADMIN",
+        member_count=50,
+        health=AssetHealthState.HEALTHY,
+        last_synced_at=now,
+    )
+
+    mock_sync_service = MagicMock()
+    mock_sync_service.list_all_pages.return_value = [page]
+    mock_sync_service.list_all_groups.return_value = [group]
+    mock_account_service = MagicMock()
+    mock_account_service.list_accounts.return_value = []
+
+    workspace = PagesGroupsWorkspace(
+        sync_service=mock_sync_service,
+        account_service=mock_account_service,
+    )
+    workspace.refresh()
+
+    exec_calls: list[str] = []
+
+    class NonModalMenu(QMenu):
+        def exec(self, *args, **kwargs):
+            exec_calls.append("exec")
+            return None
+
+    monkeypatch.setattr("sp_farms.app.asset_workspace.QMenu", NonModalMenu)
+
+    workspace.pages_table.selectRow(0)
+    workspace._show_page_context_menu(QPoint(10, 10))
+    assert len(exec_calls) == 1
+
+    workspace.groups_table.selectRow(0)
+    workspace._show_group_context_menu(QPoint(10, 10))
+    assert len(exec_calls) == 2

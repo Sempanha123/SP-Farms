@@ -327,3 +327,31 @@ def test_large_dataset_performance(
     assert workspace.model.item(0, 0).text() == "Bulk Account 123"
     # Must filter in less than 1.0s
     assert filter_duration < 1.0
+
+
+def test_account_workspace_context_menu(
+    qapp: QApplication,
+    account_services: tuple[AccountService, AccountOnboardingService, Database],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from PySide6.QtWidgets import QMenu
+
+    accounts, onboarding, _ = account_services
+    accounts.create_account("Menu Test Account", "uid-menu", "menu@example.com")
+    workspace = AccountWorkspace(accounts, onboarding)
+    workspace.refresh()
+
+    workspace.table.selectRow(0)
+    index = workspace.table.model().index(0, 0)
+
+    exec_called: list[bool] = []
+
+    class NonModalMenu(QMenu):
+        def exec(self, *args, **kwargs):
+            exec_called.append(True)
+            return None
+
+    monkeypatch.setattr("sp_farms.app.account_workspace.QMenu", NonModalMenu)
+
+    workspace._show_context_menu(workspace.table.visualRect(index).center())
+    assert len(exec_called) == 1

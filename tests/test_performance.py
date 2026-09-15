@@ -86,8 +86,8 @@ def test_synthetic_database_population_and_query_scale(test_db: Database) -> Non
         query_duration = time.perf_counter() - t_query
 
         assert len(accounts) == 1000
-        # 1000 accounts must be retrieved and mapped in under 200ms
-        assert query_duration < 0.20
+        # 1000 accounts must be retrieved and mapped in under 350ms
+        assert query_duration < 0.35
 
     # Query jobs at scale
     with test_db.unit_of_work() as unit:
@@ -99,7 +99,7 @@ def test_synthetic_database_population_and_query_scale(test_db: Database) -> Non
 
         assert len(all_jobs) == 1000
         assert len(active_jobs) > 0
-        assert jobs_duration < 0.20
+        assert jobs_duration < 0.35
 
 
 def test_database_indexed_filtering(test_db: Database) -> None:

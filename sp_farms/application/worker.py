@@ -134,6 +134,10 @@ class WorkerSupervisor:
         with self._lock:
             self._handlers[job_type] = handler
 
+    @property
+    def is_running(self) -> bool:
+        return self._poller_thread is not None and self._poller_thread.is_alive()
+
     def start(self, poll_interval_seconds: float = 0.5) -> None:
         with self._lock:
             if self._poller_thread is not None and self._poller_thread.is_alive():

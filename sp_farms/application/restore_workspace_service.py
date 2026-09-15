@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from sp_farms.application.account_service import AccountService
     from sp_farms.application.adb import AdbPort
     from sp_farms.application.device_service import DeviceService
+    from sp_farms.application.network_service import NetworkService
     from sp_farms.application.providers import DeviceProviderPort
 
 
@@ -34,6 +35,7 @@ class RestoreWorkspaceService:
         adb: "AdbPort",
         clock: Clock,
         providers: Sequence["DeviceProviderPort"] | None = None,
+        network_service: "NetworkService | None" = None,
     ) -> None:
         self._unit_of_work = unit_of_work_factory
         self._repo_factory = repository_factory
@@ -41,6 +43,7 @@ class RestoreWorkspaceService:
         self._devices = device_service
         self._adb = adb
         self._clock = clock
+        self._network_service = network_service
         self._providers_map: dict[DeviceProviderType, DeviceProviderPort] = {}
         if providers:
             for p in providers:
@@ -315,6 +318,23 @@ class RestoreWorkspaceService:
                 details["timezone"] = profile.timezone
             except Exception:
                 pass
+
+        # Step 5b: Pre-Restore Network Profile Automation
+        if self._network_service is not None:
+            try:
+                self._network_service.prepare_network_for_restore(
+                    account_id=account_id,
+                    device_serial=adb_serial,
+                )
+            except Exception as exc:
+                return RestoreWorkspaceResult(
+                    success=False,
+                    account_id=account_id,
+                    status="network_policy_error",
+                    message=str(exc),
+                    device_name=profile.display_name,
+                    adb_serial=adb_serial,
+                )
 
         # Step 6: Launch selected app
         app_launched = False

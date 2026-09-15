@@ -100,6 +100,17 @@ Meta Graph API integration uses an explicit client port (`MetaClientPort`) with 
 
 Authorized Facebook Pages and Groups are modeled as immutable domain entities with explicit eligibility logic based on Meta tasks (`MANAGE`, `CREATE_CONTENT`) and group roles (`ADMIN`, `MODERATOR`). All page-specific access tokens returned by Meta are vaulted in the OS keyring alongside user tokens. Asset synchronization tolerates partial failures (e.g. Rate Limit on Groups preserves Page updates) and marks removed/inaccessible assets as `AssetHealthState.STALE` rather than immediately deleting them, preserving audit trails and operator context.
 
+## Selection Context and Action Tab Gating
+
+The `SelectionContext` resolves target metadata across Accounts, Pages, Groups, and Devices at invocation time without requiring operators to re-select active targets. Capability resolution dynamically enables or disables action tabs based on target types and platform safety rules. A persistent, read-only `"Using:"` summary bar anchors the context visually across all tabs.
+
+## Network Isolation and Compliance Enforcement
+
+Network profiles enforce deterministic per-account and per-page proxy routing. Verification runs prior to workspace restore; if verification fails under `FallbackPolicy.STOP`, restore aborts to prevent silent leaks onto the operator's home IP. Random IP rotation, location spoofing, and anti-detect browser fingerprinting are strictly prohibited in code and documentation.
+
+## Safe Account Maintenance Boundaries
+
+Maintenance actions (cache purge, session health check, profile sync, and 2FA credential recording) are segregated under explicit operator approval gates and require dry-run simulation capability. Automated checkpoint bypass and CAPTCHA solving are strictly prohibited by architecture.
 ## Pages & Groups Management Workspace Architecture
 
 The Pages and Groups workspace (`PagesGroupsWorkspace`) uses dual `QSortFilterProxyModel` layers on top of `QStandardItemModel` to handle dense multi-field filtering (text search, account association, health status, and publishing eligibility) entirely in-memory with zero UI thread blocking. Multi-account synchronization runs asynchronously via `QThreadPool` and `QRunnable`, keeping the desktop interface fully interactive during long-running Graph API requests. The right-hand inspector panel coordinates operational shortcuts directly into related workspaces (`Content`, `Automation`, `Analytics`) and maintains quick asset identification tools (clipboard copying of Meta asset IDs, CSV asset exports, and manual staleness tagging).
@@ -119,6 +130,10 @@ The post and reel composition workflow uses a dedicated domain service (`Compose
 ## Caption Templates, Multilingual AI Assist, and Unicode NFC Safety
 
 Multilingual text rendering across Southeast Asian languages (Khmer `km`, Thai `th`, Vietnamese `vi`) and English (`en`) presents unique script normalization challenges with sub-script consonants, tone markers, and complex combining diacritics. All domain text inputs and AI outputs are normalized to Unicode NFC (`unicodedata.normalize("NFC", text)`) at system boundaries to prevent corrupt rendering, double-spacing, or broken glyph stacking in SQLite, JSON serialization, and PySide6 widgets. AI assistance is structured around an explicit port-adapter interface (`AIProviderPort`) and defaults to an air-gapped deterministic provider (`FakeMultilingualAIProvider`), guaranteeing zero external dependencies during offline testing and automated verification. AI API keys are treated as critical secrets and stored solely within the OS Keyring via `SecretService` and `Vault`, avoiding plaintext file or SQLite persistence. Finally, automated publishing of AI content is strictly prohibited: AI suggestions always enter a human-in-the-loop review modal (`AiAssistDialog`) for side-by-side comparison and explicit operator confirmation before incorporation into the draft composer.
+
+## Windows Packaging, Upgrade Safety, and Code Signing
+
+Desktop distributions on Windows 11 require robust isolation between mutable user state and static binary artifacts. Binary executables are deployed via PyInstaller (`onedir` bundle) to standard system directories (`%ProgramFiles%\SP-Farms` or `%LocalAppData%\Programs\SP-Farms`), while all SQLite WAL databases, local vault records, `.spbackup` snapshots, and diagnostic logs are isolated strictly within `%APPDATA%\SP-Farms` and `%LOCALAPPDATA%\SP-Farms`. The installer and uninstaller implementations (Inno Setup and NSIS) enforce an opt-in data removal policy: uninstallation removes binary files and registry entries while preserving user data and snapshots by default, preventing catastrophic operator data loss during updates or reinstalls. Code signing is abstracted through `SigningConfig` and `sign_executable`, interfacing with the Windows SDK `signtool.exe` and RFC 3161 timestamping authorities without committing certificates or inventing synthetic credentials.
 
 
 

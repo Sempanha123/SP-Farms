@@ -45,6 +45,8 @@ from sp_farms.domain.assets import AssetHealthState, Group, Page, SyncResult
 
 if TYPE_CHECKING:
     from sp_farms.application.account_service import AccountService
+    from sp_farms.application.context import ApplicationContext
+    from sp_farms.application.selection_context_service import SelectionContextService
 
 
 PAGE_COLUMNS = (
@@ -400,11 +402,15 @@ class PagesGroupsWorkspace(QWidget):
         sync_service: AssetSyncService | None = None,
         account_service: "AccountService | None" = None,
         parent: QWidget | None = None,
+        selection_context_service: "SelectionContextService | None" = None,
+        app_context: "ApplicationContext | None" = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("pagesGroupsWorkspace")
         self._sync_service = sync_service
         self._account_service = account_service
+        self._selection_context_service = selection_context_service
+        self._app_context = app_context
 
         self._pages: list[Page] = []
         self._groups: list[Group] = []
@@ -488,6 +494,12 @@ class PagesGroupsWorkspace(QWidget):
         self.sync_btn = PrimaryButton("Sync Assets")
         self.sync_btn.clicked.connect(self._on_sync_clicked)
         toolbar.addWidget(self.sync_btn)
+
+        self.actions_btn = PrimaryButton("Actions...")
+        self.actions_btn.setObjectName("contextActionsButton")
+        self.actions_btn.setEnabled(False)
+        self.actions_btn.clicked.connect(self.open_context_actions)
+        toolbar.addWidget(self.actions_btn)
 
         self.bulk_menu_btn = SecondaryButton("Bulk Actions ▾")
         self.bulk_menu = QMenu(self)
@@ -717,6 +729,7 @@ class PagesGroupsWorkspace(QWidget):
 
     def _on_page_selected(self) -> None:
         indexes = self.pages_table.selectionModel().selectedRows()
+        self.actions_btn.setEnabled(bool(indexes))
         if not indexes:
             self.inspector.inspect_page(None)
             return
@@ -729,6 +742,7 @@ class PagesGroupsWorkspace(QWidget):
 
     def _on_group_selected(self) -> None:
         indexes = self.groups_table.selectionModel().selectedRows()
+        self.actions_btn.setEnabled(bool(indexes))
         if not indexes:
             self.inspector.inspect_group(None)
             return
@@ -741,6 +755,14 @@ class PagesGroupsWorkspace(QWidget):
 
     def _show_page_context_menu(self, point: QPoint) -> None:
         menu = QMenu(self)
+        indexes = self.pages_table.selectionModel().selectedRows()
+        act_actions = menu.addAction(f"Actions ({len(indexes)})...")
+        font = act_actions.font()
+        font.setBold(True)
+        act_actions.setFont(font)
+        act_actions.triggered.connect(self.open_context_actions)
+        menu.addSeparator()
+
         copy_id = menu.addAction("Copy Page ID")
         copy_id.triggered.connect(self._copy_selected_id)
         open_content = menu.addAction("View Content Queue")
@@ -749,11 +771,71 @@ class PagesGroupsWorkspace(QWidget):
 
     def _show_group_context_menu(self, point: QPoint) -> None:
         menu = QMenu(self)
+        indexes = self.groups_table.selectionModel().selectedRows()
+        act_actions = menu.addAction(f"Actions ({len(indexes)})...")
+        font = act_actions.font()
+        font.setBold(True)
+        act_actions.setFont(font)
+        act_actions.triggered.connect(self.open_context_actions)
+        menu.addSeparator()
+
         copy_id = menu.addAction("Copy Group ID")
         copy_id.triggered.connect(self._copy_selected_id)
         open_content = menu.addAction("View Content Queue")
         open_content.triggered.connect(lambda: self.route_requested.emit("Automation"))
         menu.exec(self.groups_table.viewport().mapToGlobal(point))
+
+    def open_context_actions(self) -> None:
+        from sp_farms.app.context_action_dialog import ContextActionDialog
+        from sp_farms.domain.selection_context import SelectionContext, SelectionSource
+
+        if self.tab_widget.currentIndex() == 0:
+            indexes = self.pages_table.selectionModel().selectedRows()
+            if not indexes:
+                return
+            selected_page_ids = []
+            for idx in indexes:
+                s_idx = self.pages_proxy.mapToSource(idx)
+                if 0 <= s_idx.row() < len(self._pages):
+                    selected_page_ids.append(self._pages[s_idx.row()].id)
+
+            if self._selection_context_service:
+                ctx = self._selection_context_service.resolve_context(
+                    source_module=SelectionSource.PAGES,
+                    page_ids=selected_page_ids,
+                )
+            else:
+                ctx = SelectionContext(
+                    source_module=SelectionSource.PAGES,
+                    selected_page_ids=tuple(selected_page_ids),
+                )
+        else:
+            indexes = self.groups_table.selectionModel().selectedRows()
+            if not indexes:
+                return
+            selected_group_ids = []
+            for idx in indexes:
+                s_idx = self.groups_proxy.mapToSource(idx)
+                if 0 <= s_idx.row() < len(self._groups):
+                    selected_group_ids.append(self._groups[s_idx.row()].id)
+
+            if self._selection_context_service:
+                ctx = self._selection_context_service.resolve_context(
+                    source_module=SelectionSource.GROUPS,
+                    group_ids=selected_group_ids,
+                )
+            else:
+                ctx = SelectionContext(
+                    source_module=SelectionSource.GROUPS,
+                    selected_group_ids=tuple(selected_group_ids),
+                )
+
+        dialog = ContextActionDialog(
+            context=ctx,
+            app_context=self._app_context,
+            parent=self,
+        )
+        dialog.exec()
 
     def _copy_selected_id(self) -> None:
         # Simple ID lookup based on active tab
