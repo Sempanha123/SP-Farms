@@ -5,6 +5,7 @@ capability-gated tabs, and multi-target batch scheduling.
 """
 
 import logging
+import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -35,7 +36,10 @@ from PySide6.QtWidgets import (
 )
 
 from sp_farms.app.widgets import Panel, PrimaryButton, SecondaryButton, StatusChip
-from sp_farms.domain.automation_builder import AutomationPreset, AutomationPresetStep
+from sp_farms.domain.automation_builder import (
+    AutomationPresetStep,
+    AutomationStepType,
+)
 from sp_farms.domain.selection_context import (
     ActionTabType,
     SelectionContext,
@@ -299,18 +303,19 @@ class ContextActionDialog(QDialog):
             preview_text.setText("\n".join(lines))
             layout.addWidget(preview_text, stretch=1)
         else:
-            t = self.context.primary_target
-            if t:
+            primary_target = self.context.primary_target
+            if primary_target:
                 form = QFormLayout()
-                form.addRow("Target Name:", QLabel(t.display_name))
-                form.addRow("Target Type:", QLabel(t.target_type.value.capitalize()))
-                form.addRow("Owning Account:", QLabel(t.owning_account_name or "Self"))
+                form.addRow("Target Name:", QLabel(primary_target.display_name))
+                form.addRow("Target Type:", QLabel(primary_target.target_type.value.capitalize()))
+                form.addRow("Owning Account:", QLabel(primary_target.owning_account_name or "Self"))
                 form.addRow(
-                    "Bound Device:", QLabel(t.bound_device_id or "None (Auto-assign on run)")
+                    "Bound Device:",
+                    QLabel(primary_target.bound_device_id or "None (Auto-assign on run)"),
                 )
-                form.addRow("Preferred App:", QLabel(t.preferred_app.capitalize()))
-                form.addRow("Auth State:", QLabel(t.auth_state.capitalize()))
-                form.addRow("Health Status:", QLabel(t.health_status.capitalize()))
+                form.addRow("Preferred App:", QLabel(primary_target.preferred_app.capitalize()))
+                form.addRow("Auth State:", QLabel(primary_target.auth_state.capitalize()))
+                form.addRow("Health Status:", QLabel(primary_target.health_status.capitalize()))
                 layout.addLayout(form)
             layout.addStretch(1)
 
@@ -828,9 +833,12 @@ class ContextActionDialog(QDialog):
     # --- EXECUTION & PERSISTENCE ---
 
     def _restore_persisted_state(self) -> None:
-        last_tab = self._settings.value("last_tab_index", 0, type=int)
-        if 0 <= last_tab < self.tabs.count():
-            self.tabs.setCurrentIndex(last_tab)
+        try:
+            last_tab = int(str(self._settings.value("last_tab_index", 0)))
+            if 0 <= last_tab < self.tabs.count():
+                self.tabs.setCurrentIndex(last_tab)
+        except (ValueError, TypeError):
+            pass
 
     def _persist_state(self) -> None:
         self._settings.setValue("last_tab_index", self.tabs.currentIndex())
@@ -843,44 +851,40 @@ class ContextActionDialog(QDialog):
         current_tab_text = self.tabs.tabText(self.tabs.currentIndex())
 
         # Construct standard step from current tab
-        step_type = "RESTORE_WORKSPACE"
+        step_type = AutomationStepType.RESTORE_WORKSPACE
         if "Post" in current_tab_text:
-            step_type = "PUBLISH_FEED"
+            step_type = AutomationStepType.PUBLISH_TEXT
         elif "Reel" in current_tab_text:
-            step_type = "PUBLISH_REEL"
+            step_type = AutomationStepType.PUBLISH_REEL
         elif "Video" in current_tab_text:
-            step_type = "PUBLISH_VIDEO"
+            step_type = AutomationStepType.PUBLISH_VIDEO
         elif "Backup" in current_tab_text:
-            step_type = "BACKUP_SNAPSHOT"
+            step_type = AutomationStepType.BACKUP_WORKSPACE
         elif "Analytics" in current_tab_text:
-            step_type = "COLLECT_ANALYTICS"
+            step_type = AutomationStepType.COLLECT_POST_ANALYTICS
 
         step = AutomationPresetStep(
+            id=str(uuid.uuid4()),
+            preset_id="",
             step_type=step_type,
-            name=f"Execute {current_tab_text}",
-            parameters={},
+            configuration={"name": f"Execute {current_tab_text}"},
             timeout_seconds=300,
         )
 
-        preset = AutomationPreset(
-            name=preset_name,
-            description=f"Automated preset from Context Dialog for {self.context.summary_header}",
-            steps=(step,),
-            is_built_in=False,
-        )
+        preset_desc = f"Automated preset from Context Dialog for {self.context.summary_header}"
 
         if self.app_context and self.app_context.automation_builder_service:
             saved = self.app_context.automation_builder_service.create_preset(
-                name=preset.name,
-                description=preset.description,
-                steps=preset.steps,
+                name=preset_name,
+                description=preset_desc,
+                steps=[step],
             )
             QMessageBox.information(
                 self, "Preset Saved", f"Successfully saved preset:\n{saved.name}"
             )
         else:
             QMessageBox.information(
-                self, "Preset Saved", f"Preset configuration captured:\n{preset.name}"
+                self, "Preset Saved", f"Preset configuration captured:\n{preset_name}"
             )
 
     def _execute_dry_run(self) -> None:

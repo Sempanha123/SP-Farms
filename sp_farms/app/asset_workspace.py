@@ -757,7 +757,9 @@ class PagesGroupsWorkspace(QWidget):
         menu = QMenu(self)
         indexes = self.pages_table.selectionModel().selectedRows()
         act_actions = menu.addAction(f"Actions ({len(indexes)})...")
-        act_actions.setStyleSheet("font-weight: bold;")
+        font = act_actions.font()
+        font.setBold(True)
+        act_actions.setFont(font)
         act_actions.triggered.connect(self.open_context_actions)
         menu.addSeparator()
 
@@ -771,7 +773,9 @@ class PagesGroupsWorkspace(QWidget):
         menu = QMenu(self)
         indexes = self.groups_table.selectionModel().selectedRows()
         act_actions = menu.addAction(f"Actions ({len(indexes)})...")
-        act_actions.setStyleSheet("font-weight: bold;")
+        font = act_actions.font()
+        font.setBold(True)
+        act_actions.setFont(font)
         act_actions.triggered.connect(self.open_context_actions)
         menu.addSeparator()
 

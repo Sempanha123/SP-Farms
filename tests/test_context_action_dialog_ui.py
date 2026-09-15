@@ -88,4 +88,19 @@ def test_context_action_dialog_page_context(qapp):
     assert "Overview" in tab_labels
     assert "Connected Account" in tab_labels
     assert "Post Feed" in tab_labels
+
+    # Verify dry run and save preset execution
+    from unittest.mock import MagicMock
+
+    from PySide6.QtWidgets import QMessageBox
+
+    mock_info = MagicMock()
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(QMessageBox, "information", mock_info)
+    try:
+        dialog._execute_dry_run()
+        dialog._save_as_preset()
+        assert mock_info.call_count == 2
+    finally:
+        monkeypatch.undo()
     dialog.close()

@@ -580,7 +580,9 @@ class AccountWorkspace(QWidget):
 
         menu = QMenu(self)
         act_actions = QAction(f"Actions ({count})...", self)
-        act_actions.setStyleSheet("font-weight: bold;")
+        font = act_actions.font()
+        font.setBold(True)
+        act_actions.setFont(font)
         act_actions.triggered.connect(self.open_context_actions)
         menu.addAction(act_actions)
 

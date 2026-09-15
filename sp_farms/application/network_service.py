@@ -18,8 +18,9 @@ from sp_farms.domain.network_profile import (
 
 if TYPE_CHECKING:
     from sp_farms.application.adb import AdbPort
+    from sp_farms.application.ports import Clock
     from sp_farms.application.secret_service import SecretService
-    from sp_farms.domain.ports import Clock, UnitOfWork
+    from sp_farms.application.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
