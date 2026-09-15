@@ -1,50 +1,99 @@
-SP-Farms Reference UI V4
-========================
+SP-Farms Farm Reel Flow V5
+============================
 
-This is a self-contained code patch for the merged SP-Farms project.
+Goal
+----
+Make SP-Farms follow the simple Farm Reel action-list workflow while preserving
+the existing SP-Farms services, job engine, device manager, account context,
+network bindings, content system, and advanced automation builder.
 
-Reference images included:
-- design/reference/sp-farms-ui-reference.png
-- design/reference/each-tab.png
+Main operator flow
+------------------
+Accounts
+  -> select one or more rows
+  -> Action List...
+  -> check actions
+  -> configure the selected action on the right
+  -> reorder selected actions
+  -> Dry Run
+  -> Start
+  -> Job Queue
 
-Main changes
-------------
-- Top navigation gets compact icons + live date/time.
-- Home becomes a dense operational dashboard.
-- Left Device Manager rail is rebuilt closer to the reference:
-  device search/filter, selected device details, CPU/RAM/network/account,
-  Start/Stop/Restart, launch/screenshot, Start All/Stop All, and shortcuts.
-- Accounts gets a visible workflow:
-  Select -> Resolve Device/Network -> Restore -> Actions -> Monitor.
-- Content gets a visible workflow:
-  Media -> Compose -> Destination -> Dry Run -> Publish.
-- Automation gets Quick Mode before the existing Advanced Builder.
-- Context Account Actions uses a left vertical tab rail.
-- Post tab gets a two-column editor + live caption preview.
-- Existing backend/services remain in place.
-- Existing Advanced Builder remains available.
+Automation
+----------
+Adds an "Action List" tab before Quick Mode / Advanced Builder.
+
+The Action List exposes every existing SP-Farms AutomationStepType once:
+- Restore Workspace
+- Open Preferred App
+- Health Check
+- Refresh Authorized Asset Data
+- Publish Text
+- Publish Image
+- Publish Multiple Images
+- Publish Video
+- Publish Reel
+- Publish Story
+- Publish Link
+- Schedule Content
+- Read Comments
+- Reply to Selected Comments
+- Moderate Comments
+- Read Inbox
+- Reply with Saved Reply
+- Assign Inbox Item
+- Add Internal Note
+- Mark Resolved
+- Post Analytics
+- Reaction Analytics
+- Share / View Metrics
+- Follower Growth
+- Backup Workspace
+- Release Device
+- Start Next Account
+
+Each checked action can be configured and ordered. Common controls include:
+- approval
+- retry
+- timeout
+- delay metadata
+- continue-on-error
+
+The workflow is wired to the existing AutomationBuilderService:
+validate_preset -> dry-run -> execute_preset -> persistent job queue.
+
+Important
+---------
+A UI option being visible does not invent provider support. Existing capability
+checks and provider/service configuration still decide whether a live operation
+can execute.
+
+If the platform requires verification/checkpoint handling, the intended flow is:
+User action required -> operator completes verification -> resume.
+
+This patch does not add CAPTCHA/checkpoint bypass, artificial engagement farming,
+bulk friend adding, unsolicited bulk messaging, or fake Facebook device identity
+evasion.
 
 Apply
 -----
-Put APPLY_REFERENCE_UI_V4.py in the SP-Farms repository root and run:
+1. Extract this ZIP.
+2. Put APPLY_FARM_REEL_FLOW_V5.py in the SP-Farms repository root.
+3. Run:
 
-    .\.venv\Scripts\python.exe .\APPLY_REFERENCE_UI_V4.py
+cd "C:\Users\Rg Gear\Desktop\SP-Farms"
 
-The patch creates a rollback folder first:
+.\.venv\Scripts\python.exe .\APPLY_FARM_REEL_FLOW_V5.py
 
-    .reference_ui_v4_backup_YYYYMMDD-HHMMSS
+The script creates:
+.farm_reel_v5_backup_YYYYMMDD-HHMMSS
 
-Then validate:
+Validate
+--------
+.\.venv\Scripts\python.exe -m pytest tests/test_design_system.py tests/test_main_window.py tests/test_farm_reel_action_list.py -q
 
-    .\.venv\Scripts\python.exe -m pytest tests/test_design_system.py tests/test_main_window.py -q
-    .\.venv\Scripts\python.exe -m ruff check sp_farms
-    .\.venv\Scripts\python.exe -m sp_farms.app.main
+.\.venv\Scripts\python.exe -m ruff check sp_farms tests/test_farm_reel_action_list.py
 
-Notes
------
-The patch is designed against the currently merged main branch structure discussed
-in chat. It is root-safe: the replacement payloads are embedded inside the script,
-so it does not copy source files onto themselves.
-
-The UI follows the dark charcoal + yellow/gold reference direction and keeps
-tables dense. It does not add security-bypass or artificial-engagement behavior.
+Run
+---
+.\.venv\Scripts\python.exe -m sp_farms.app.main

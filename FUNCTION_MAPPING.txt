@@ -1,0 +1,68 @@
+SP-Farms V5 — Farm Reel / SD Farm Function Mapping
+====================================================
+
+The V5 Action List uses the EXISTING AutomationBuilderService and AutomationStepType
+definitions. It does not create decorative buttons that bypass the real job system.
+
+Demo idea                         SP-Farms V5 implementation
+---------------------------------------------------------------------------
+Backup/login workspace            Restore Workspace + Backup Workspace
+Open Facebook/app                 Open Preferred App
+Account readiness                 Health Check
+Refresh pages/groups              Refresh Authorized Asset Data
+Post status                       Publish Text Post
+Post image                        Publish Image Post
+Post multiple images              Publish Multi-Image Post
+Post video                        Publish Video Post
+Post Reel                         Publish Reel
+Post Story                        Publish Story (capability-gated)
+Post link                         Publish Link Post
+Schedule                          Schedule Content
+Read comments                     Read Comments
+Reply comments                    Reply to Selected Comments + approval
+Comment moderation                Moderate Comments
+Read inbox                        Read Inbox
+Inbox reply                       Reply with Saved Reply + approval
+Inbox assignment                  Assign Inbox Item
+Internal notes                    Add Internal Note
+Resolve conversation              Mark Resolved
+Reach/engagement                  Collect Post Analytics
+Reaction counts                   Reaction Analytics (read-only)
+Shares/video views                Share & View Metrics
+Follower growth                   Follower & Growth Metrics
+Finish account                    Backup Workspace -> Release Device -> Start Next Account
+LDPlayer/MuMu/physical devices    Existing Device Manager + Device Pool
+VPN/proxy/network                 Existing Network/Profile system + account/device binding
+Account info/security             Existing Account Actions modal
+Email/password/2FA/sessions       Existing Account Actions modal with confirmation
+Bulk account selection            Existing Accounts table, then Action List...
+
+Farm-Reel-style V5 workflow
+---------------------------
+1. Select one or more accounts.
+2. Click Action List...
+3. Check authorized actions.
+4. Configure the selected action on the right.
+5. Reorder the selected action list.
+6. Configure retry, timeout, delay metadata, approval, and continue-on-error.
+7. Dry Run.
+8. Start.
+9. Open Job Queue to monitor actual jobs.
+
+Verification flow
+-----------------
+If an account needs a platform verification/challenge, SP-Farms should surface
+"User action required", allow the operator to finish the verification, then resume.
+The V5 patch does not add CAPTCHA/checkpoint bypass.
+
+Not mapped from the demo
+------------------------
+The following demo ideas are intentionally not turned into automation steps:
+- CAPTCHA/checkpoint solving or security bypass
+- bulk friend adding / friend-confirm farming
+- automated watch/live/newsfeed activity farming
+- automated like/follow/reaction farming
+- unsolicited bulk messaging
+- fake fingerprint/device identity evasion for Facebook
+
+This keeps the existing SP-Farms safe-device and authorized-asset model intact.

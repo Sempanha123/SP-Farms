@@ -117,7 +117,6 @@ class _Worker(QRunnable):
 class AccountWorkspace(QWidget):
     success_action_requested = Signal(str, str)
     local_navigation_requested = Signal(str)
-    action_list_requested = Signal(tuple)
     restore_completed = Signal(object)
 
     def __init__(
@@ -195,56 +194,35 @@ class AccountWorkspace(QWidget):
         )
         listing_layout.addWidget(self.metrics)
 
-        # Real operator flow: selected context moves forward without re-selecting.
+        # Normal operator flow: select -> resolve -> restore -> actions -> monitor.
         account_flow = Panel()
         account_flow.setProperty("flowPanel", True)
         account_flow_layout = QHBoxLayout(account_flow)
         account_flow_layout.setContentsMargins(8, 6, 8, 6)
         account_flow_layout.setSpacing(5)
-
         flow_caption = QLabel("ACCOUNT FLOW")
         flow_caption.setProperty("sectionTitle", True)
         account_flow_layout.addWidget(flow_caption)
-
-        self.account_flow_select = QPushButton("1  Select\n    Account")
-        self.account_flow_select.setProperty("flowStep", True)
-        self.account_flow_select.setProperty("flowState", "next")
-        self.account_flow_select.setEnabled(False)
-
-        self.account_flow_resolve = QPushButton("2  Resolve\n    Device + Network")
-        self.account_flow_resolve.setProperty("flowStep", True)
-        self.account_flow_resolve.clicked.connect(self.open_context_actions)
-
-        self.account_flow_restore = QPushButton("3  Restore\n    Workspace")
-        self.account_flow_restore.setProperty("flowStep", True)
-        self.account_flow_restore.clicked.connect(self.restore_selected_workspace)
-
-        self.account_flow_actions = QPushButton("4  Actions\n    Build Workflow")
-        self.account_flow_actions.setProperty("flowStep", True)
-        self.account_flow_actions.clicked.connect(
-            lambda: self.action_list_requested.emit(self.selected_account_ids)
-        )
-
-        self.account_flow_monitor = QPushButton("5  Monitor\n    Job Queue")
-        self.account_flow_monitor.setProperty("flowStep", True)
-        self.account_flow_monitor.clicked.connect(
-            lambda: self.local_navigation_requested.emit("Automation")
-        )
-
-        self.account_flow_buttons = (
-            self.account_flow_select,
-            self.account_flow_resolve,
-            self.account_flow_restore,
-            self.account_flow_actions,
-            self.account_flow_monitor,
-        )
-        for index, button in enumerate(self.account_flow_buttons):
-            account_flow_layout.addWidget(button, stretch=1)
-            if index < len(self.account_flow_buttons) - 1:
+        for index, (name, detail) in enumerate(
+            (
+                ("Select", "Account"),
+                ("Resolve", "Device + Network"),
+                ("Restore", "Workspace"),
+                ("Actions", "Content / Maintenance"),
+                ("Monitor", "Job Queue"),
+            ),
+            start=1,
+        ):
+            step = QPushButton(f"{index}  {name}\n    {detail}")
+            step.setProperty("flowStep", True)
+            if index == 1:
+                step.setProperty("flowState", "next")
+            step.setEnabled(False)
+            account_flow_layout.addWidget(step, stretch=1)
+            if index < 5:
                 arrow = QLabel("→")
                 arrow.setProperty("flowArrow", True)
                 account_flow_layout.addWidget(arrow)
-
         listing_layout.addWidget(account_flow)
 
         local_nav = Panel()
@@ -292,13 +270,6 @@ class AccountWorkspace(QWidget):
         self.actions_btn.setObjectName("contextActionsButton")
         self.actions_btn.setEnabled(False)
         self.actions_btn.clicked.connect(self.open_context_actions)
-
-        self.workflow_btn = SecondaryButton("Action List...")
-        self.workflow_btn.setObjectName("actionListButton")
-        self.workflow_btn.setEnabled(False)
-        self.workflow_btn.clicked.connect(
-            lambda: self.action_list_requested.emit(self.selected_account_ids)
-        )
 
         self.restore_btn = SecondaryButton("Restore")
         self.restore_btn.setObjectName("restoreWorkspaceButton")
@@ -390,7 +361,6 @@ class AccountWorkspace(QWidget):
         toolbar_layout.addWidget(self.network_filter)
         toolbar_layout.addWidget(self.columns_btn)
         toolbar_layout.addWidget(self.bulk_btn)
-        toolbar_layout.addWidget(self.workflow_btn)
         toolbar_layout.addWidget(self.actions_btn)
         toolbar_layout.addWidget(self.status_chip)
         toolbar_layout.addWidget(self.add_btn)
@@ -923,7 +893,6 @@ class AccountWorkspace(QWidget):
         self.restore_selected_btn.setEnabled(bool(count >= 1 and self._pool_service is not None))
         self.backup_btn.setEnabled(bool(count >= 1 and self._snapshot_service is not None))
         self.release_btn.setEnabled(bool(count >= 1 and self._pool_service is not None))
-        self.workflow_btn.setEnabled(bool(count >= 1))
 
         if hasattr(self, "account_flow_buttons"):
             states = (

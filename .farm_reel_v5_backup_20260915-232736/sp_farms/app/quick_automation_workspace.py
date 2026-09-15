@@ -25,7 +25,6 @@ class QuickAutomationWorkspace(QWidget):
     """Farm-Reel-simple front end on the existing real automation service."""
 
     advanced_requested = Signal()
-    action_list_requested = Signal()
 
     def __init__(
         self,
@@ -54,10 +53,6 @@ class QuickAutomationWorkspace(QWidget):
         stack.addWidget(subtitle)
         header.addLayout(stack)
         header.addStretch()
-        action_list = SecondaryButton("Action List")
-        action_list.clicked.connect(self.action_list_requested.emit)
-        header.addWidget(action_list)
-
         advanced = SecondaryButton("Advanced Builder")
         advanced.clicked.connect(self.advanced_requested.emit)
         header.addWidget(advanced)

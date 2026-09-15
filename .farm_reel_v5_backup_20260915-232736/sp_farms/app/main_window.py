@@ -20,7 +20,6 @@ from sp_farms.app.command_palette import CommandPalette
 from sp_farms.app.content_workspace import ContentWorkspace
 from sp_farms.app.device_manager import DeviceManagerView
 from sp_farms.app.error_center import ErrorCenterWorkspace
-from sp_farms.app.farm_reel_action_list import FarmReelActionListWorkspace
 from sp_farms.app.home_dashboard import HomeDashboard
 from sp_farms.app.job_queue import JobQueueView
 from sp_farms.app.navigation import Command, NavigationService
@@ -124,9 +123,6 @@ class MainWindow(QMainWindow):
         self._workspace.settings_route_requested.connect(lambda: self.navigate("Settings"))
         self.account_workspace.success_action_requested.connect(self._route_account_action)
         self.account_workspace.local_navigation_requested.connect(self.navigate)
-        self.account_workspace.action_list_requested.connect(
-            self._open_action_list_for_accounts
-        )
         self.pages_workspace = PagesGroupsWorkspace(
             self._context.asset_sync_service,
             self._context.account_service,
@@ -182,18 +178,6 @@ class MainWindow(QMainWindow):
             if self._context.automation_builder_service
             else None
         )
-        self.action_list_workspace: FarmReelActionListWorkspace | None = (
-            FarmReelActionListWorkspace(self._context.automation_builder_service)
-            if self._context.automation_builder_service
-            else None
-        )
-        if self.action_list_workspace is not None:
-            self.action_list_workspace.queue_requested.connect(
-                self._open_automation_queue
-            )
-            self.action_list_workspace.accounts_requested.connect(
-                lambda: self.navigate("Accounts")
-            )
         if self.error_center_workspace:
             self.error_center_workspace.route_requested.connect(self.navigate)
         self.setObjectName("mainWindow")
@@ -245,27 +229,12 @@ class MainWindow(QMainWindow):
             self.groups_workspace.refresh()
         elif section == "Automation":
             self.job_queue_view.refresh()
-            if self.action_list_workspace is not None:
-                self.action_list_workspace._refresh_status()
             if self.quick_automation_workspace is not None:
                 self.quick_automation_workspace.refresh_presets()
         elif section == "Devices" and self.device_manager_view.model.rowCount() == 0:
             self.device_manager_view.refresh()
         elif section == "Analytics":
             self.analytics_workspace.refresh()
-
-    def _open_action_list_for_accounts(self, account_ids: tuple[str, ...]) -> None:
-        if self.action_list_workspace is None:
-            return
-        self.action_list_workspace.set_target_accounts(account_ids)
-        self.navigate("Automation")
-        if hasattr(self, "automation_tabs"):
-            self.automation_tabs.setCurrentWidget(self.action_list_workspace)
-
-    def _open_automation_queue(self) -> None:
-        self.navigate("Automation")
-        if hasattr(self, "automation_tabs"):
-            self.automation_tabs.setCurrentWidget(self.job_queue_view)
 
     def set_theme(self, mode: ThemeMode) -> None:
         self._theme = mode
@@ -369,8 +338,6 @@ class MainWindow(QMainWindow):
             elif section == "Automation":
                 self.automation_tabs = QTabWidget()
                 automation_tabs = self.automation_tabs
-                if self.action_list_workspace is not None:
-                    automation_tabs.addTab(self.action_list_workspace, "Action List")
                 if self.quick_automation_workspace is not None:
                     automation_tabs.addTab(self.quick_automation_workspace, "Quick Mode")
                 if self.automation_builder_workspace is not None:
@@ -383,14 +350,6 @@ class MainWindow(QMainWindow):
                     automation_tabs.addTab(self.approval_workspace, "Approval Queue")
                 self.job_queue_view = JobQueueView(self._context.job_service)
                 automation_tabs.addTab(self.job_queue_view, "Job Execution Queue")
-                if self.quick_automation_workspace is not None:
-                    self.quick_automation_workspace.action_list_requested.connect(
-                        lambda: automation_tabs.setCurrentWidget(
-                            self.action_list_workspace
-                        )
-                        if self.action_list_workspace is not None
-                        else None
-                    )
                 if self.quick_automation_workspace is not None:
                     self.quick_automation_workspace.advanced_requested.connect(
                         lambda: automation_tabs.setCurrentWidget(
