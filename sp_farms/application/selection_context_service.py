@@ -113,9 +113,10 @@ class SelectionContextService:
                     device_provider = prof.provider.value
 
         auth_state = "ready"
-        if account.status.value in ("checkpoint", "suspended", "disabled"):
-            auth_state = "needs_reauth"
-        elif account.security_state.value == "critical":
+        if (
+            account.status.value in ("checkpoint", "suspended", "disabled")
+            or account.security_state.value == "critical"
+        ):
             auth_state = "needs_reauth"
 
         capabilities = TargetCapability(
@@ -155,7 +156,9 @@ class SelectionContextService:
                 if page is None:
                     # Try finding by meta page_id
                     all_pages = repo.list_all_pages()
-                    page = next((p for p in all_pages if p.page_id == page_id or p.id == page_id), None)
+                    page = next(
+                        (p for p in all_pages if p.page_id == page_id or p.id == page_id), None
+                    )
 
         if page is None:
             return None
@@ -184,12 +187,20 @@ class SelectionContextService:
                     bound_device_provider = prof.provider.value
 
         can_publish = page.is_publishing_eligible()
-        can_moderate = page.has_task(AssetPermission.MODERATE) or page.has_task(AssetPermission.MANAGE)
-        can_message = page.has_task(AssetPermission.MESSAGING) or page.has_task(AssetPermission.MANAGE)
-        can_analyze = page.has_task(AssetPermission.ANALYZE) or page.has_task(AssetPermission.MANAGE)
+        can_moderate = page.has_task(AssetPermission.MODERATE) or page.has_task(
+            AssetPermission.MANAGE
+        )
+        can_message = page.has_task(AssetPermission.MESSAGING) or page.has_task(
+            AssetPermission.MANAGE
+        )
+        can_analyze = page.has_task(AssetPermission.ANALYZE) or page.has_task(
+            AssetPermission.MANAGE
+        )
 
         if page.health != AssetHealthState.HEALTHY:
-            auth_state = "needs_reauth" if page.health == AssetHealthState.RESTRICTED else "degraded"
+            auth_state = (
+                "needs_reauth" if page.health == AssetHealthState.RESTRICTED else "degraded"
+            )
 
         capabilities = TargetCapability(
             can_restore=True,
@@ -230,8 +241,6 @@ class SelectionContextService:
         owning_acc_id = None
         owning_acc_name = None
         if profile and self._restore_service:
-            bindings = []
-            # Check bindings
             for acc in self._accounts.list_accounts():
                 b = self._restore_service.get_binding(acc.id)
                 if b and b.device_profile_id == profile.id:
@@ -266,9 +275,7 @@ class SelectionContextService:
             capabilities=capabilities,
         )
 
-    def _compute_capabilities(
-        self, targets: Sequence[ResolvedTarget]
-    ) -> tuple[set[str], set[str]]:
+    def _compute_capabilities(self, targets: Sequence[ResolvedTarget]) -> tuple[set[str], set[str]]:
         if not targets:
             return set(), set()
 

@@ -1,9 +1,9 @@
 """Application service for per-account network profiles and pre-restore automation."""
 
+import logging
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
-import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from sp_farms.domain.network_profile import (
     AccountNetworkBinding,
@@ -193,6 +193,7 @@ class NetworkService:
             )
 
         import socket
+
         try:
             with socket.create_connection((profile.host, profile.port), timeout=2.0):
                 pass
@@ -239,10 +240,12 @@ class NetworkService:
         if not result.success:
             policy = binding.fallback_policy if binding else FallbackPolicy.STOP
             if policy == FallbackPolicy.STOP:
-                raise NetworkRequirementError(
-                    f"Required network profile '{profile.name}' failed verification: {result.error_message}. "
+                msg = (
+                    f"Required network profile '{profile.name}' failed verification: "
+                    f"{result.error_message}. "
                     f"Workspace restore aborted to prevent silent network-policy violation."
                 )
+                raise NetworkRequirementError(msg)
             if policy == FallbackPolicy.USE_FALLBACK_PROFILE and profile.fallback_profile_id:
                 fallback = self.get_profile(profile.fallback_profile_id)
                 if fallback:
@@ -251,19 +254,26 @@ class NetworkService:
                         profile = fallback
                     else:
                         raise NetworkRequirementError(
-                            f"Both primary and fallback network profiles failed verification."
+                            "Both primary and fallback network profiles failed verification."
                         )
             elif policy == FallbackPolicy.USE_SYSTEM_NETWORK:
                 logger.warning(
-                    "Network verification failed for %s, operator allowed fallback to system network.",
+                    "Network verification failed for %s, falling back to system network.",
                     profile.name,
                 )
-                profile = NetworkProfile(name="System Fallback", profile_type=NetworkProfileType.SYSTEM)
+                profile = NetworkProfile(
+                    name="System Fallback", profile_type=NetworkProfileType.SYSTEM
+                )
 
         # Apply to device if proxy
-        if device_serial and self._adb and profile.profile_type in (
-            NetworkProfileType.HTTP_PROXY,
-            NetworkProfileType.HTTPS_PROXY,
+        if (
+            device_serial
+            and self._adb
+            and profile.profile_type
+            in (
+                NetworkProfileType.HTTP_PROXY,
+                NetworkProfileType.HTTPS_PROXY,
+            )
         ):
             proxy_spec = f"{profile.host}:{profile.port}"
             try:
@@ -272,6 +282,8 @@ class NetworkService:
             except Exception as exc:
                 logger.exception("Failed to set ADB proxy on %s: %s", device_serial, exc)
                 if profile.require_success:
-                    raise NetworkRequirementError(f"Failed to configure device proxy on ADB: {exc}")
+                    raise NetworkRequirementError(
+                        f"Failed to configure device proxy on ADB: {exc}"
+                    ) from exc
 
         return profile

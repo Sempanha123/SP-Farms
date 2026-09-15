@@ -637,9 +637,7 @@ class AccountWorkspace(QWidget):
     def open_context_actions(self) -> None:
         sel_ids = self.selected_account_ids
         if not sel_ids:
-            QMessageBox.information(
-                self, "No Selection", "Please select one or more accounts."
-            )
+            QMessageBox.information(self, "No Selection", "Please select one or more accounts.")
             return
 
         from sp_farms.app.context_action_dialog import ContextActionDialog

@@ -1,11 +1,10 @@
 """Domain models for SelectionContext, TargetResolution, and Contextual Action Capabilities."""
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class SelectionSource(str, Enum):
+class SelectionSource(StrEnum):
     ACCOUNTS = "accounts"
     PAGES = "pages"
     GROUPS = "groups"
@@ -14,14 +13,14 @@ class SelectionSource(str, Enum):
     COMPOSER = "composer"
 
 
-class TargetType(str, Enum):
+class TargetType(StrEnum):
     ACCOUNT = "account"
     PAGE = "page"
     GROUP = "group"
     DEVICE = "device"
 
 
-class ActionTabType(str, Enum):
+class ActionTabType(StrEnum):
     OVERVIEW = "overview"
     RESTORE = "restore"
     CONTENT = "content"
@@ -127,11 +126,25 @@ class SelectionContext:
             return "Using: No active target context"
         if len(self.resolved_targets) == 1:
             t = self.resolved_targets[0]
-            acc = t.owning_account_name or t.display_name if t.target_type == TargetType.ACCOUNT else (t.owning_account_name or "Unknown")
+            acc = (
+                t.owning_account_name or t.display_name
+                if t.target_type == TargetType.ACCOUNT
+                else (t.owning_account_name or "Unknown")
+            )
             page = t.display_name if t.target_type == TargetType.PAGE else "n/a"
             dev = f"{t.bound_device_provider or 'device'}:{t.bound_device_id or 'none'}"
-            return f"Using: Account: {acc} | Page: {page} | Device: {dev} | App: {t.preferred_app.capitalize()} | State: {t.auth_state.capitalize()}"
-        return f"Using: {len(self.resolved_targets)} targets across {len(self.inferred_account_ids)} accounts and {len(self.inferred_device_ids)} devices"
+            app_name = t.preferred_app.capitalize()
+            auth_s = t.auth_state.capitalize()
+            return (
+                f"Using: Account: {acc} | Page: {page} | "
+                f"Device: {dev} | App: {app_name} | State: {auth_s}"
+            )
+        num_targets = len(self.resolved_targets)
+        num_accounts = len(self.inferred_account_ids)
+        num_devices = len(self.inferred_device_ids)
+        return (
+            f"Using: {num_targets} targets across {num_accounts} accounts and {num_devices} devices"
+        )
 
     def get_supported_tabs(self) -> tuple[ActionTabType, ...]:
         """Determine applicable tabs based on source module and target capabilities."""

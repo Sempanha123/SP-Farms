@@ -4,16 +4,15 @@ Provides zero-reselect contextual operations, non-blocking execution,
 capability-gated tabs, and multi-target batch scheduling.
 """
 
-from collections.abc import Callable, Sequence
-from datetime import UTC, datetime
 import logging
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import (
     QObject,
     QRunnable,
     QSettings,
-    Qt,
     QThreadPool,
     Signal,
 )
@@ -28,9 +27,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QProgressBar,
-    QPushButton,
     QScrollArea,
-    QSplitter,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
@@ -41,16 +38,11 @@ from sp_farms.app.widgets import Panel, PrimaryButton, SecondaryButton, StatusCh
 from sp_farms.domain.automation_builder import AutomationPreset, AutomationPresetStep
 from sp_farms.domain.selection_context import (
     ActionTabType,
-    ResolvedTarget,
     SelectionContext,
-    SelectionSource,
-    TargetType,
 )
 
 if TYPE_CHECKING:
-    from sp_farms.application.automation_builder import AutomationBuilderService
     from sp_farms.application.context import ApplicationContext
-    from sp_farms.application.job_service import JobService
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +77,7 @@ class AsyncActionWorker(QRunnable):
     def run(self) -> None:
         self.signals.started.emit(self.action_name)
         try:
+
             def report_progress(percent: int, message: str) -> None:
                 if not self._is_cancelled:
                     self.signals.progress.emit(percent, message)
@@ -215,11 +208,15 @@ class ContextActionDialog(QDialog):
         footer_layout.addWidget(self.dry_run_btn)
 
         self.run_btn = PrimaryButton("Run")
-        self.run_btn.clicked.connect(lambda: self._execute_current_tab_action(close_on_finish=False))
+        self.run_btn.clicked.connect(
+            lambda: self._execute_current_tab_action(close_on_finish=False)
+        )
         footer_layout.addWidget(self.run_btn)
 
         self.run_and_close_btn = PrimaryButton("Run & Close")
-        self.run_and_close_btn.clicked.connect(lambda: self._execute_current_tab_action(close_on_finish=True))
+        self.run_and_close_btn.clicked.connect(
+            lambda: self._execute_current_tab_action(close_on_finish=True)
+        )
         footer_layout.addWidget(self.run_and_close_btn)
 
         root.addLayout(footer_layout)
@@ -241,7 +238,10 @@ class ContextActionDialog(QDialog):
             ActionTabType.SCHEDULE: ("Schedule", self._create_schedule_tab),
             ActionTabType.BACKUP: ("Backup / Snapshot", self._create_backup_tab),
             ActionTabType.DEVICE: ("Device Binding", self._create_device_tab),
-            ActionTabType.CONNECTED_ACCOUNT: ("Connected Account", self._create_connected_account_tab),
+            ActionTabType.CONNECTED_ACCOUNT: (
+                "Connected Account",
+                self._create_connected_account_tab,
+            ),
             ActionTabType.ASSIGNED_ACCOUNT: ("Assigned Account", self._create_assigned_account_tab),
             ActionTabType.LAUNCH_APP: ("Launch App", self._create_launch_app_tab),
             ActionTabType.HEALTH: ("Health", self._create_health_tab),
@@ -305,7 +305,9 @@ class ContextActionDialog(QDialog):
                 form.addRow("Target Name:", QLabel(t.display_name))
                 form.addRow("Target Type:", QLabel(t.target_type.value.capitalize()))
                 form.addRow("Owning Account:", QLabel(t.owning_account_name or "Self"))
-                form.addRow("Bound Device:", QLabel(t.bound_device_id or "None (Auto-assign on run)"))
+                form.addRow(
+                    "Bound Device:", QLabel(t.bound_device_id or "None (Auto-assign on run)")
+                )
                 form.addRow("Preferred App:", QLabel(t.preferred_app.capitalize()))
                 form.addRow("Auth State:", QLabel(t.auth_state.capitalize()))
                 form.addRow("Health Status:", QLabel(t.health_status.capitalize()))
@@ -321,7 +323,7 @@ class ContextActionDialog(QDialog):
         layout.setSpacing(10)
 
         desc = QLabel(
-            "Restore the account's legitimate stored workspace, display/app preferences, and auth state. "
+            "Restore the account's legitimate stored workspace and preferences.\n"
             "Atomically reserves the bound or preferred device and verifies ADB connection."
         )
         desc.setWordWrap(True)
@@ -332,7 +334,9 @@ class ContextActionDialog(QDialog):
         self.restore_launch_app.setChecked(True)
         form.addRow("App Launch:", self.restore_launch_app)
 
-        self.restore_fallback_device = QCheckBox("Allow fallback device if bound device is busy/offline")
+        self.restore_fallback_device = QCheckBox(
+            "Allow fallback device if bound device is busy/offline"
+        )
         self.restore_fallback_device.setChecked(True)
         form.addRow("Fallback Policy:", self.restore_fallback_device)
 
@@ -424,7 +428,7 @@ class ContextActionDialog(QDialog):
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 12, 12, 12)
         warn = QLabel(
-            "Note: Story publishing requires specialized Meta partner permissions or emulator automation. "
+            "Note: Story publishing requires specialized Meta permissions or emulator automation.\n"
             "Verify device capabilities before scheduling stories."
         )
         warn.setStyleSheet("color: #eab308;")
@@ -448,7 +452,9 @@ class ContextActionDialog(QDialog):
         self.comment_auto_reply = QCheckBox("Auto-reply with saved template")
         form.addRow("Auto-Reply:", self.comment_auto_reply)
         self.comment_template_edit = QLineEdit()
-        self.comment_template_edit.setPlaceholderText("e.g. Thanks for your interest! Check your inbox.")
+        self.comment_template_edit.setPlaceholderText(
+            "e.g. Thanks for your interest! Check your inbox."
+        )
         form.addRow("Template:", self.comment_template_edit)
         layout.addLayout(form)
         layout.addStretch(1)
@@ -466,7 +472,9 @@ class ContextActionDialog(QDialog):
         panel = QWidget()
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 12, 12, 12)
-        layout.addWidget(QLabel("Collect reach, impressions, engagement, and follower growth metrics."))
+        layout.addWidget(
+            QLabel("Collect reach, impressions, engagement, and follower growth metrics.")
+        )
         form = QFormLayout()
         self.analytics_range_combo = QComboBox()
         self.analytics_range_combo.addItems(["Last 7 Days", "Last 14 Days", "Last 28 Days"])
@@ -488,8 +496,8 @@ class ContextActionDialog(QDialog):
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 12, 12, 12)
         desc = QLabel(
-            "Create a lightweight workspace snapshot including device preferences, display configuration, "
-            "and authorized metadata. No raw Facebook private app data is stored."
+            "Create a lightweight workspace snapshot including device preferences, "
+            "display setup, and metadata. No raw Facebook private app data is stored."
         )
         desc.setWordWrap(True)
         layout.addWidget(desc)
@@ -511,7 +519,9 @@ class ContextActionDialog(QDialog):
 
         form = QFormLayout()
         self.device_policy_combo = QComboBox()
-        self.device_policy_combo.addItems(["Bound Device First", "Any Available", "Preferred Provider Only"])
+        self.device_policy_combo.addItems(
+            ["Bound Device First", "Any Available", "Preferred Provider Only"]
+        )
         form.addRow("Allocation Policy:", self.device_policy_combo)
 
         self.device_max_concurrent = QComboBox()
@@ -528,7 +538,9 @@ class ContextActionDialog(QDialog):
         t = self.context.primary_target
         acc_name = t.owning_account_name if t else "Unknown"
         layout.addWidget(QLabel(f"Owning Account: <b>{acc_name}</b>"))
-        layout.addWidget(QLabel("This Page's actions run through the authorized workspace of this account."))
+        layout.addWidget(
+            QLabel("This Page's actions run through the authorized workspace of this account.")
+        )
         layout.addStretch(1)
         return self._create_scrollable(panel)
 
@@ -544,7 +556,9 @@ class ContextActionDialog(QDialog):
         panel = QWidget()
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 12, 12, 12)
-        layout.addWidget(QLabel("Launch the configured preferred application on the target device."))
+        layout.addWidget(
+            QLabel("Launch the configured preferred application on the target device.")
+        )
         layout.addStretch(1)
         return self._create_scrollable(panel)
 
@@ -552,7 +566,9 @@ class ContextActionDialog(QDialog):
         panel = QWidget()
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 12, 12, 12)
-        layout.addWidget(QLabel("Device hardware, emulator status, and ADB responsiveness metrics."))
+        layout.addWidget(
+            QLabel("Device hardware, emulator status, and ADB responsiveness metrics.")
+        )
         layout.addStretch(1)
         return self._create_scrollable(panel)
 
@@ -599,12 +615,15 @@ class ContextActionDialog(QDialog):
 
         # Policy & Safety Note
         note_box = QFrame()
-        note_box.setStyleSheet("background-color: #18181b; border: 1px solid #3f3f46; border-radius: 4px; padding: 8px;")
+        note_box.setStyleSheet(
+            "background-color: #18181b; border: 1px solid #3f3f46; "
+            "border-radius: 4px; padding: 8px;"
+        )
         note_layout = QVBoxLayout(note_box)
         note_layout.setContentsMargins(8, 8, 8, 8)
         note_lbl = QLabel(
-            "<b>Compliance Notice:</b> SP-Farms configures stable operator-managed proxies. "
-            "Random IP hopping, location spoofing, and anti-detect fingerprinting are strictly prohibited."
+            "<b>Compliance Notice:</b> SP-Farms configures stable operator-managed proxies.\n"
+            "Random IP hopping, location spoofing, and anti-detect spoofing are prohibited."
         )
         note_lbl.setStyleSheet("color: #a1a1aa; font-size: 11px;")
         note_lbl.setWordWrap(True)
@@ -615,7 +634,9 @@ class ContextActionDialog(QDialog):
         form.setSpacing(8)
 
         self.net_profile_type = QComboBox()
-        self.net_profile_type.addItems(["System Default", "HTTP Proxy", "HTTPS Proxy", "SOCKS5 Proxy", "WireGuard / OpenVPN"])
+        self.net_profile_type.addItems(
+            ["System Default", "HTTP Proxy", "HTTPS Proxy", "SOCKS5 Proxy", "WireGuard / OpenVPN"]
+        )
         form.addRow("Profile Type:", self.net_profile_type)
 
         self.net_host_input = QLineEdit()
@@ -631,11 +652,13 @@ class ContextActionDialog(QDialog):
         form.addRow("Region Label:", self.net_country_input)
 
         self.net_fallback_policy = QComboBox()
-        self.net_fallback_policy.addItems([
-            "STOP (Abort restore if network fails)",
-            "Use Fallback Profile",
-            "Use System Network",
-        ])
+        self.net_fallback_policy.addItems(
+            [
+                "STOP (Abort restore if network fails)",
+                "Use Fallback Profile",
+                "Use System Network",
+            ]
+        )
         form.addRow("Failure Policy:", self.net_fallback_policy)
 
         self.net_verify_on_restore = QCheckBox("Verify connection before workspace restore")
@@ -696,7 +719,9 @@ class ContextActionDialog(QDialog):
         self.sec_session_token = QLabel("Session Token: Valid (Saved in OS Keyring)")
         form.addRow("Token Store:", self.sec_session_token)
 
-        self.sec_gate_approval = QCheckBox("Require manual confirmation for sensitive security changes")
+        self.sec_gate_approval = QCheckBox(
+            "Require manual confirmation for sensitive security changes"
+        )
         self.sec_gate_approval.setChecked(True)
         form.addRow("Safety Gate:", self.sec_gate_approval)
 
@@ -712,18 +737,22 @@ class ContextActionDialog(QDialog):
 
         desc = QLabel(
             "Authorized Account Maintenance & Profile Synchronization.\n"
-            "Safe operations: profile info audit, cache purge, session refresh, and authorized credential sync."
+            "Safe operations: profile info audit, cache purge, session refresh, "
+            "and authorized credential sync."
         )
         desc.setWordWrap(True)
         layout.addWidget(desc)
 
         warn_box = QFrame()
-        warn_box.setStyleSheet("background-color: #18181b; border: 1px solid #eab308; border-radius: 4px; padding: 8px;")
+        warn_box.setStyleSheet(
+            "background-color: #18181b; border: 1px solid #eab308; "
+            "border-radius: 4px; padding: 8px;"
+        )
         warn_layout = QVBoxLayout(warn_box)
         warn_layout.setContentsMargins(8, 8, 8, 8)
         warn_lbl = QLabel(
-            "<b>Safety Boundary:</b> Only authorized operator maintenance tasks are performed. "
-            "Checkpoint bypass, CAPTCHA avoidance, and automated credential theft are strictly prohibited."
+            "<b>Safety Boundary:</b> Only authorized operator maintenance tasks are performed.\n"
+            "Checkpoint bypass, CAPTCHA avoidance, and automated credential theft are prohibited."
         )
         warn_lbl.setStyleSheet("color: #fbbf24; font-size: 11px;")
         warn_lbl.setWordWrap(True)
@@ -732,13 +761,15 @@ class ContextActionDialog(QDialog):
 
         form = QFormLayout()
         self.maint_op_type = QComboBox()
-        self.maint_op_type.addItems([
-            "Audit Profile Info & Bio",
-            "Clear App Cache & Cookies",
-            "Refresh Session Health Check",
-            "Sync Stored Credentials (Keyring)",
-            "Generate 2FA Emergency Backup Codes",
-        ])
+        self.maint_op_type.addItems(
+            [
+                "Audit Profile Info & Bio",
+                "Clear App Cache & Cookies",
+                "Refresh Session Health Check",
+                "Sync Stored Credentials (Keyring)",
+                "Generate 2FA Emergency Backup Codes",
+            ]
+        )
         form.addRow("Operation:", self.maint_op_type)
 
         self.maint_dry_run = QCheckBox("Simulate operation first (Dry Run)")
@@ -756,16 +787,19 @@ class ContextActionDialog(QDialog):
 
         # STRICT SECURITY ENFORCEMENT NOTICE
         security_box = QFrame()
-        security_box.setStyleSheet("background-color: #27272a; border: 1px solid #dc2626; border-radius: 4px; padding: 10px;")
+        security_box.setStyleSheet(
+            "background-color: #27272a; border: 1px solid #dc2626; "
+            "border-radius: 4px; padding: 10px;"
+        )
         sec_layout = QVBoxLayout(security_box)
         sec_title = QLabel("<b>CRITICAL SECURITY BOUNDARY: QA PROFILE LAB</b>")
         sec_title.setStyleSheet("color: #ef4444; font-size: 13px;")
         sec_layout.addWidget(sec_title)
 
         sec_body = QLabel(
-            "LSPosed synthetic device identities are strictly restricted to authorized test packages "
+            "LSPosed synthetic device identities are strictly restricted to test packages\n"
             "the operator owns or is explicitly testing.\n\n"
-            "Synthetic profiles will NEVER be applied to Facebook, Facebook Lite, or Instagram production apps."
+            "Synthetic profiles will NEVER be applied to Facebook or Instagram apps."
         )
         sec_body.setWordWrap(True)
         sec_layout.addWidget(sec_body)
@@ -773,7 +807,9 @@ class ContextActionDialog(QDialog):
 
         form = QFormLayout()
         self.qa_target_package = QLineEdit()
-        self.qa_target_package.setPlaceholderText("Authorized test package name (e.g. com.example.testapp)")
+        self.qa_target_package.setPlaceholderText(
+            "Authorized test package name (e.g. com.example.testapp)"
+        )
         form.addRow("Test Package:", self.qa_target_package)
         layout.addLayout(form)
         layout.addStretch(1)
@@ -783,7 +819,9 @@ class ContextActionDialog(QDialog):
         panel = QWidget()
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 12, 12, 12)
-        layout.addWidget(QLabel("Advanced execution flags, timeout overrides, and dry-run parameters."))
+        layout.addWidget(
+            QLabel("Advanced execution flags, timeout overrides, and dry-run parameters.")
+        )
         layout.addStretch(1)
         return self._create_scrollable(panel)
 
@@ -799,7 +837,9 @@ class ContextActionDialog(QDialog):
 
     def _save_as_preset(self) -> None:
         """Save current action configuration as an automation preset."""
-        preset_name = f"Preset from {self.context.source_module.value.capitalize()} Action ({datetime.now(UTC).strftime('%Y-%m-%d %H:%M')})"
+        now_str = datetime.now(UTC).strftime("%Y-%m-%d %H:%M")
+        src_mod = self.context.source_module.value.capitalize()
+        preset_name = f"Preset from {src_mod} Action ({now_str})"
         current_tab_text = self.tabs.tabText(self.tabs.currentIndex())
 
         # Construct standard step from current tab
@@ -824,7 +864,7 @@ class ContextActionDialog(QDialog):
 
         preset = AutomationPreset(
             name=preset_name,
-            description=f"Automated preset created from Context Action Dialog for {self.context.summary_header}",
+            description=f"Automated preset from Context Dialog for {self.context.summary_header}",
             steps=(step,),
             is_built_in=False,
         )
@@ -872,10 +912,17 @@ class ContextActionDialog(QDialog):
         self.progress_bar.setValue(0)
         self.status_stream_label.setText(f"Initializing {current_tab_text}...")
 
-        def run_action(ctx: SelectionContext, progress_cb: Callable[[int, str], None]) -> tuple[bool, str]:
+        def run_action(
+            ctx: SelectionContext, progress_cb: Callable[[int, str], None]
+        ) -> tuple[bool, str]:
             total = max(1, ctx.target_count)
-            if "Maintenance" in current_tab_text and self.app_context and self.app_context.maintenance_service:
+            if (
+                "Maintenance" in current_tab_text
+                and self.app_context
+                and self.app_context.maintenance_service
+            ):
                 from sp_farms.domain.maintenance import MaintenanceTaskType
+
                 m_svc = self.app_context.maintenance_service
                 for idx, acc_id in enumerate(ctx.inferred_account_ids):
                     percent = int(((idx + 1) / max(1, len(ctx.inferred_account_ids))) * 100)
@@ -886,11 +933,17 @@ class ContextActionDialog(QDialog):
                         requires_operator_approval=False,
                     )
                     m_svc.execute_action(act.id)
-                return True, f"Successfully executed maintenance on {len(ctx.inferred_account_ids)} accounts."
+                acc_count = len(ctx.inferred_account_ids)
+                return (
+                    True,
+                    f"Successfully executed maintenance on {acc_count} accounts.",
+                )
 
             for idx, target in enumerate(ctx.resolved_targets):
                 percent = int(((idx + 1) / total) * 100)
-                progress_cb(percent, f"Processing {target.target_type.value} '{target.display_name}'...")
+                progress_cb(
+                    percent, f"Processing {target.target_type.value} '{target.display_name}'..."
+                )
             return True, f"Successfully executed {current_tab_text} on {total} targets."
 
         worker = AsyncActionWorker(current_tab_text, self.context, run_action)

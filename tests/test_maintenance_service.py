@@ -3,13 +3,9 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-import pytest
-
 from sp_farms.application.maintenance_service import MaintenanceService
 from sp_farms.domain.accounts import Account
 from sp_farms.domain.maintenance import (
-    MaintenanceAction,
-    MaintenanceExecutionResult,
     MaintenanceStatus,
     MaintenanceTaskType,
 )

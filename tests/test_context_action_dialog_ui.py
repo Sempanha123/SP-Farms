@@ -5,7 +5,6 @@ from PySide6.QtWidgets import QApplication
 
 from sp_farms.app.context_action_dialog import ContextActionDialog
 from sp_farms.domain.selection_context import (
-    ActionTabType,
     ResolvedTarget,
     SelectionContext,
     SelectionSource,

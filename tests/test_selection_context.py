@@ -3,11 +3,8 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-import pytest
-
 from sp_farms.application.selection_context_service import SelectionContextService
-from sp_farms.domain.accounts import Account, AccountStatus, PreferredApp
-from sp_farms.domain.assets import AssetHealthState, AssetPermission, Page
+from sp_farms.domain.accounts import Account
 from sp_farms.domain.device_management import DeviceProfile
 from sp_farms.domain.device_restore import AccountDeviceBinding
 from sp_farms.domain.providers import DeviceProviderType
@@ -140,13 +137,17 @@ def test_selection_context_multi_capabilities():
         target_id="acc-1",
         target_type=TargetType.ACCOUNT,
         display_name="Account 1",
-        capabilities=TargetCapability(can_restore=True, can_post_feed=True, can_reply_comments=True),
+        capabilities=TargetCapability(
+            can_restore=True, can_post_feed=True, can_reply_comments=True
+        ),
     )
     t2 = ResolvedTarget(
         target_id="acc-2",
         target_type=TargetType.ACCOUNT,
         display_name="Account 2",
-        capabilities=TargetCapability(can_restore=True, can_post_feed=False, can_reply_comments=True),
+        capabilities=TargetCapability(
+            can_restore=True, can_post_feed=False, can_reply_comments=True
+        ),
     )
 
     ctx = SelectionContext(

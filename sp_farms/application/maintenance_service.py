@@ -1,16 +1,15 @@
 """Application service for authorized account maintenance and security automation."""
 
-from collections.abc import Callable, Sequence
-from datetime import UTC, datetime
 import logging
-from typing import TYPE_CHECKING, Any
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sp_farms.domain.maintenance import (
     MaintenanceAction,
     MaintenanceExecutionResult,
     MaintenanceStatus,
     MaintenanceTaskType,
-    TotpCodeInfo,
 )
 
 if TYPE_CHECKING:
@@ -49,7 +48,9 @@ class MaintenanceService:
             task_type=task_type,
             parameters=parameters or {},
             requires_operator_approval=requires_operator_approval,
-            status=MaintenanceStatus.PENDING if requires_operator_approval else MaintenanceStatus.APPROVED,
+            status=MaintenanceStatus.PENDING
+            if requires_operator_approval
+            else MaintenanceStatus.APPROVED,
             dry_run=dry_run,
             created_at=datetime.now(UTC),
         )
@@ -151,7 +152,9 @@ class MaintenanceService:
             )
 
     def _execute_profile_audit(self, action: MaintenanceAction) -> MaintenanceExecutionResult:
-        acc = self._account_service.get_account(action.account_id) if self._account_service else None
+        acc = (
+            self._account_service.get_account(action.account_id) if self._account_service else None
+        )
         name = acc.display_name if acc else "Unknown"
         return MaintenanceExecutionResult(
             action_id=action.id,
@@ -180,7 +183,9 @@ class MaintenanceService:
             details={"device_serial": adb_serial or "none"},
         )
 
-    def _execute_session_health_check(self, action: MaintenanceAction) -> MaintenanceExecutionResult:
+    def _execute_session_health_check(
+        self, action: MaintenanceAction
+    ) -> MaintenanceExecutionResult:
         return MaintenanceExecutionResult(
             action_id=action.id,
             task_type=action.task_type,
@@ -210,7 +215,9 @@ class MaintenanceService:
             details={"algorithm": "TOTP-SHA1", "digits": "6"},
         )
 
-    def _execute_password_rotation_record(self, action: MaintenanceAction) -> MaintenanceExecutionResult:
+    def _execute_password_rotation_record(
+        self, action: MaintenanceAction
+    ) -> MaintenanceExecutionResult:
         return MaintenanceExecutionResult(
             action_id=action.id,
             task_type=action.task_type,

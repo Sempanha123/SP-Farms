@@ -4,14 +4,13 @@ from sp_farms.app.theme import (
     DARK_PALETTE,
     LIGHT_PALETTE,
     ThemeMode,
-    ThemePalette,
     palette,
     style_sheet,
 )
 
 
 def test_theme_palettes_completeness():
-    for mode, pal in [(ThemeMode.LIGHT, LIGHT_PALETTE), (ThemeMode.DARK, DARK_PALETTE)]:
+    for _mode, pal in [(ThemeMode.LIGHT, LIGHT_PALETTE), (ThemeMode.DARK, DARK_PALETTE)]:
         assert pal.window.startswith("#")
         assert pal.surface.startswith("#")
         assert pal.surface_alt.startswith("#")
@@ -42,7 +41,7 @@ def test_style_sheet_generation_and_selectors():
     assert "QFrame#accountActions" in dark_css
     assert "QTableView" in dark_css
     assert "QHeaderView::section" in dark_css
-    assert "QLabel[chip=\"true\"]" in dark_css
+    assert 'QLabel[chip="true"]' in dark_css
 
 
 def test_palette_lookup():

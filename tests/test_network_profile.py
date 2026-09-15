@@ -1,6 +1,5 @@
 """Unit tests for Phase 54: Network Profile and Pre-Restore Network Automation."""
 
-from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,12 +10,9 @@ from sp_farms.application.network_service import (
     NetworkVerificationResult,
 )
 from sp_farms.domain.network_profile import (
-    AccountNetworkBinding,
     FallbackPolicy,
-    NetworkBindingStatus,
     NetworkProfile,
     NetworkProfileType,
-    PageNetworkOverride,
 )
 
 
@@ -149,12 +145,16 @@ def test_prepare_network_for_restore_stop_policy_on_failure():
         fallback_policy=FallbackPolicy.STOP,
     )
 
-    with patch.object(service, "verify_profile", return_value=NetworkVerificationResult(
-        profile_id=profile.id,
-        success=False,
-        error_code="connection_failed",
-        error_message="Host unreachable",
-    )):
+    with patch.object(
+        service,
+        "verify_profile",
+        return_value=NetworkVerificationResult(
+            profile_id=profile.id,
+            success=False,
+            error_code="connection_failed",
+            error_message="Host unreachable",
+        ),
+    ):
         with pytest.raises(NetworkRequirementError) as exc_info:
             service.prepare_network_for_restore("acc-stop", device_serial="emulator-5554")
 
@@ -175,14 +175,20 @@ def test_prepare_network_for_restore_success_applies_adb_proxy():
     service.save_profile(profile)
     service.bind_account_to_profile(account_id="acc-ok", profile_id=profile.id)
 
-    with patch.object(service, "verify_profile", return_value=NetworkVerificationResult(
-        profile_id=profile.id,
-        success=True,
-        latency_ms=15.0,
-    )):
+    with patch.object(
+        service,
+        "verify_profile",
+        return_value=NetworkVerificationResult(
+            profile_id=profile.id,
+            success=True,
+            latency_ms=15.0,
+        ),
+    ):
         eff_profile = service.prepare_network_for_restore("acc-ok", device_serial="emulator-5554")
         assert eff_profile.id == profile.id
-        mock_adb.shell.assert_called_with("emulator-5554", "settings put global http_proxy 192.168.1.150:3128")
+        mock_adb.shell.assert_called_with(
+            "emulator-5554", "settings put global http_proxy 192.168.1.150:3128"
+        )
 
 
 def test_prepare_network_resets_proxy_for_system():
