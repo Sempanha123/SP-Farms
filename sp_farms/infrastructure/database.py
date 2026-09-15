@@ -34,6 +34,7 @@ from sp_farms.application.accounts import AccountRepository
 from sp_farms.application.analytics_repository import AnalyticsRepositoryPort
 from sp_farms.application.approval_repository import ApprovalRepositoryPort
 from sp_farms.application.audit_repository import AuditRepository
+from sp_farms.application.automation_builder import AutomationPresetRepositoryPort
 from sp_farms.application.campaign_repository import CampaignRepositoryPort
 from sp_farms.application.content_repository import ContentRepositoryPort
 from sp_farms.application.device_analytics_repository import DeviceAnalyticsRepositoryPort
@@ -64,6 +65,12 @@ from sp_farms.domain.approvals import (
     ApprovalStatus,
 )
 from sp_farms.domain.audit import AuditEvent, AuditResult
+from sp_farms.domain.automation_builder import (
+    AutomationPreset,
+    AutomationPresetStep,
+    AutomationStepType,
+    TargetSelectionRules,
+)
 from sp_farms.domain.campaigns import (
     ApprovalPolicy,
     Campaign,
@@ -3158,6 +3165,264 @@ class SqlAlchemyDeviceAnalyticsRepository(DeviceAnalyticsRepositoryPort):
     @property
     def _session(self) -> Session:
         return self._unit_of_work._active_session()
+
+
+class AutomationPresetModel(Base):
+    __tablename__ = "automation_presets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    target_rules_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    tags_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    is_built_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    @classmethod
+    def from_preset(cls, preset: AutomationPreset) -> Self:
+        return cls(
+            id=preset.id,
+            name=preset.name,
+            description=preset.description,
+            target_rules_json=json.dumps(
+                {
+                    "account_ids": list(preset.target_rules.account_ids),
+                    "account_category": preset.target_rules.account_category,
+                    "account_tags": list(preset.target_rules.account_tags),
+                    "only_healthy_accounts": preset.target_rules.only_healthy_accounts,
+                    "only_accounts_with_device": preset.target_rules.only_accounts_with_device,
+                    "only_valid_auth": preset.target_rules.only_valid_auth,
+                    "device_policy": preset.target_rules.device_policy,
+                    "provider_preference": list(preset.target_rules.provider_preference),
+                    "max_concurrent_devices": preset.target_rules.max_concurrent_devices,
+                    "stop_device_after_release": preset.target_rules.stop_device_after_release,
+                    "destination_ids": list(preset.target_rules.destination_ids),
+                    "destination_types": list(preset.target_rules.destination_types),
+                    "exclude_destination_ids": list(preset.target_rules.exclude_destination_ids),
+                    "only_destinations_with_permissions": (
+                        preset.target_rules.only_destinations_with_permissions
+                    ),
+                }
+            ),
+            tags_json=json.dumps(list(preset.tags)),
+            is_built_in=preset.is_built_in,
+            version=preset.version,
+            created_at=_as_utc(preset.created_at),
+            updated_at=_as_utc(preset.updated_at),
+        )
+
+    def to_preset(self, steps: Sequence[AutomationPresetStep] = ()) -> AutomationPreset:
+        try:
+            r_data = json.loads(self.target_rules_json)
+        except Exception:
+            r_data = {}
+
+        target_rules = TargetSelectionRules(
+            account_ids=tuple(r_data.get("account_ids", ())),
+            account_category=r_data.get("account_category"),
+            account_tags=tuple(r_data.get("account_tags", ())),
+            only_healthy_accounts=bool(r_data.get("only_healthy_accounts", True)),
+            only_accounts_with_device=bool(r_data.get("only_accounts_with_device", False)),
+            only_valid_auth=bool(r_data.get("only_valid_auth", True)),
+            device_policy=str(r_data.get("device_policy", "bound_first")),
+            provider_preference=tuple(
+                r_data.get("provider_preference", ("ldplayer", "mumu", "physical"))
+            ),
+            max_concurrent_devices=int(r_data.get("max_concurrent_devices", 4)),
+            stop_device_after_release=bool(r_data.get("stop_device_after_release", False)),
+            destination_ids=tuple(r_data.get("destination_ids", ())),
+            destination_types=tuple(r_data.get("destination_types", ("page",))),
+            exclude_destination_ids=tuple(r_data.get("exclude_destination_ids", ())),
+            only_destinations_with_permissions=bool(
+                r_data.get("only_destinations_with_permissions", True)
+            ),
+        )
+
+        try:
+            tags = tuple(json.loads(self.tags_json))
+        except Exception:
+            tags = ()
+
+        return AutomationPreset(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            target_rules=target_rules,
+            steps=tuple(sorted(steps, key=lambda s: s.order)),
+            tags=tags,
+            is_built_in=self.is_built_in,
+            version=self.version,
+            created_at=_as_utc(self.created_at),
+            updated_at=_as_utc(self.updated_at),
+        )
+
+
+class AutomationPresetStepModel(Base):
+    __tablename__ = "automation_preset_steps"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    preset_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("automation_presets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    step_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    step_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    configuration_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    requires_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    continue_on_error: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    retry_policy: Mapped[str] = mapped_column(String(32), nullable=False, default="no_retry")
+    timeout_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=120)
+
+    @classmethod
+    def from_step(cls, step: AutomationPresetStep) -> Self:
+        return cls(
+            id=step.id,
+            preset_id=step.preset_id,
+            step_type=step.step_type.value,
+            enabled=step.enabled,
+            step_order=step.order,
+            configuration_json=json.dumps(dict(step.configuration)),
+            requires_approval=step.requires_approval,
+            continue_on_error=step.continue_on_error,
+            retry_policy=step.retry_policy,
+            timeout_seconds=step.timeout_seconds,
+        )
+
+    def to_step(self) -> AutomationPresetStep:
+        try:
+            st = AutomationStepType(self.step_type)
+        except Exception:
+            st = AutomationStepType.HEALTH_CHECK
+
+        try:
+            cfg = json.loads(self.configuration_json)
+        except Exception:
+            cfg = {}
+
+        return AutomationPresetStep(
+            id=self.id,
+            preset_id=self.preset_id,
+            step_type=st,
+            enabled=self.enabled,
+            order=self.step_order,
+            configuration=cfg,
+            requires_approval=self.requires_approval,
+            continue_on_error=self.continue_on_error,
+            retry_policy=self.retry_policy,
+            timeout_seconds=self.timeout_seconds,
+        )
+
+
+class SqlAlchemyAutomationPresetRepository(AutomationPresetRepositoryPort):
+    def __init__(self, unit_of_work: UnitOfWork) -> None:
+        if not isinstance(unit_of_work, SqlAlchemyUnitOfWork):
+            raise TypeError("SqlAlchemyAutomationPresetRepository requires SqlAlchemyUnitOfWork")
+        self._unit_of_work = unit_of_work
+        self._fallback_session: Session | None = None
+
+    def save_preset(self, preset: AutomationPreset) -> None:
+        model = self._session.get(AutomationPresetModel, preset.id)
+        if model is None:
+            model = AutomationPresetModel.from_preset(preset)
+            self._session.add(model)
+        else:
+            model.name = preset.name
+            model.description = preset.description
+            model.target_rules_json = AutomationPresetModel.from_preset(preset).target_rules_json
+            model.tags_json = json.dumps(list(preset.tags))
+            model.is_built_in = preset.is_built_in
+            model.version = preset.version
+            model.updated_at = _as_utc(preset.updated_at)
+
+        # Sync steps: remove old steps for preset and insert fresh ones
+        self._session.query(AutomationPresetStepModel).filter(
+            AutomationPresetStepModel.preset_id == preset.id
+        ).delete(synchronize_session=False)
+
+        for step in preset.steps:
+            self._session.add(AutomationPresetStepModel.from_step(step))
+
+        self._session.flush()
+        if self._unit_of_work.session is None and self._fallback_session is not None:
+            self._fallback_session.commit()
+
+    def get_preset(self, preset_id: str) -> AutomationPreset | None:
+        model = self._session.get(AutomationPresetModel, preset_id)
+        if model is None:
+            return None
+        step_models = (
+            self._session.query(AutomationPresetStepModel)
+            .filter(AutomationPresetStepModel.preset_id == preset_id)
+            .order_by(AutomationPresetStepModel.step_order.asc())
+            .all()
+        )
+        return model.to_preset(tuple(sm.to_step() for sm in step_models))
+
+    def get_preset_by_name(self, name: str) -> AutomationPreset | None:
+        model = (
+            self._session.query(AutomationPresetModel)
+            .filter(AutomationPresetModel.name == name)
+            .first()
+        )
+        if model is None:
+            return None
+        step_models = (
+            self._session.query(AutomationPresetStepModel)
+            .filter(AutomationPresetStepModel.preset_id == model.id)
+            .order_by(AutomationPresetStepModel.step_order.asc())
+            .all()
+        )
+        return model.to_preset(tuple(sm.to_step() for sm in step_models))
+
+    def list_presets(self) -> Sequence[AutomationPreset]:
+        models = (
+            self._session.query(AutomationPresetModel)
+            .order_by(AutomationPresetModel.name.asc())
+            .all()
+        )
+        result: list[AutomationPreset] = []
+        for m in models:
+            step_models = (
+                self._session.query(AutomationPresetStepModel)
+                .filter(AutomationPresetStepModel.preset_id == m.id)
+                .order_by(AutomationPresetStepModel.step_order.asc())
+                .all()
+            )
+            result.append(m.to_preset(tuple(sm.to_step() for sm in step_models)))
+        return tuple(result)
+
+    def delete_preset(self, preset_id: str) -> bool:
+        model = self._session.get(AutomationPresetModel, preset_id)
+        if model is not None:
+            self._session.query(AutomationPresetStepModel).filter(
+                AutomationPresetStepModel.preset_id == preset_id
+            ).delete(synchronize_session=False)
+            self._session.delete(model)
+            self._session.flush()
+            if self._unit_of_work.session is None and self._fallback_session is not None:
+                self._fallback_session.commit()
+            return True
+        return False
+
+    @property
+    def _session(self) -> Session:
+        if self._unit_of_work.session is not None:
+            return self._unit_of_work.session
+        if self._fallback_session is None:
+            self._fallback_session = self._unit_of_work._session_factory()
+        return self._fallback_session
 
 
 class Database:

@@ -11,6 +11,7 @@ from sp_farms.application.asset_sync_service import AssetSyncService
 from sp_farms.application.audit_service import AuditService
 from sp_farms.application.automation.appium_session_manager import AppiumSessionManager
 from sp_farms.application.automation.job_handler import AppiumJobExecutor
+from sp_farms.application.automation_builder import AutomationBuilderService
 from sp_farms.application.backup_restore_service import BackupRestoreService
 from sp_farms.application.campaign_service import CampaignService
 from sp_farms.application.caption_ai_service import CaptionAIService
@@ -41,6 +42,7 @@ from sp_farms.application.restore_workspace_service import RestoreWorkspaceServi
 from sp_farms.application.scheduler_service import SchedulerService
 from sp_farms.application.secret_service import SecretService
 from sp_farms.application.security_service import SecurityService
+from sp_farms.application.selection_context_service import SelectionContextService
 from sp_farms.application.snapshot_service import SnapshotService
 from sp_farms.application.update_service import UpdateService
 from sp_farms.application.worker import FakeStressJobHandler, WorkerSupervisor
@@ -56,6 +58,7 @@ from sp_farms.infrastructure.database import (
     SqlAlchemyAnalyticsRepository,
     SqlAlchemyApprovalRepository,
     SqlAlchemyAuditRepository,
+    SqlAlchemyAutomationPresetRepository,
     SqlAlchemyCampaignRepository,
     SqlAlchemyContentRepository,
     SqlAlchemyDeviceAnalyticsRepository,
@@ -310,6 +313,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
     licensing_service = LicensingService()
     i18n_service = I18nService()
     update_service = UpdateService(current_version=__version__)
+
     def _probe_adb() -> tuple[bool, str]:
         avail = bool(adb.adb_path and adb.adb_path.exists())
         return avail, "ADB ready" if avail else "ADB not found"
@@ -355,6 +359,24 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
     plugin_service.register_instance(SampleNotificationPlugin())
     plugin_service.discover_and_load_all()
 
+    uow = database.unit_of_work()
+    automation_preset_repo = SqlAlchemyAutomationPresetRepository(uow)
+    automation_builder_service = AutomationBuilderService(
+        repository=automation_preset_repo,
+        audit_service=audit_service,
+        job_service=job_service,
+    )
+    with uow:
+        automation_builder_service.initialize_built_in_presets_if_missing()
+
+    selection_context_service = SelectionContextService(
+        account_service=account_service,
+        restore_workspace_service=restore_workspace_service,
+        asset_repository_factory=SqlAlchemyAssetRepository,
+        unit_of_work_factory=database.unit_of_work,
+        device_service=device_service,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -394,6 +416,8 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         crash_recovery_service=crash_recovery_service,
         health_service=health_service,
         update_service=update_service,
+        automation_builder_service=automation_builder_service,
+        selection_context_service=selection_context_service,
     )
     context.add_shutdown_hook(crash_recovery_service.record_clean_shutdown)
     context.add_shutdown_hook(log_handler.close)

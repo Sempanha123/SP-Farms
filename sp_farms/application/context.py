@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from sp_farms.application.approval_service import ApprovalService
     from sp_farms.application.asset_sync_service import AssetSyncService
     from sp_farms.application.audit_service import AuditService
+    from sp_farms.application.automation_builder import AutomationBuilderService
     from sp_farms.application.backup_restore_service import BackupRestoreService
     from sp_farms.application.campaign_service import CampaignService
     from sp_farms.application.caption_ai_service import CaptionAIService
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
     from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
     from sp_farms.application.scheduler_service import SchedulerService
     from sp_farms.application.security_service import SecurityService
+    from sp_farms.application.selection_context_service import SelectionContextService
     from sp_farms.application.snapshot_service import SnapshotService
     from sp_farms.application.update_service import UpdateService
     from sp_farms.application.worker import WorkerSupervisor
@@ -84,6 +86,8 @@ class ApplicationContext:
     crash_recovery_service: "CrashRecoveryService | None" = None
     health_service: "HealthService | None" = None
     update_service: "UpdateService | None" = None
+    automation_builder_service: "AutomationBuilderService | None" = None
+    selection_context_service: "SelectionContextService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

@@ -14,15 +14,19 @@ def _resolve_app_icon() -> QIcon | None:
     base_dir = getattr(sys, "_MEIPASS", None)
     candidates: list[Path] = []
     if base_dir:
-        candidates.extend([
-            Path(base_dir) / "assets" / "icons" / "sp_farms.ico",
-            Path(base_dir) / "assets" / "icons" / "sp_farms.png",
-        ])
+        candidates.extend(
+            [
+                Path(base_dir) / "assets" / "icons" / "sp_farms.ico",
+                Path(base_dir) / "assets" / "icons" / "sp_farms.png",
+            ]
+        )
     repo_root = Path(__file__).resolve().parent.parent.parent
-    candidates.extend([
-        repo_root / "assets" / "icons" / "sp_farms.ico",
-        repo_root / "assets" / "icons" / "sp_farms.png",
-    ])
+    candidates.extend(
+        [
+            repo_root / "assets" / "icons" / "sp_farms.ico",
+            repo_root / "assets" / "icons" / "sp_farms.png",
+        ]
+    )
     for candidate in candidates:
         if candidate.exists():
             return QIcon(str(candidate))

@@ -62,9 +62,7 @@ class CrashRecoveryService:
                 last_crash = datetime.now(UTC)
 
             safe_active = crashes >= self.threshold
-            reason = (
-                f"Detected {crashes} consecutive unclean shutdowns" if safe_active else None
-            )
+            reason = f"Detected {crashes} consecutive unclean shutdowns" if safe_active else None
             self._safe_mode = safe_active
             return SafeModeState(
                 safe_mode_active=safe_active,

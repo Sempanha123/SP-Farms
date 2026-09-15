@@ -1,6 +1,6 @@
 from collections.abc import Callable, Sequence
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import (
     QAbstractListModel,
@@ -39,6 +39,10 @@ from sp_farms.app.widgets import (
 )
 from sp_farms.application.device_service import DeviceService
 from sp_farms.domain.device_management import ManagedDevice
+
+if TYPE_CHECKING:
+    from sp_farms.application.context import ApplicationContext
+    from sp_farms.application.selection_context_service import SelectionContextService
 
 COLUMNS = (
     "Provider",
@@ -251,11 +255,15 @@ class DeviceManagerView(QWidget):
         settings: QSettings | None = None,
         rail_model: DeviceRailModel | None = None,
         parent: QWidget | None = None,
+        selection_context_service: "SelectionContextService | None" = None,
+        app_context: "ApplicationContext | None" = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("deviceManagerView")
         self._service = service
         self._settings = settings or QSettings("SP-Farms", "SP-Farms")
+        self._selection_context_service = selection_context_service
+        self._app_context = app_context
         self._pool = QThreadPool.globalInstance()
         self._workers: set[_Worker] = set()
         self.model = DeviceTableModel(self)
@@ -361,8 +369,13 @@ class DeviceManagerView(QWidget):
         self.logs_btn = SecondaryButton("Logs")
         self.arrange_btn = SecondaryButton("Arrange Windows")
         self.arrange_btn.setEnabled(False)
+        self.context_actions_btn = PrimaryButton("Actions...")
+        self.context_actions_btn.setObjectName("deviceContextActionsButton")
+        self.context_actions_btn.setEnabled(False)
+        self.context_actions_btn.clicked.connect(self.open_context_actions)
         for button in (
             self.select_all_btn,
+            self.context_actions_btn,
             self.start_btn,
             self.stop_btn,
             self.restart_btn,
@@ -487,6 +500,28 @@ class DeviceManagerView(QWidget):
             ready and all(device.capabilities.can_collect_logs for device in selected)
         )
         self.save_profile_btn.setEnabled(len(selected) == 1 and self._service is not None)
+        self.context_actions_btn.setEnabled(bool(selected))
+
+    def open_context_actions(self) -> None:
+        selected = self._selected_devices()
+        if not selected:
+            return
+        device_ids = [d.external_id for d in selected]
+        from sp_farms.app.context_action_dialog import ContextActionDialog
+        from sp_farms.domain.selection_context import SelectionContext, SelectionSource
+
+        if self._selection_context_service:
+            ctx = self._selection_context_service.resolve_context(
+                source_module=SelectionSource.DEVICES,
+                device_ids=device_ids,
+            )
+        else:
+            ctx = SelectionContext(
+                source_module=SelectionSource.DEVICES,
+                selected_device_ids=tuple(device_ids),
+            )
+        dialog = ContextActionDialog(context=ctx, app_context=self._app_context, parent=self)
+        dialog.exec()
 
     def run_devices(
         self,

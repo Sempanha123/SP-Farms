@@ -59,9 +59,11 @@ from sp_farms.domain.device_restore import RestoreWorkspaceResult
 
 if TYPE_CHECKING:
     from sp_farms.application.account_exchange_service import AccountExchangeService
+    from sp_farms.application.context import ApplicationContext
     from sp_farms.application.device_pool_service import DevicePoolService
     from sp_farms.application.restore_workspace_service import RestoreWorkspaceService
     from sp_farms.application.security_service import SecurityService
+    from sp_farms.application.selection_context_service import SelectionContextService
     from sp_farms.application.snapshot_service import SnapshotService
 
 
@@ -128,6 +130,8 @@ class AccountWorkspace(QWidget):
         security_service: "SecurityService | None" = None,
         settings: QSettings | None = None,
         parent: QWidget | None = None,
+        selection_context_service: "SelectionContextService | None" = None,
+        app_context: "ApplicationContext | None" = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("accountWorkspace")
@@ -137,6 +141,8 @@ class AccountWorkspace(QWidget):
         self._snapshot_service = snapshot_service
         self._exchange_service = exchange_service
         self._security_service = security_service
+        self._selection_context_service = selection_context_service
+        self._app_context = app_context
         self._workers: set[_Worker] = set()
         self._pool = QThreadPool.globalInstance()
         self._settings = (
@@ -229,6 +235,11 @@ class AccountWorkspace(QWidget):
         self.status_chip = StatusChip("Ready", state="neutral")
         self.status_chip.setObjectName("accountStatusChip")
 
+        self.actions_btn = PrimaryButton("Actions...")
+        self.actions_btn.setObjectName("contextActionsButton")
+        self.actions_btn.setEnabled(False)
+        self.actions_btn.clicked.connect(self.open_context_actions)
+
         self.restore_btn = SecondaryButton("Restore")
         self.restore_btn.setObjectName("restoreWorkspaceButton")
         self.restore_btn.setEnabled(False)
@@ -319,6 +330,7 @@ class AccountWorkspace(QWidget):
         toolbar_layout.addWidget(self.network_filter)
         toolbar_layout.addWidget(self.columns_btn)
         toolbar_layout.addWidget(self.bulk_btn)
+        toolbar_layout.addWidget(self.actions_btn)
         toolbar_layout.addWidget(self.status_chip)
         toolbar_layout.addWidget(self.add_btn)
         listing_layout.addWidget(toolbar)
@@ -567,6 +579,13 @@ class AccountWorkspace(QWidget):
             return
 
         menu = QMenu(self)
+        act_actions = QAction(f"Actions ({count})...", self)
+        act_actions.setStyleSheet("font-weight: bold;")
+        act_actions.triggered.connect(self.open_context_actions)
+        menu.addAction(act_actions)
+
+        menu.addSeparator()
+
         act_restore = QAction("Restore Workspace", self)
         act_restore.setEnabled(bool(self._restore_service and count == 1))
         act_restore.triggered.connect(self.restore_selected_workspace)
@@ -614,6 +633,35 @@ class AccountWorkspace(QWidget):
         menu.addAction(act_import)
 
         menu.exec(self.table.viewport().mapToGlobal(pos))
+
+    def open_context_actions(self) -> None:
+        sel_ids = self.selected_account_ids
+        if not sel_ids:
+            QMessageBox.information(
+                self, "No Selection", "Please select one or more accounts."
+            )
+            return
+
+        from sp_farms.app.context_action_dialog import ContextActionDialog
+        from sp_farms.domain.selection_context import SelectionContext, SelectionSource
+
+        if self._selection_context_service:
+            context = self._selection_context_service.resolve_context(
+                source_module=SelectionSource.ACCOUNTS,
+                account_ids=sel_ids,
+            )
+        else:
+            context = SelectionContext(
+                source_module=SelectionSource.ACCOUNTS,
+                selected_account_ids=sel_ids,
+            )
+
+        dialog = ContextActionDialog(
+            context=context,
+            app_context=self._app_context,
+            parent=self,
+        )
+        dialog.exec()
 
     def open_bulk_category_dialog(self) -> None:
         if not self._accounts:
@@ -809,6 +857,7 @@ class AccountWorkspace(QWidget):
     def _on_selection_changed(self) -> None:
         sel_ids = self.selected_account_ids
         count = len(sel_ids)
+        self.actions_btn.setEnabled(bool(count >= 1))
         self.restore_btn.setEnabled(bool(count == 1 and self._restore_service is not None))
         self.restore_selected_btn.setEnabled(bool(count >= 1 and self._pool_service is not None))
         self.backup_btn.setEnabled(bool(count >= 1 and self._snapshot_service is not None))
