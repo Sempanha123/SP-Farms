@@ -35,8 +35,8 @@ from sp_farms.app.quick_automation_workspace import QuickAutomationWorkspace
 from sp_farms.app.scheduler_workspace import SchedulerWorkspace
 from sp_farms.app.shortcut_help import ShortcutHelpDialog
 from sp_farms.app.theme import ThemeMode, style_sheet
-from sp_farms.app.workspaces import WorkspaceLayout
 from sp_farms.app.widgets import ClockWidget
+from sp_farms.app.workspaces import WorkspaceLayout
 from sp_farms.application.context import ApplicationContext
 
 NAVIGATION = (
@@ -385,7 +385,7 @@ class MainWindow(QMainWindow):
                 automation_tabs.addTab(self.job_queue_view, "Job Execution Queue")
                 if self.quick_automation_workspace is not None:
                     self.quick_automation_workspace.action_list_requested.connect(
-                        lambda: automation_tabs.setCurrentWidget(
+                        lambda tabs=automation_tabs: tabs.setCurrentWidget(
                             self.action_list_workspace
                         )
                         if self.action_list_workspace is not None
@@ -393,7 +393,7 @@ class MainWindow(QMainWindow):
                     )
                 if self.quick_automation_workspace is not None:
                     self.quick_automation_workspace.advanced_requested.connect(
-                        lambda: automation_tabs.setCurrentWidget(
+                        lambda tabs=automation_tabs: tabs.setCurrentWidget(
                             self.automation_builder_workspace
                         )
                         if self.automation_builder_workspace is not None

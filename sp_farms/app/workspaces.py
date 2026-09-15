@@ -285,7 +285,10 @@ class DeviceRail(Panel):
         )
         self.start_all_btn.setEnabled(
             bool(devices)
-            and any(device.capabilities.can_start_stop and not device.is_online for device in devices)
+            and any(
+                device.capabilities.can_start_stop and not device.is_online
+                for device in devices
+            )
         )
         self.stop_all_btn.setEnabled(
             any(device.capabilities.can_start_stop and device.is_online for device in devices)
@@ -352,7 +355,10 @@ class DeviceRail(Panel):
             device
             for device in self._all_devices()
             if device.capabilities.can_start_stop
-            and ((action == "start" and not device.is_online) or (action == "stop" and device.is_online))
+            and (
+                (action == "start" and not device.is_online)
+                or (action == "stop" and device.is_online)
+            )
         )
         if devices:
             self._controller.run_devices(action, devices)

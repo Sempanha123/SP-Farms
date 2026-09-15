@@ -37,7 +37,6 @@ from sp_farms.domain.automation_builder import (
     TargetSelectionRules,
 )
 
-
 # Farm-Reel-like grouping, backed only by SP-Farms' existing authorized step types.
 ACTION_GROUPS: tuple[tuple[str, tuple[AutomationStepType, ...]], ...] = (
     (
@@ -173,7 +172,8 @@ class ActionConfigEditor(Panel):
         self.delay.setValue(0)
         self.delay.setSuffix(" sec")
         self.delay.setToolTip(
-            "Stored in the step configuration and applied by workers that support delayed execution."
+            "Stored in the step configuration and applied by workers that "
+            "support delayed execution."
         )
         self.delay.valueChanged.connect(self.changed.emit)
         common_layout.addRow("Delay:", self.delay)
@@ -279,7 +279,11 @@ class ActionConfigEditor(Panel):
         self.dynamic.setCurrentWidget(self.form_page)
 
         if step_type is AutomationStepType.RESTORE_WORKSPACE:
-            self._add_check("launch_app", "Launch preferred app:", bool(cfg.get("launch_app", True)))
+            self._add_check(
+                "launch_app",
+                "Launch preferred app:",
+                bool(cfg.get("launch_app", True)),
+            )
             self._add_check(
                 "allow_fallback_device",
                 "Allow fallback device:",
@@ -737,7 +741,8 @@ class FarmReelActionListWorkspace(QWidget):
         selected_layout.addLayout(order_row)
 
         verification = QLabel(
-            "Verification/checkpoint: workflow pauses for operator action, then resumes after successful verification."
+            "Verification/checkpoint: workflow pauses for operator action, "
+            "then resumes after successful verification."
         )
         verification.setProperty("muted", True)
         verification.setWordWrap(True)

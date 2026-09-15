@@ -215,7 +215,10 @@ class QuickAutomationWorkspace(QWidget):
             self._refresh_flow()
             return
 
-        enabled = sorted((step for step in preset.steps if step.enabled), key=lambda step: step.order)
+        enabled = sorted(
+            (step for step in preset.steps if step.enabled),
+            key=lambda step: step.order,
+        )
         approvals = sum(step.requires_approval for step in enabled)
         self.summary.setText(
             f"{preset.description}\n\n{len(enabled)} enabled steps · "

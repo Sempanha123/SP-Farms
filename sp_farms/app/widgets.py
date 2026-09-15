@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from PySide6.QtCore import QDateTime, QTimer, Qt
+from PySide6.QtCore import QDateTime, Qt, QTimer
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QFrame,
