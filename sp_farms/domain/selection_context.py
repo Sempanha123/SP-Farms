@@ -43,6 +43,8 @@ class ActionTabType(str, Enum):
     LOGS = "logs"
     RELEASE = "release"
     SECURITY = "security"
+    NETWORK = "network"
+    MAINTENANCE = "maintenance"
     QA_PROFILE_LAB = "qa_profile_lab"
     ADVANCED = "advanced"
 
@@ -147,7 +149,9 @@ class SelectionContext:
                 ActionTabType.ANALYTICS,
                 ActionTabType.BACKUP,
                 ActionTabType.DEVICE,
+                ActionTabType.NETWORK,
                 ActionTabType.SECURITY,
+                ActionTabType.MAINTENANCE,
                 ActionTabType.ADVANCED,
             )
         if self.source_module == SelectionSource.PAGES:
@@ -165,6 +169,7 @@ class SelectionContext:
                 ActionTabType.BACKUP,
                 ActionTabType.CONNECTED_ACCOUNT,
                 ActionTabType.DEVICE,
+                ActionTabType.NETWORK,
                 ActionTabType.ADVANCED,
             )
         if self.source_module == SelectionSource.DEVICES:

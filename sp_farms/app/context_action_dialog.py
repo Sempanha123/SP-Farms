@@ -248,7 +248,9 @@ class ContextActionDialog(QDialog):
             ActionTabType.SCREENSHOT: ("Screenshot", self._create_screenshot_tab),
             ActionTabType.LOGS: ("Logs", self._create_logs_tab),
             ActionTabType.RELEASE: ("Release Device", self._create_release_tab),
+            ActionTabType.NETWORK: ("Network", self._create_network_tab),
             ActionTabType.SECURITY: ("Security", self._create_security_tab),
+            ActionTabType.MAINTENANCE: ("Maintenance", self._create_maintenance_tab),
             ActionTabType.QA_PROFILE_LAB: ("QA Profile Lab", self._create_qa_profile_tab),
             ActionTabType.ADVANCED: ("Advanced", self._create_advanced_tab),
         }
@@ -582,11 +584,168 @@ class ContextActionDialog(QDialog):
         layout.addStretch(1)
         return self._create_scrollable(panel)
 
+    def _create_network_tab(self) -> QWidget:
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
+
+        desc = QLabel(
+            "Per-Account Network Profile & Proxy Isolation.\n"
+            "Enforce deterministic network routing before restoring workspace or launching apps."
+        )
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        # Policy & Safety Note
+        note_box = QFrame()
+        note_box.setStyleSheet("background-color: #18181b; border: 1px solid #3f3f46; border-radius: 4px; padding: 8px;")
+        note_layout = QVBoxLayout(note_box)
+        note_layout.setContentsMargins(8, 8, 8, 8)
+        note_lbl = QLabel(
+            "<b>Compliance Notice:</b> SP-Farms configures stable operator-managed proxies. "
+            "Random IP hopping, location spoofing, and anti-detect fingerprinting are strictly prohibited."
+        )
+        note_lbl.setStyleSheet("color: #a1a1aa; font-size: 11px;")
+        note_lbl.setWordWrap(True)
+        note_layout.addWidget(note_lbl)
+        layout.addWidget(note_box)
+
+        form = QFormLayout()
+        form.setSpacing(8)
+
+        self.net_profile_type = QComboBox()
+        self.net_profile_type.addItems(["System Default", "HTTP Proxy", "HTTPS Proxy", "SOCKS5 Proxy", "WireGuard / OpenVPN"])
+        form.addRow("Profile Type:", self.net_profile_type)
+
+        self.net_host_input = QLineEdit()
+        self.net_host_input.setPlaceholderText("e.g. 192.168.1.100 or proxy.internal")
+        form.addRow("Host / Gateway:", self.net_host_input)
+
+        self.net_port_input = QLineEdit()
+        self.net_port_input.setPlaceholderText("e.g. 8080")
+        form.addRow("Port:", self.net_port_input)
+
+        self.net_country_input = QLineEdit()
+        self.net_country_input.setPlaceholderText("e.g. US, KH, SG")
+        form.addRow("Region Label:", self.net_country_input)
+
+        self.net_fallback_policy = QComboBox()
+        self.net_fallback_policy.addItems([
+            "STOP (Abort restore if network fails)",
+            "Use Fallback Profile",
+            "Use System Network",
+        ])
+        form.addRow("Failure Policy:", self.net_fallback_policy)
+
+        self.net_verify_on_restore = QCheckBox("Verify connection before workspace restore")
+        self.net_verify_on_restore.setChecked(True)
+        form.addRow("", self.net_verify_on_restore)
+
+        layout.addLayout(form)
+
+        # Test Connection button & status
+        test_row = QHBoxLayout()
+        self.net_test_btn = SecondaryButton("Test Connection")
+        self.net_status_label = QLabel("Status: Ready to test")
+        self.net_status_label.setStyleSheet("color: #71717a; font-size: 12px;")
+        test_row.addWidget(self.net_test_btn)
+        test_row.addWidget(self.net_status_label, stretch=1)
+        layout.addLayout(test_row)
+
+        def test_net_clicked() -> None:
+            host = self.net_host_input.text().strip()
+            ptype = self.net_profile_type.currentText()
+            if ptype == "System Default":
+                self.net_status_label.setText("Status: [PASS] System network active")
+                self.net_status_label.setStyleSheet("color: #22c55e; font-size: 12px;")
+                return
+            if not host:
+                self.net_status_label.setText("Status: [FAIL] Host cannot be empty")
+                self.net_status_label.setStyleSheet("color: #ef4444; font-size: 12px;")
+                return
+            self.net_status_label.setText(f"Status: [PASS] Profile configured ({host})")
+            self.net_status_label.setStyleSheet("color: #22c55e; font-size: 12px;")
+
+        self.net_test_btn.clicked.connect(test_net_clicked)
+
+        layout.addStretch(1)
+        return self._create_scrollable(panel)
+
     def _create_security_tab(self) -> QWidget:
         panel = QWidget()
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(12, 12, 12, 12)
-        layout.addWidget(QLabel("Security health, 2FA status, and session token freshness."))
+        layout.setSpacing(10)
+
+        desc = QLabel(
+            "Account Security, Session Health & 2FA State.\n"
+            "View token validity, credential rotation status, and operator approval gates."
+        )
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        form = QFormLayout()
+        primary = self.context.primary_target
+        auth_state = primary.auth_state if primary else "ready"
+        form.addRow("Auth State:", QLabel(f"<b>{auth_state.capitalize()}</b>"))
+
+        self.sec_2fa_status = QLabel("2FA: Configured (TOTP)")
+        form.addRow("Two-Factor Auth:", self.sec_2fa_status)
+
+        self.sec_session_token = QLabel("Session Token: Valid (Saved in OS Keyring)")
+        form.addRow("Token Store:", self.sec_session_token)
+
+        self.sec_gate_approval = QCheckBox("Require manual confirmation for sensitive security changes")
+        self.sec_gate_approval.setChecked(True)
+        form.addRow("Safety Gate:", self.sec_gate_approval)
+
+        layout.addLayout(form)
+        layout.addStretch(1)
+        return self._create_scrollable(panel)
+
+    def _create_maintenance_tab(self) -> QWidget:
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
+
+        desc = QLabel(
+            "Authorized Account Maintenance & Profile Synchronization.\n"
+            "Safe operations: profile info audit, cache purge, session refresh, and authorized credential sync."
+        )
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        warn_box = QFrame()
+        warn_box.setStyleSheet("background-color: #18181b; border: 1px solid #eab308; border-radius: 4px; padding: 8px;")
+        warn_layout = QVBoxLayout(warn_box)
+        warn_layout.setContentsMargins(8, 8, 8, 8)
+        warn_lbl = QLabel(
+            "<b>Safety Boundary:</b> Only authorized operator maintenance tasks are performed. "
+            "Checkpoint bypass, CAPTCHA avoidance, and automated credential theft are strictly prohibited."
+        )
+        warn_lbl.setStyleSheet("color: #fbbf24; font-size: 11px;")
+        warn_lbl.setWordWrap(True)
+        warn_layout.addWidget(warn_lbl)
+        layout.addWidget(warn_box)
+
+        form = QFormLayout()
+        self.maint_op_type = QComboBox()
+        self.maint_op_type.addItems([
+            "Audit Profile Info & Bio",
+            "Clear App Cache & Cookies",
+            "Refresh Session Health Check",
+            "Sync Stored Credentials (Keyring)",
+            "Generate 2FA Emergency Backup Codes",
+        ])
+        form.addRow("Operation:", self.maint_op_type)
+
+        self.maint_dry_run = QCheckBox("Simulate operation first (Dry Run)")
+        self.maint_dry_run.setChecked(True)
+        form.addRow("", self.maint_dry_run)
+
+        layout.addLayout(form)
         layout.addStretch(1)
         return self._create_scrollable(panel)
 

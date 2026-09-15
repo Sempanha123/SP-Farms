@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from sp_farms.application.licensing_service import LicensingService
     from sp_farms.application.meta_client import MetaClientPort
     from sp_farms.application.meta_service import MetaIntegrationService
+    from sp_farms.application.network_service import NetworkService
     from sp_farms.application.plugin_service import PluginService
     from sp_farms.application.providers import DeviceProviderPort
     from sp_farms.application.publishing_service import PublishingService
@@ -88,6 +89,7 @@ class ApplicationContext:
     update_service: "UpdateService | None" = None
     automation_builder_service: "AutomationBuilderService | None" = None
     selection_context_service: "SelectionContextService | None" = None
+    network_service: "NetworkService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

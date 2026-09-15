@@ -31,6 +31,7 @@ from sp_farms.application.media_prep_job import MediaPrepJobHandler
 from sp_farms.application.media_prep_service import MediaPreparationService
 from sp_farms.application.meta_client import MetaClientPort
 from sp_farms.application.meta_service import MetaIntegrationService
+from sp_farms.application.network_service import NetworkService
 from sp_farms.application.plugin_service import (
     PluginService,
     SampleAnalyticsExporterPlugin,
@@ -138,6 +139,11 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         clock,
     )
     account_onboarding_service = AccountOnboardingService(account_service)
+    network_service = NetworkService(
+        unit_of_work_factory=database.unit_of_work,
+        adb=adb,
+        clock=clock,
+    )
     restore_workspace_service = RestoreWorkspaceService(
         database.unit_of_work,
         SqlAlchemyDeviceProfileRepository,
@@ -146,6 +152,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         adb,
         clock,
         providers=(ldplayer, mumu, physical),
+        network_service=network_service,
     )
     device_pool_service = DevicePoolService(
         database.unit_of_work,
@@ -418,6 +425,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         update_service=update_service,
         automation_builder_service=automation_builder_service,
         selection_context_service=selection_context_service,
+        network_service=network_service,
     )
     context.add_shutdown_hook(crash_recovery_service.record_clean_shutdown)
     context.add_shutdown_hook(log_handler.close)
