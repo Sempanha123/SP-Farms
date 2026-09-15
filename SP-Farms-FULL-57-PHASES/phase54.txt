@@ -1,0 +1,803 @@
+SP-FARMS — PHASE 54
+TITLE: Per-Account VPN / Proxy Network Profiles and Pre-Restore Network Automation
+
+SP-FARMS — SHARED AUTONOMOUS AGENT RULES
+
+Repository:
+https://github.com/Sempanha123/SP-Farms
+
+Target:
+Production-ready Windows 11 Python desktop application.
+
+Core stack:
+- Python 3.12.x
+- repository-local `.venv`
+- PySide6
+- SQLAlchemy 2.x
+- Alembic
+- SQLite WAL
+- httpx
+- pytest
+- Ruff
+- mypy/pyright
+- pre-commit
+- OS keyring / Windows Credential Manager
+- ADB
+- LDPlayer / MuMu / physical Android provider adapters
+
+IMPORTANT NETWORK SAFETY RULE:
+This phase supports persistent per-account VPN/Proxy profiles for privacy, testing,
+organizational routing, and stable workspace configuration.
+
+Do NOT implement:
+- random IP rotation intended to evade Facebook security
+- automatic country hopping to bypass restrictions
+- anti-detect network fingerprint manipulation
+- proxy rotation pools for mass-account evasion
+- automatic changing of network identity to defeat platform controls
+
+Each account may have a stable, operator-configured network profile.
+The UI may remember a country/region label for that profile, but must not claim or spoof
+a physical location unless verified by the configured connection.
+
+======================================================================
+PHASE 54 — PER-ACCOUNT VPN / PROXY NETWORK PROFILES
+======================================================================
+
+GOAL:
+Make network configuration a first-class part of every account workspace.
+
+The user should be able to:
+- configure one network profile per account or per account group
+- enable/disable it with a checkbox
+- choose VPN, HTTP proxy, HTTPS proxy, SOCKS5, or system network
+- remember the intended country/region label
+- test it
+- apply it BEFORE account restore
+- block restore if the required profile cannot be established
+- continue automatically into Restore Workspace and the selected Automation workflow
+- never reselect the same account/Page/device
+
+Example workflow:
+
+Selected Account
+    ->
+Resolve AccountNetworkBinding
+    ->
+Network enabled?
+    -> No: continue with system/default network
+    -> Yes:
+        Connect configured VPN/Proxy
+        -> Verify connectivity
+        -> Verify expected profile status
+        -> If healthy, continue
+        -> If failed and required, stop before opening app
+    ->
+Restore Workspace
+    ->
+Launch Preferred App
+    ->
+Run Selected Automation
+    ->
+Backup
+    ->
+Release Device
+    ->
+Next Account
+
+======================================================================
+1. NETWORK PROFILE DOMAIN
+======================================================================
+
+Create:
+
+NetworkProfile
+
+Fields:
+- uuid
+- name
+- type
+- provider_name
+- host
+- port
+- username_secret_ref
+- password_secret_ref
+- config_file_secret_ref optional
+- protocol
+- country_code optional
+- region_label optional
+- city_label optional
+- dns_mode
+- enabled
+- verify_before_use
+- require_success
+- fallback_profile_id optional
+- notes
+- created_at
+- updated_at
+- last_health_check_at
+- last_success_at
+- last_error_code
+- last_error_message
+
+NetworkProfileType enum:
+- System
+- VPN
+- HTTPProxy
+- HTTPSProxy
+- SOCKS5
+
+Do not store proxy/VPN passwords directly in SQLite.
+
+======================================================================
+2. ACCOUNT NETWORK BINDING
+======================================================================
+
+Create:
+
+AccountNetworkBinding
+
+Fields:
+- uuid
+- account_id
+- network_profile_id
+- apply_before_restore
+- require_network
+- fallback_policy
+- last_applied_device_id
+- last_verified_at
+- status
+- created_at
+- updated_at
+
+FallbackPolicy:
+- Stop
+- UseFallbackProfile
+- UseSystemNetwork only when the operator explicitly allows it
+
+Default for "Require Network" should be:
+Stop
+
+This prevents silent network-policy changes.
+
+======================================================================
+3. OPTIONAL PAGE OVERRIDE
+======================================================================
+
+A Page normally inherits the connected account's NetworkProfile.
+
+Allow an explicit PageNetworkOverride only if the operator configures it.
+
+Resolution order:
+1. explicit Page override
+2. AccountNetworkBinding
+3. system/default network
+
+Do not make the user configure the same network twice.
+
+======================================================================
+4. COUNTRY / REGION UX
+======================================================================
+
+The user may label a network profile:
+
+- Country
+- Region
+- City
+
+Example:
+Profile: Work VPN US East
+Country: US
+Region: Virginia
+City: Ashburn
+
+This is profile metadata.
+
+If the provider/network health service can verify public network information,
+show a separate verified result:
+
+Configured:
+US / Virginia
+
+Observed:
+US / Virginia
+
+Status:
+Match
+
+If observed data is unavailable:
+show:
+"Not verified"
+
+Do not fake or fabricate observed country/location.
+
+======================================================================
+5. NETWORK TAB IN CONTEXT ACTION MODAL
+======================================================================
+
+Add a `Network` tab to the Account/Page Context Action Modal.
+
+ACCOUNT CONTEXT:
+
+Network
+- [x] Apply network profile before restore
+- Profile: Work VPN US East
+- Type: VPN
+- Country: US
+- Region: Virginia
+- Require successful connection: [x]
+- Verify before opening app: [x]
+- Fallback: Stop
+- Last check: Healthy
+- [Test]
+- [Connect]
+- [Disconnect]
+- [Open Network Settings]
+
+PAGE CONTEXT:
+
+Network
+- Inherited from: Account A
+- Profile: Work VPN US East
+- [Use account profile]
+- [Configure Page override]
+
+No second account selector.
+
+======================================================================
+6. RESTORE PIPELINE INTEGRATION
+======================================================================
+
+Update Restore Workspace pipeline.
+
+Required order:
+
+1. Resolve SelectionContext
+2. Resolve Page -> Account if Page context
+3. Reserve Device
+4. Start Device if required
+5. Wait for ADB
+6. Resolve AccountNetworkBinding
+7. If network enabled:
+   - apply profile
+   - wait for ready
+   - health check
+   - verify required conditions
+8. Only after network gate succeeds:
+   - restore safe workspace preferences
+   - launch preferred app
+   - check supported auth/session state
+9. Mark Ready
+10. Execute selected Automation steps
+
+If network fails:
+- do not continue when Require Network = true
+- mark account/job `NeedsNetwork`
+- show exact error
+- release or retain device based on failure policy
+
+======================================================================
+7. AUTOMATION BUILDER INTEGRATION
+======================================================================
+
+Add function:
+
+`Apply Network Profile`
+
+Checkbox:
+[ ] Apply Network Profile
+
+When enabled, setup includes:
+- inherit account profile
+- explicit profile override
+- require success
+- verify connection
+- fallback behavior
+- connect timeout
+- disconnect after workflow toggle
+
+Recommended workflow template:
+
+1. Reserve Device
+2. Apply Network Profile
+3. Restore Workspace
+4. Health Check
+5. Refresh Assets
+6. Publish / Comments / Analytics
+7. Backup Workspace
+8. Disconnect Network if configured
+9. Release Device
+10. Start Next Account
+
+======================================================================
+8. ACCOUNT TABLE COLUMNS
+======================================================================
+
+Add optional columns:
+
+- Network
+- Network Type
+- Country
+- Network Status
+- Last Network Check
+
+Example:
+
+Account A | LD-01 | VPN | US | Healthy
+Account B | LD-02 | SOCKS5 | KH | Healthy
+Account C | — | System | — | Ready
+
+Keep these optional to avoid clutter.
+
+======================================================================
+9. MULTI-ACCOUNT NETWORK MAPPING
+======================================================================
+
+For bulk workflows show:
+
+Account A -> LD-01 -> VPN-US-East
+Account B -> LD-02 -> SOCKS-KH-01
+Account C -> Waiting Device -> VPN-SG-01
+Account D -> LD-04 -> Network Missing
+
+Before Run:
+
+Network Summary
+- 18 healthy
+- 1 not checked
+- 1 missing required profile
+
+Options:
+- Run eligible only
+- Cancel
+- Fix missing configuration
+
+Do not silently skip network requirements.
+
+======================================================================
+10. PROVIDER ADAPTERS
+======================================================================
+
+Create NetworkProvider abstraction.
+
+Possible built-in provider types:
+
+A. System Network
+No special connection.
+
+B. Local VPN Client Adapter
+Controls an operator-installed VPN client only through documented/local interfaces.
+
+C. OpenVPN Profile Adapter
+If an operator has a legitimate `.ovpn` profile:
+- validate file path/reference
+- launch configured local OpenVPN executable if supported
+- wait for readiness
+- stop cleanly
+- keep secrets in vault/config-protected location
+
+D. HTTP/HTTPS Proxy Adapter
+Configure only through supported app/device/network mechanisms.
+
+E. SOCKS5 Proxy Adapter
+Configure only through supported app/device/network mechanisms.
+
+Do not add stealth proxy injection.
+
+======================================================================
+11. DEVICE-SCOPE NETWORK APPLICATION
+======================================================================
+
+The exact network mechanism may differ:
+
+LDPlayer/MuMu:
+- host-side VPN or supported emulator network configuration
+- app-level proxy only if explicitly supported
+
+Physical Android:
+- supported Android/VPN/proxy configuration
+- operator must have authorized control of device
+
+Never assume one method works everywhere.
+Use provider capabilities.
+
+======================================================================
+12. NETWORK CAPABILITY MATRIX
+======================================================================
+
+Per provider/device, expose:
+
+- system_network
+- host_vpn
+- device_vpn
+- http_proxy
+- https_proxy
+- socks5_proxy
+- dns_override_supported
+- connectivity_check
+- public_ip_check optional
+- disconnect_supported
+
+Disable unsupported UI controls.
+
+======================================================================
+13. CONNECTIVITY HEALTH CHECK
+======================================================================
+
+Health check stages:
+
+- local provider process/config ready
+- device has network
+- DNS resolves
+- HTTPS connectivity works
+- optional public network information lookup if explicitly configured
+- expected country/region verification when available
+
+Status enum:
+- Unknown
+- Connecting
+- Healthy
+- Degraded
+- Failed
+- Disconnected
+
+Never require external geolocation service for core app operation.
+
+======================================================================
+14. PUBLIC IP / REGION VERIFICATION
+======================================================================
+
+If enabled by the operator, use a configurable verification endpoint/service.
+
+Store only:
+- observed public IP masked in ordinary UI/logs
+- country code
+- region/city where provider returns it
+- timestamp
+- service name
+
+Do not collect extra location data unnecessarily.
+
+UI example:
+
+Configured profile:
+US / Virginia
+
+Observed:
+US / Virginia
+
+Public IP:
+203.0.***.***
+
+Status:
+Verified
+
+======================================================================
+15. SECRET HANDLING
+======================================================================
+
+Never store directly:
+- VPN username/password
+- proxy password
+- private key
+- certificate password
+- auth token
+
+Use vault refs.
+
+For config files containing secrets:
+- protect file
+- reference it securely
+- never include it in normal workspace backup
+- include only through explicit encrypted secret backup flow
+
+======================================================================
+16. LIGHTWEIGHT BACKUP INTEGRATION
+======================================================================
+
+AccountWorkspaceSnapshot may contain:
+
+- network_profile_id
+- apply_before_restore flag
+- require_network flag
+- fallback policy
+- country/region labels
+- last known health metadata
+
+Do NOT include:
+- VPN password
+- proxy password
+- private keys
+- secret config contents
+
+On restore:
+- resolve the NetworkProfile by ID
+- verify required secrets are still available in vault
+- if missing, show `NeedsNetworkCredentials`
+
+======================================================================
+17. QUEUE INTEGRATION
+======================================================================
+
+For account queues:
+
+Account A -> Device 1 -> Apply Network A -> Restore -> Run -> Release
+Account B -> Device 2 -> Apply Network B -> Restore -> Run -> Release
+Account C -> waits
+Account D -> waits
+
+When Device 1 becomes available:
+- scheduler picks next account
+- resolves its own network profile
+- applies its own profile
+- proceeds only after network gate passes
+
+Do not reuse the previous account's network profile accidentally.
+
+======================================================================
+18. CLEANUP / RELEASE
+======================================================================
+
+On Release Device:
+
+Depending on preset:
+- disconnect account-specific network profile
+- restore system/default network state
+- clear temporary proxy setting
+- release device reservation
+- mark device Available
+
+This must run even after failures when safe.
+
+Use `finally`-style cleanup semantics in job orchestration.
+
+======================================================================
+19. NON-BLOCKING UI
+======================================================================
+
+Network operations must never block Qt GUI thread:
+
+- connecting VPN
+- starting OpenVPN
+- proxy setup
+- connectivity tests
+- DNS tests
+- public IP checks
+- disconnect
+
+Use persistent jobs/worker supervisor.
+
+Modal remains interactive.
+
+Status streams:
+Connecting...
+Tunnel Ready...
+Checking Network...
+Verified...
+Restoring Workspace...
+Opening App...
+Ready
+
+======================================================================
+20. ERROR CENTER INTEGRATION
+======================================================================
+
+Network error examples:
+
+- VPN executable missing
+- profile missing
+- credentials missing
+- proxy auth failed
+- DNS failed
+- HTTPS connectivity failed
+- public verification failed
+- country mismatch
+- timeout
+- disconnect failed
+
+Actions:
+- Retry
+- Test Profile
+- Edit Profile
+- Use configured fallback
+- Open Diagnostics
+
+Never expose password in error details.
+
+======================================================================
+21. NETWORK SETTINGS CENTER
+======================================================================
+
+Settings > Network
+
+Sections:
+
+Profiles
+- Add
+- Edit
+- Duplicate
+- Test
+- Disable
+- Delete
+- Export safe metadata
+
+Providers
+- OpenVPN executable
+- supported VPN client adapters
+- proxy support
+- timeouts
+
+Health
+- connectivity endpoint
+- optional IP verification service
+- DNS test
+- last checks
+
+Security
+- vault status
+- secret references
+- config file protection
+
+======================================================================
+22. PROFILE PRESETS
+======================================================================
+
+Allow reusable network presets:
+
+Examples:
+- Office VPN US
+- Office VPN Singapore
+- SOCKS5 Cambodia
+- System Network
+
+A preset can be assigned to:
+- one account
+- many selected accounts
+- account category
+- Page override only when explicitly needed
+
+Bulk assignment:
+Select 20 accounts
+-> Network
+-> Assign Profile
+-> Work VPN US East
+
+======================================================================
+23. DRY RUN
+======================================================================
+
+Dry Run should validate:
+
+- selected account has profile if required
+- profile enabled
+- device/provider supports requested network type
+- required vault secrets exist
+- executable/config references exist
+- fallback profile valid
+- expected Page/account mapping valid
+
+Dry Run must not connect VPN/proxy or launch Facebook.
+
+======================================================================
+24. AUDIT
+======================================================================
+
+Audit:
+- account network profile assigned
+- network connect requested
+- health result
+- restore blocked by network
+- fallback used
+- disconnect
+- release cleanup
+
+Do not log secrets.
+
+Mask public IP in ordinary logs.
+
+======================================================================
+25. TESTS
+======================================================================
+
+DOMAIN:
+- NetworkProfile CRUD
+- AccountNetworkBinding
+- Page override resolution
+- fallback resolution
+
+RESTORE:
+- network disabled -> restore continues
+- required network healthy -> restore continues
+- required network failed -> restore blocked
+- fallback profile success
+- fallback profile fail
+- missing vault secret
+- country label mismatch when verification enabled
+
+QUEUE:
+- account A network does not leak into account B
+- cleanup after release
+- next account applies its own profile
+
+UI:
+- Network tab preloads selected account
+- Page inherits connected account network
+- no duplicate target selection
+- multi-select mapping
+- optional account columns
+
+PERFORMANCE:
+- network connect does not freeze GUI
+- connectivity checks do not freeze GUI
+- many-device status updates remain responsive
+
+SECURITY:
+- passwords not in DB
+- passwords not in logs
+- passwords not in normal backup
+- no random proxy rotation feature
+- no anti-detect country hopping feature
+
+======================================================================
+26. DOCUMENTATION
+======================================================================
+
+Create:
+
+`docs/NETWORK_PROFILES.md`
+`docs/ACCOUNT_NETWORK_BINDING.md`
+`docs/NETWORK_RESTORE_PIPELINE.md`
+`docs/NETWORK_PROVIDER_ADAPTERS.md`
+
+Add sequence diagram:
+
+Selected Account/Page
+    ->
+Resolve Account
+    ->
+Resolve Device
+    ->
+Resolve Network Profile
+    ->
+Connect / Verify
+    ->
+Restore Workspace
+    ->
+Launch App
+    ->
+Run Automation
+    ->
+Backup
+    ->
+Disconnect if configured
+    ->
+Release
+    ->
+Next Account
+
+======================================================================
+PHASE 54 COMPLETION CHECKLIST
+======================================================================
+
+- Each account can have a persistent network profile.
+- VPN/HTTP/HTTPS/SOCKS5/System types exist.
+- Network may be enabled/disabled per account.
+- Network applies before Restore Workspace.
+- Required network failure blocks restore.
+- Page context inherits connected account network automatically.
+- User does not reselect account/Page/device/network unnecessarily.
+- Multi-account queues apply each account's own network profile.
+- Network credentials live in vault.
+- Lightweight snapshots reference profiles without embedding secrets.
+- Cleanup resets network state on release when configured.
+- UI never freezes during network operations.
+- Dry Run validates network requirements without connecting.
+- Random proxy/IP rotation for platform evasion does not exist.
+- Tests pass.
+- Lint/type checks pass.
+- Docs updated.
+- Commit:
+  `phase(54): add per-account network profiles and pre-restore network automation`
+- Push:
+  `git push origin ai/full-production-build`
+- Immediately continue to `phase55.txt` without asking the user.

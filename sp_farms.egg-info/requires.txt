@@ -1,0 +1,15 @@
+alembic<2,>=1.14
+cryptography<47,>=44
+httpx<1,>=0.28
+keyring<26,>=25
+platformdirs<5,>=4.3
+PySide6<7,>=6.8
+SQLAlchemy<3,>=2.0
+
+[dev]
+build<2,>=1.2
+mypy<2,>=1.14
+pre-commit<5,>=4
+pytest<9,>=8.3
+pytest-cov<7,>=6
+ruff<1,>=0.9

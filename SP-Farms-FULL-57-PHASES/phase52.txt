@@ -1,0 +1,928 @@
+SP-FARMS — PHASE 52
+TITLE: Full Automation Builder, Per-Function Setup, Presets, and Capability-Aware Workflows
+
+SP-FARMS — SHARED AUTONOMOUS AGENT RULES
+
+Repository:
+https://github.com/Sempanha123/SP-Farms
+
+Target:
+Production-ready Windows 11 Python desktop application.
+
+Core stack:
+- Python 3.12.x
+- repository-local `.venv`
+- PySide6
+- SQLAlchemy 2.x
+- Alembic
+- SQLite WAL
+- httpx
+- pytest
+- Ruff
+- mypy/pyright
+- pre-commit
+- OS keyring / Windows Credential Manager
+- ADB
+- LDPlayer / MuMu / physical Android provider adapters
+
+AUTONOMOUS EXECUTION:
+- Do not ask whether to continue.
+- Do not stop between phases.
+- After every phase: test, lint, type-check, fix, update docs, commit, push, continue.
+- Use branch `ai/full-production-build`.
+- Missing external credentials are not hard blockers.
+
+IMPORTANT PLATFORM / ABUSE BOUNDARY:
+This phase may automate authorized publishing, moderation, replies, scheduling, device assignment,
+backup/restore, and analytics for assets the operator owns or is explicitly authorized to manage.
+
+Do NOT implement:
+- mass reactions/likes/loves/sad/wow/angry generation
+- configurable fake reaction counts
+- engagement farming
+- mass following
+- mass share-for-engagement behavior
+- unsolicited bulk messaging
+- mass comments
+- artificial reach manipulation
+- account/security bypass
+
+Reaction types may be READ and analyzed where supported.
+A user may perform a normal explicit manual reaction action only where officially supported,
+but there must be no multi-account or quota-based reaction automation.
+
+======================================================================
+PHASE 52 — FULL AUTOMATION BUILDER
+======================================================================
+
+GOAL:
+Create one powerful but clean "Automation Builder" where the operator decides exactly which
+functions run by selecting accounts/devices/destinations/content and enabling function checkboxes.
+
+Each function must expose its own configuration panel based on function type.
+
+The UI must remain clean through progressive disclosure:
+- checkbox enables function
+- clicking function row opens its setup panel
+- only enabled functions are executed
+- saved presets can be reused
+
+======================================================================
+1. AUTOMATION PRESET DOMAIN
+======================================================================
+
+Create entities:
+
+AutomationPreset
+AutomationStep
+AutomationTargetRule
+AutomationContentRule
+AutomationScheduleRule
+AutomationLimitRule
+AutomationExecution
+AutomationExecutionStep
+
+AutomationPreset fields:
+- uuid
+- name
+- description
+- enabled
+- category
+- tags
+- created_at
+- updated_at
+- last_run_at
+- version
+- approval_policy
+- device_policy
+- failure_policy
+
+AutomationStep fields:
+- uuid
+- preset_id
+- step_type
+- enabled
+- order
+- configuration_json
+- requires_approval
+- continue_on_error
+- retry_policy
+- timeout_seconds
+
+All step configs must be schema validated.
+
+======================================================================
+2. AUTOMATION BUILDER MAIN UI
+======================================================================
+
+Create module:
+
+Automation Builder
+
+Top area:
+- Preset selector
+- New Preset
+- Save
+- Save As
+- Duplicate
+- Import
+- Export
+- Run
+- Dry Run
+- Validate
+- Schedule
+
+LEFT COLUMN — TARGETS:
+Accounts:
+- Selected accounts
+- Account category
+- Account tags
+- Only healthy accounts
+- Only accounts with available device
+- Only accounts with valid auth state
+
+Devices:
+- Bound device first
+- Any available device
+- LDPlayer only
+- MuMu only
+- Physical Android only
+- Preferred provider order
+- Maximum concurrent devices
+
+Destinations:
+- Selected Pages
+- Selected Groups where publishing is officially available/authorized
+- Destination category/tag
+- Exclude selected destinations
+- Only destinations with required permissions
+
+CENTER — FUNCTION CHECKLIST:
+Each row:
+[checkbox] Function Name [status/capability] [Configure]
+
+Functions:
+- Restore Workspace
+- Open Preferred App
+- Health Check
+- Refresh Authorized Asset Data
+- Publish Text Post
+- Publish Image Post
+- Publish Multi-Image Post
+- Publish Video Post
+- Publish Reel
+- Publish Story where officially supported
+- Publish Link Post
+- Schedule Content
+- Read Comments
+- Reply to Selected Comments
+- Moderate Comments
+- Read Inbox
+- Reply with Saved Reply
+- Assign Inbox Item
+- Add Internal Note
+- Mark Resolved
+- Collect Post Analytics
+- Collect Page Analytics
+- Collect Reaction Analytics
+- Collect Share/Comment/View Counts
+- Backup Workspace
+- Release Device
+- Start Next Queued Account
+- Export Result Report
+
+RIGHT — SETUP PANEL:
+Show configuration only for the selected enabled function.
+
+BOTTOM:
+- Selected accounts
+- Eligible devices
+- Destinations
+- Enabled functions
+- Estimated jobs
+- Running
+- Waiting
+- Failed
+- Completed
+
+======================================================================
+3. PUBLISH TEXT POST CONFIG
+======================================================================
+
+Fields:
+- destination selector
+- text/caption
+- caption template
+- language
+- link optional
+- tagged Page/person only where officially supported and permitted
+- location/check-in only where officially supported
+- visibility/audience where officially supported
+- publish now / schedule
+- approval required
+- duplicate-content warning
+- per-destination text override
+- UTM/link parameters optional
+
+Validation:
+- destination permission
+- text length/capability
+- unsupported tag/location options disabled automatically
+
+======================================================================
+4. IMAGE POST CONFIG
+======================================================================
+
+Fields:
+- image selector
+- single image / multiple images
+- image order
+- caption
+- alt text where supported
+- tagged entities where supported
+- location/check-in where supported
+- destination selection
+- feed publishing
+- authorized Group destination where officially supported
+- publish now / schedule
+- approval required
+- rotate images per destination option
+- one image per destination option
+- same images to all option
+- first comment only if API supports it
+
+Media checks:
+- file exists
+- MIME
+- dimensions
+- size
+- duplicate hash
+- compatibility
+
+======================================================================
+5. VIDEO POST CONFIG
+======================================================================
+
+Fields:
+- video selector
+- title
+- caption
+- thumbnail
+- destination
+- tags/mentions only where supported
+- location/check-in where supported
+- publish to feed
+- authorized Group destination where officially supported
+- publish now / schedule
+- approval
+- upload optimization
+- retry behavior
+
+Validation:
+- duration
+- codec/container
+- size
+- destination capability
+- thumbnail compatibility
+
+======================================================================
+6. REEL CONFIG
+======================================================================
+
+Fields:
+- reel video
+- caption
+- thumbnail/cover where supported
+- destination Page
+- music/audio metadata only when operator has rights and provider supports it
+- schedule where supported
+- approval
+- content template
+- duplicate warning
+- per-destination caption override
+
+Do not download/use copyrighted media without authorization.
+
+======================================================================
+7. STORY CONFIG
+======================================================================
+
+Only enable if current official integration/capability supports the target destination.
+
+Fields:
+- image or video
+- target
+- schedule if supported
+- caption/text only where supported
+- link/sticker metadata only where supported
+- expiration/reporting metadata
+- approval
+
+If unsupported:
+show "Not available for this destination/API capability" rather than silently falling back.
+
+======================================================================
+8. DESTINATION / SHARE CONFIG
+======================================================================
+
+Support authorized content distribution without engagement farming.
+
+Fields:
+- source content
+- selected Page destinations
+- selected Group destinations where officially supported/authorized
+- feed only
+- Group only
+- Page + selected Groups
+- per-destination caption
+- schedule
+- approval
+- skip unsupported destinations
+- stop on first error vs continue
+
+Do NOT implement:
+- "share N times"
+- repeated sharing to inflate engagement
+- random mass sharing across accounts
+
+One configured destination should correspond to an intentional publishing target.
+
+======================================================================
+9. TAG / MENTION CONFIG
+======================================================================
+
+Create reusable TaggingRule.
+
+Options only where supported:
+- none
+- selected authorized Page mention
+- explicitly selected entity
+- per-destination override
+
+Do not scrape/tag large random user lists.
+
+UI:
+- search known authorized/available entities
+- show capability indicator
+- show unsupported warning
+
+======================================================================
+10. LOCATION / CHECK-IN CONFIG
+======================================================================
+
+Create LocationRule.
+
+Options:
+- Disabled
+- Use destination default
+- Select supported location/place
+- Use saved legitimate location metadata
+- Per-destination override
+
+Only call location/check-in features where the provider officially supports them.
+
+Do not fabricate location to evade platform controls.
+
+======================================================================
+11. COMMENT READING CONFIG
+======================================================================
+
+Fields:
+- source posts/destinations
+- time window
+- unread only
+- unresolved only
+- keyword filter
+- language filter
+- minimum/maximum age of comment
+- pagination limit
+- sort
+- collect author/display metadata allowed by API
+
+Output:
+- comment queue
+- counts
+- labels
+- suggested routing
+
+======================================================================
+12. COMMENT REPLY CONFIG
+======================================================================
+
+For comments on authorized managed assets.
+
+Fields:
+- selected comments only
+- saved reply template
+- manual reply
+- AI suggestion with human review
+- language
+- approval required
+- skip already replied
+- max operator-approved replies per execution to prevent accidental floods
+
+Do NOT implement random or mass promotional commenting.
+
+======================================================================
+13. COMMENT MODERATION CONFIG
+======================================================================
+
+Only where officially permitted.
+
+Options:
+- label
+- assign
+- mark resolved
+- hide where supported
+- unhide where supported
+- delete where supported and with confirmation
+- keyword-based review queue
+- require approval for destructive moderation
+
+No automated harassment or targeted abuse.
+
+======================================================================
+14. INBOX / CHAT CONFIG
+======================================================================
+
+Only for conversations/messages available through official permissions.
+
+Options:
+- sync unread
+- selected conversations
+- saved reply
+- manual response
+- AI suggested response with review
+- assign owner
+- internal note
+- label
+- mark resolved
+- business-hours policy
+- approval policy
+
+Do NOT implement unsolicited bulk DM/message sending.
+
+======================================================================
+15. REACTION ANALYTICS CONFIG
+======================================================================
+
+READ-ONLY automation.
+
+Collect where supported:
+- total reactions
+- Like count
+- Love count
+- Care count if available
+- Haha count if available
+- Wow count if available
+- Sad count if available
+- Angry count if available
+- other provider-supported reaction types
+
+Filters:
+- selected posts
+- time range
+- destination
+- minimum total
+- sort by reaction type
+- export
+
+Use these counts for analytics only.
+
+DO NOT create/configure:
+- "give 100 Love"
+- "give 50 Sad"
+- "random reactions"
+- "reaction target total"
+
+======================================================================
+16. SHARE / COMMENT / VIEW ANALYTICS
+======================================================================
+
+Read metrics where officially available:
+- share count
+- comment count
+- reaction count
+- reach
+- impressions
+- video views
+- reel views
+- engagement rate
+- follower/Page metrics
+
+Do not invent unavailable metrics.
+
+Clearly label:
+- Live
+- Cached
+- Estimated only if explicitly derived from known data
+
+======================================================================
+17. FOLLOWER / PAGE ANALYTICS
+======================================================================
+
+Support:
+- current follower count
+- follower changes over time where available
+- Page likes/follows where provider exposes them
+- growth charts
+- post-to-follower engagement comparisons
+
+Do NOT automate mass following/unfollowing.
+
+======================================================================
+18. CONTENT SELECTION RULES
+======================================================================
+
+For each publishing step:
+
+Content source:
+- Selected files
+- Content Library folder
+- Content tag
+- Campaign assets
+- Template
+- Previously prepared draft
+
+Distribution:
+- Same content to all selected destinations
+- One content item per destination
+- Sequential rotation
+- Random selection from operator-selected pool
+- Weighted rotation
+- Do not repeat within X days
+- Skip if hash was recently published
+- Per-destination mapping
+
+Random selection is acceptable for selecting the operator's own content;
+it must not randomize engagement actions.
+
+======================================================================
+19. CAPTION RULES
+======================================================================
+
+Options:
+- Static caption
+- Caption template
+- Per-destination caption
+- Language variant
+- AI suggested variant with review
+- Hashtag set
+- Max hashtags
+- Required hashtags
+- Excluded hashtags
+- Prefix/suffix
+- Link insertion
+- UTM builder
+
+Preview final caption before execution.
+
+======================================================================
+20. HASHTAG RULES
+======================================================================
+
+Options:
+- selected hashtag set
+- maximum count
+- rotate from selected set
+- required hashtags
+- forbidden hashtags
+- per-language set
+- per-destination set
+- deduplicate
+- normalize spacing/case
+
+No trending-spam automation.
+
+======================================================================
+21. SCHEDULING RULES
+======================================================================
+
+Per function:
+- Run now
+- Specific date/time
+- Time window
+- Daily
+- Weekly
+- Selected weekdays
+- Campaign calendar
+- Quiet hours
+- Destination timezone
+- Randomized time within an operator-defined safe window for scheduling convenience only
+
+Do not use timing randomization as an anti-detection/evasion mechanism.
+
+======================================================================
+22. EXECUTION LIMITS
+======================================================================
+
+Configuration:
+- maximum concurrent devices
+- maximum concurrent jobs
+- maximum active destinations
+- timeout
+- retries
+- cooldown between API calls based on provider limits
+- stop after N failures
+- continue on individual target failure
+- max duration
+
+For messaging/comments, provide conservative defaults to reduce accidental floods.
+
+Do not expose "likes per account", "reactions per account", or other engagement-farming quotas.
+
+======================================================================
+23. DEVICE FLOW CONFIG
+======================================================================
+
+Options:
+- Restore account before steps
+- Bound device first
+- Any available device
+- Preferred provider
+- Keep device reserved between steps
+- Release after workflow
+- Save lightweight workspace snapshot before release
+- Start next queued account automatically
+- Stop device after release
+- Keep device running
+
+Show estimated device demand before execution.
+
+======================================================================
+24. STEP ORDER / WORKFLOW GRAPH
+======================================================================
+
+Allow operator to reorder enabled functions.
+
+Example:
+
+1. Restore Workspace
+2. Health Check
+3. Refresh Assets
+4. Publish Image
+5. Publish Reel
+6. Sync Comments
+7. Collect Analytics
+8. Backup Workspace
+9. Release Device
+10. Start Next Account
+
+Support:
+- drag reorder
+- dependencies
+- conditional skip
+- stop workflow on critical failure
+- continue on non-critical failure
+
+Avoid arbitrary code execution in user-defined workflows.
+
+======================================================================
+25. CONDITIONS
+======================================================================
+
+Safe conditions:
+- account healthy
+- device available
+- destination permission present
+- content exists
+- session not expired
+- current time in publishing window
+- previous step succeeded
+- no recent duplicate
+- comments exist
+- unread inbox exists
+
+Actions:
+- Run
+- Skip
+- Wait for approval
+- Fail workflow
+
+======================================================================
+26. DRY RUN
+======================================================================
+
+Before real execution show:
+
+- accounts selected
+- devices expected
+- destinations
+- enabled functions
+- content mapping
+- schedule
+- estimated job count
+- unsupported capabilities
+- missing permissions
+- missing files
+- expired authorization
+- conflicts
+
+Dry Run must never publish or send anything.
+
+======================================================================
+27. CAPABILITY MATRIX
+======================================================================
+
+Create provider/destination capability matrix.
+
+Examples:
+- text_post
+- image_post
+- multi_image
+- video_post
+- reel
+- story
+- link_post
+- comments_read
+- comments_reply
+- comments_moderate
+- inbox_read
+- inbox_reply
+- analytics_reactions
+- analytics_shares
+- analytics_views
+- location
+- tagging
+- scheduling
+
+UI automatically disables unavailable controls.
+
+Never pretend an unsupported capability exists.
+
+======================================================================
+28. PRESETS
+======================================================================
+
+Provide example safe presets:
+
+A. Morning Page Publishing
+- restore
+- health check
+- image post
+- reel
+- collect analytics
+- backup
+- release
+
+B. Story Queue
+- restore
+- story
+- backup
+- release
+
+C. Customer Support
+- sync inbox
+- sync comments
+- operator-approved replies
+- resolve
+- export report
+
+D. Analytics Sweep
+- collect post analytics
+- reaction analytics
+- share/view metrics
+- export
+
+E. Content + Device Queue
+- restore on available device
+- publish selected prepared content
+- backup
+- release
+- next account
+
+Presets must be editable.
+
+======================================================================
+29. RESULTS
+======================================================================
+
+Execution result UI:
+
+Per Account:
+- account
+- device
+- destination
+- step
+- status
+- started
+- completed
+- result URL/id where available
+- error
+
+Per workflow summary:
+- total targets
+- succeeded
+- skipped
+- needs approval
+- failed
+- unsupported
+- cancelled
+
+Export safe result report to CSV/XLSX/PDF.
+
+======================================================================
+30. AUDIT
+======================================================================
+
+Audit every real action:
+- preset
+- execution id
+- account
+- device
+- destination
+- step
+- configuration hash
+- initiator
+- time
+- result
+
+Never store raw secrets.
+
+======================================================================
+31. TESTS
+======================================================================
+
+Add extensive tests:
+
+- preset CRUD
+- step schema validation
+- checkbox enable/disable
+- setup panel switching
+- target selection
+- account filters
+- device policy
+- text post config
+- image post config
+- multi-image mapping
+- video config
+- reel config
+- story capability gating
+- Page destination
+- authorized Group destination
+- tagging capability
+- check-in capability
+- comments read
+- comment reply
+- moderation
+- inbox sync
+- saved reply
+- reaction analytics read-only
+- share/comment/view analytics
+- follower analytics
+- content rotation
+- caption rules
+- hashtag rules
+- schedule rules
+- device restore/release
+- workflow ordering
+- conditions
+- Dry Run never performs side effects
+- unsupported capability disables UI
+- audit generation
+- large preset performance
+
+SECURITY TESTS:
+- no mass reaction step type exists
+- no follow-farming step type exists
+- no share-count inflation step type exists
+- no unsolicited bulk messaging step exists
+
+======================================================================
+32. DOCUMENTATION
+======================================================================
+
+Create:
+
+`docs/AUTOMATION_BUILDER.md`
+`docs/AUTOMATION_STEP_REFERENCE.md`
+`docs/CAPABILITY_MATRIX.md`
+`docs/AUTOMATION_PRESETS.md`
+
+Document every function, option, validation rule, and capability requirement.
+
+======================================================================
+PHASE 52 COMPLETION CHECKLIST
+======================================================================
+
+- Checkbox-driven Automation Builder exists.
+- Every enabled function has its own setup panel.
+- Text/image/multi-image/video/Reel/Story publishing configuration exists where supported.
+- Feed vs authorized Page/Group destination selection is capability-aware.
+- Tags/mentions/location/check-in are capability-aware.
+- Comment and inbox management options exist for authorized assets.
+- Reaction/share/comment/view metrics can be read and analyzed.
+- Artificial reaction/follow/share engagement automation does not exist.
+- Device restore/release/next-account queue integrates with workflows.
+- Lightweight backup integrates with workflows.
+- Dry Run works and has no side effects.
+- Presets work.
+- Result reports work.
+- Tests pass.
+- Lint/type checks pass.
+- Docs updated.
+- Commit:
+  `phase(52): add full automation builder and per-function setup`
+- Push:
+  `git push origin ai/full-production-build`
+- Immediately continue to `phase53.txt` without asking the user.

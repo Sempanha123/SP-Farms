@@ -1,0 +1,44 @@
+SP-Farms — Account Maintenance Automation Overview
+
+Select Account(s) in Accounts table
+    ↓
+Actions
+    ↓
+Context modal already knows selected accounts
+
+Tabs:
+Overview | Restore | Account Info | Security | Email | Password | 2FA |
+Primary Info | Sessions | Device | Network | Backup | Advanced
+
+Read-only automation:
+☑ Account Health Check
+☑ Check Primary Email
+☑ Check Primary Phone
+☑ Check 2FA Status
+☑ Refresh Account Info
+☑ Check Connected Pages/Groups
+☑ Check Session State
+
+Approval-gated maintenance:
+☑ Add/Change/Remove Email
+☑ Add/Change/Remove Phone
+☑ Change Password
+☑ Enable 2FA
+☑ Update Profile Info
+☑ Update Avatar
+☑ Update Cover
+☑ Logout Other Sessions
+
+Typical secure pipeline:
+Resolve Account
+→ Resolve Device only if required
+→ Apply required Network Profile
+→ Restore Workspace if required
+→ Run maintenance action
+→ Verify result
+→ Update secure vault refs
+→ Backup metadata
+→ Release device
+→ Next account
+
+No checkpoint bypass, recovery-code interception, session injection, or plaintext secret storage.

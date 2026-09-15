@@ -1,0 +1,64 @@
+SP-FARMS — FULL 57 PHASE INDEX
+
+Visual source of truth included:
+`design/reference/sp-farms-ui-reference.png`
+
+The agent must inspect the reference before UI work and Phase 56 performs the final visual-fidelity/theme-lock pass.
+
+01. Repository Bootstrap and Local .venv -> phase01.txt
+02. Architecture Boundaries and Application Bootstrap -> phase02.txt
+03. Configuration Logging and Diagnostics -> phase03.txt
+04. SQLite SQLAlchemy and Alembic -> phase04.txt
+05. Secure Vault and Secret References -> phase05.txt
+06. SP-Farms Cute Design System -> phase06.txt
+07. Main Shell and Demo-Style Workspace Layout -> phase07.txt
+08. Navigation Command Palette Shortcuts Notifications -> phase08.txt
+09. Persistent Job Domain and Schema -> phase09.txt
+10. Worker Supervisor and Execution Runtime -> phase10.txt
+11. Job Queue UI -> phase11.txt
+12. ADB Abstraction and Device Discovery -> phase12.txt
+13. LDPlayer Provider -> phase13.txt
+14. MuMu Provider -> phase14.txt
+15. Physical Android Provider -> phase15.txt
+16. Device Manager Workspace -> phase16.txt
+17. LSPosed QA Device Profile Lab and Hot Reload -> phase17.txt
+18. Account Domain Rich Metadata -> phase18.txt
+19. Account Onboarding Workspace -> phase19.txt
+20. Account Device Profiles and Restore Workspace -> phase20.txt
+21. Multi-Account Device Pool Restore Queue and Lightweight Workspace Backup -> phase21.txt
+22. Accounts Workspace -> phase22.txt
+23. Account Import Export -> phase23.txt
+24. Meta API Integration Boundary -> phase24.txt
+25. Pages Groups Domain and Sync -> phase25.txt
+26. Pages and Groups Workspace -> phase26.txt
+27. Security Center -> phase27.txt
+28. Audit Trail and Error Center -> phase28.txt
+29. Content Library -> phase29.txt
+30. Media Preview and Preparation -> phase30.txt
+31. Post and Reel Composer -> phase31.txt
+32. Caption Templates and Multilingual AI Assist -> phase32.txt
+33. Campaign Manager -> phase33.txt
+34. Scheduler and Calendar -> phase34.txt
+35. Approval Queue -> phase35.txt
+36. Official Publishing Executor -> phase36.txt
+37. Inbox Comments Mentions Moderation -> phase37.txt
+38. Saved Replies and Internal Assignment -> phase38.txt
+39. Home Dashboard -> phase39.txt
+40. Publishing Analytics -> phase40.txt
+41. Device Reliability Analytics -> phase41.txt
+42. Backup and Restore -> phase42.txt
+43. Settings Center -> phase43.txt
+44. Plugin and Provider SDK -> phase44.txt
+45. Licensing and Edition Framework -> phase45.txt
+46. Internationalization -> phase46.txt
+47. Accessibility and Keyboard Efficiency -> phase47.txt
+48. Performance and Scale Hardening -> phase48.txt
+49. Crash Recovery Updater and Health Checks -> phase49.txt
+50. Windows Packaging and Installer -> phase50.txt
+51. CI CD and Release Automation -> phase51.txt
+52. Full Automation Builder, Per-Function Setup, Presets, and Capability-Aware Workflows -> phase52.txt
+53. Context-Aware Account/Page Action Modal, Stored Device Workspace, and Non-Blocking UI -> phase53.txt
+54. Per-Account VPN / Proxy Network Profiles and Pre-Restore Network Automation -> phase54.txt
+55. Account Maintenance, Security, Profile Info, Email, Password, and 2FA Automation -> phase55.txt
+56. Visual Reference Fidelity, Theme Lock, and Final UI Polish -> phase56.txt
+57. Final Production Review and v1.0.0 -> phase57.txt

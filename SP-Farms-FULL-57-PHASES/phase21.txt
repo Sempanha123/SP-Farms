@@ -1,0 +1,489 @@
+SP-FARMS — PHASE 21
+TITLE: Multi-Account Device Pool Restore Queue and Lightweight Workspace Backup
+
+SP-FARMS — SHARED AUTONOMOUS AGENT RULES
+
+Repository:
+https://github.com/Sempanha123/SP-Farms
+
+Target:
+Production-ready Windows 11 Python desktop application.
+
+Core stack:
+- Python 3.12.x
+- repository-local `.venv`
+- PySide6
+- SQLAlchemy 2.x
+- Alembic
+- SQLite WAL
+- httpx
+- pytest
+- Ruff
+- mypy/pyright
+- pre-commit
+- OS keyring / Windows Credential Manager
+- ADB
+- LDPlayer / MuMu / physical Android provider adapters
+
+AUTONOMOUS EXECUTION:
+- Do not ask whether to continue.
+- Do not stop between phases.
+- After every phase: test, lint, type-check, fix, update docs, commit, push, continue.
+- Use branch `ai/full-production-build`.
+- Missing external credentials are not hard blockers.
+
+SECURITY / DATA RULE:
+This phase may back up SP-Farms workspace/account metadata and safe application preferences.
+It must NOT scrape or export Facebook private app storage, raw cookies, raw access tokens,
+plaintext passwords, recovery secrets, or authentication databases.
+Official credentials remain referenced through the secure vault.
+
+======================================================================
+PHASE 21 — MULTI-ACCOUNT DEVICE POOL RESTORE QUEUE AND LIGHTWEIGHT BACKUP
+======================================================================
+
+GOAL:
+Allow the operator to select one account or many accounts, select one or more available devices,
+and let SP-Farms queue accounts onto available devices automatically.
+
+Also add a very small per-account "workspace backup" so restoring an account does not require
+backing up an entire emulator image.
+
+This feature should support workflows such as:
+
+- Select Account A -> Restore on any available device
+- Select Account A, B, C, D -> assign to Device 1 and Device 2 as they become available
+- When Account A finishes its operator-approved task, release the device and restore Account C
+- Back up only SP-Farms metadata/preferences for each account
+- Restore the same account's preferred environment later
+
+1. DEVICE AVAILABILITY MODEL
+
+Create explicit device pool states:
+
+- Offline
+- Starting
+- Available
+- Reserved
+- Restoring
+- InUse
+- Releasing
+- Error
+- Maintenance
+
+A device is "Available" only when:
+- provider is online
+- ADB is ready
+- no exclusive job owns it
+- health check passes
+- device is not in maintenance
+- no conflicting AccountDeviceBinding is locked
+
+Add:
+- last_available_at
+- current_account_id
+- reservation_job_id
+- reservation_expires_at
+
+2. MULTI-ACCOUNT SELECTION
+
+Accounts workspace must allow selecting multiple accounts.
+
+Add action:
+
+`Restore Selected on Available Devices`
+
+Dialog:
+- Selected accounts count
+- Eligible devices count
+- Device providers filter
+- Preferred device policy
+- Preserve existing device binding toggle
+- Allow fallback device toggle
+- Max concurrent restores
+- Queue priority
+- Stop-on-error toggle
+
+Do not overload the main Accounts table with too many controls.
+
+3. DEVICE ASSIGNMENT STRATEGIES
+
+Support safe scheduling policies:
+
+A. Bound Device First
+Use existing AccountDeviceBinding if that device is available.
+
+B. Any Available Device
+Use the first healthy compatible device.
+
+C. Least Recently Used
+Prefer the compatible available device idle longest.
+
+D. Round Robin
+Distribute accounts across eligible devices.
+
+E. Preferred Provider
+Example:
+LDPlayer first -> MuMu fallback -> physical QA device fallback
+
+Persist the chosen policy as a user preset.
+
+4. ACCOUNT RESTORE QUEUE
+
+Create a durable job type:
+
+`account_workspace_restore`
+
+Inputs:
+- account_id
+- requested_device_id optional
+- scheduling_policy
+- preferred_app
+- priority
+
+Flow:
+
+Queued
+  ->
+Reserve Device
+  ->
+Start Device if needed
+  ->
+Wait for ADB
+  ->
+Load lightweight workspace snapshot
+  ->
+Apply harmless account/device preferences
+  ->
+Launch preferred Facebook/Facebook Lite/browser app
+  ->
+Show current authorization state
+  ->
+Ready / Needs Re-Authentication / Failed
+
+Do not inject authentication state or bypass platform controls.
+
+5. NEXT ACCOUNT AUTOMATION
+
+After a device is released:
+
+- mark device Available
+- scheduler looks for the highest-priority queued compatible account
+- reserve the device atomically
+- start the next restore job automatically
+
+This creates:
+
+Device 1:
+Account A -> release -> Account C -> release -> Account E
+
+Device 2:
+Account B -> release -> Account D -> release -> Account F
+
+Avoid two workers reserving the same device.
+
+Use database transaction/locking strategy appropriate for SQLite.
+
+6. RELEASE DEVICE ACTION
+
+Add:
+
+`Release Account from Device`
+
+This should:
+- finish/cancel active allowed jobs safely
+- record last-used metadata
+- optionally save the lightweight workspace snapshot
+- clear temporary account assignment
+- keep permanent AccountDeviceBinding if configured
+- mark device Available
+
+Do not delete the account.
+
+7. LIGHTWEIGHT WORKSPACE BACKUP
+
+Create:
+
+`AccountWorkspaceSnapshot`
+
+Goal:
+Very small backup size compared with a full LDPlayer/emulator image.
+
+Store only safe SP-Farms data such as:
+
+- snapshot UUID
+- account UUID
+- display/account metadata needed by SP-Farms
+- AccountDeviceBinding metadata
+- preferred provider
+- preferred app
+- device display preferences
+- locale
+- timezone
+- resolution/DPI preferences
+- content/category/tag references
+- notes
+- scheduler preferences
+- QA profile reference if it belongs to the user's authorized QA environment
+- app version expectations
+- timestamps
+- schema version
+
+Do NOT include:
+- full emulator disk image
+- Facebook application cache
+- raw Facebook app private-data directory
+- raw cookies
+- raw session databases
+- plaintext password
+- raw Meta tokens
+- 2FA recovery secrets
+
+Official tokens/secrets remain in the secure vault and snapshots store only vault references when needed.
+
+8. SMALL-SIZE STORAGE
+
+Use a compact versioned JSON payload compressed with ZIP/deflate or another standard library format.
+
+Recommended structure:
+
+`backups/accounts/<account_uuid>/<timestamp>.spws`
+
+Where `.spws` is a versioned SP-Farms Workspace Snapshot archive.
+
+Target:
+- usually KBs to low MBs per account depending on optional thumbnails/metadata
+- not hundreds of MB/GB like full emulator backup
+
+Do not include large media by default.
+Store media references/hashes instead.
+
+Optional:
+- tiny avatar thumbnail
+- tiny device screenshot preview
+
+Enforce configurable maximum snapshot size.
+
+9. DEDUPLICATION
+
+To keep backups small:
+
+- content-address shared metadata where practical
+- do not duplicate large media
+- store content hashes/references
+- store same device profile once and reference it
+- store same QA profile once and reference it
+- incremental snapshot metadata when useful
+
+10. SNAPSHOT UI
+
+Accounts > Backup / Restore
+
+Show:
+- Account
+- Snapshot date
+- Size
+- Device profile
+- Preferred app
+- Schema version
+- Health
+- Last restored
+- Notes
+
+Actions:
+- Backup Selected
+- Restore Selected
+- Delete Snapshot
+- Export Snapshot
+- Import Snapshot
+- Verify Snapshot
+
+Multi-select must work.
+
+11. BATCH BACKUP
+
+Allow:
+- select 1 account
+- select 10 accounts
+- select 100 accounts
+
+Then:
+`Backup Selected`
+
+Create one snapshot per account.
+
+Progress:
+- queued
+- backed up
+- skipped
+- failed
+
+Use the persistent job engine.
+
+12. BATCH RESTORE
+
+Allow:
+- select multiple accounts
+- select multiple available devices
+- choose scheduling policy
+- start queue
+
+Show live assignment:
+
+Account A -> LD-01 -> Restoring
+Account B -> LD-02 -> Ready
+Account C -> Waiting for available device
+Account D -> Waiting for available device
+
+13. COMPATIBILITY CHECK
+
+Before restore, validate:
+- snapshot schema version
+- device/provider capability
+- expected preferred app availability
+- required local settings
+- vault reference availability where relevant
+
+If incompatible:
+- do not corrupt the device
+- mark Needs Attention
+- show exact reason
+
+14. ACCOUNT WORKSPACE LOCK
+
+Prevent the same account from being restored simultaneously onto multiple exclusive devices unless a future feature explicitly allows shared read-only use.
+
+Implement lease/lock:
+- account_id
+- device_id
+- job_id
+- acquired_at
+- expires_at
+- heartbeat
+
+Recover stale locks after crash.
+
+15. CRASH RECOVERY
+
+If SP-Farms crashes during restore:
+
+On next start:
+- detect stale device reservation
+- inspect device health
+- mark interrupted job
+- release stale lock when safe
+- preserve snapshot
+- optionally retry according to job policy
+
+16. UI DESIGN
+
+Keep the workflow compact like the demo.
+
+Accounts toolbar:
+- Restore
+- Restore Selected
+- Backup
+- Release
+- Device Pool
+
+Right inspector:
+- Bound Device
+- Current Device
+- Backup Status
+- Latest Snapshot
+- Preferred App
+- Queue State
+
+Device rail badges:
+- Available
+- Reserved
+- Restoring
+- In Use
+- Error
+
+Bottom:
+Selected | Available Devices | Waiting Accounts | Restoring | Ready | Failed
+
+17. PERFORMANCE
+
+Do not load all snapshot JSON into memory for list display.
+
+Index snapshot metadata in SQLite:
+- account_id
+- path
+- size
+- schema_version
+- created_at
+- checksum
+
+Read archive payload only when verifying/restoring.
+
+18. AUDIT
+
+Audit:
+- account queued
+- device reserved
+- snapshot created
+- snapshot restored
+- device released
+- queue reassignment
+- failure reason
+
+No secret values in audit events.
+
+19. TESTS
+
+Add tests for:
+- multi-account selection
+- device reservation race prevention
+- bound-device-first policy
+- LRU policy
+- round-robin policy
+- fallback provider
+- automatic next-account assignment
+- release and reuse
+- lightweight backup generation
+- snapshot size cap
+- snapshot verify/checksum
+- multi-account backup
+- multi-account restore
+- crash/stale lock recovery
+- incompatible snapshot
+- missing vault reference
+- secret exclusion from snapshot
+- large queue performance
+
+20. DOCUMENTATION
+
+Create:
+
+`docs/ACCOUNT_DEVICE_POOL.md`
+`docs/LIGHTWEIGHT_ACCOUNT_BACKUP.md`
+
+Explain clearly:
+
+"SP-Farms lightweight account backup stores SP-Farms workspace metadata and safe preferences.
+It is not a clone of Facebook private app data or a replacement for Facebook authentication."
+
+======================================================================
+PHASE 21 COMPLETION CHECKLIST
+======================================================================
+
+- Multi-account selection works.
+- Multiple available devices can consume the queue.
+- Next account is assigned automatically after device release.
+- Device reservation is atomic.
+- Account lease prevents accidental duplicate active restore.
+- Lightweight per-account snapshots work.
+- Snapshots remain small by excluding emulator images/media/private app storage.
+- Normal snapshots contain no plaintext secrets.
+- Batch backup/restore works.
+- Crash recovery works.
+- Tests pass.
+- Lint/type checks pass.
+- Docs updated.
+- Commit:
+  `phase(21): add multi-account device pool and lightweight workspace backup`
+- Push:
+  `git push origin ai/full-production-build`
+- Immediately continue to `phase22.txt` without asking the user.

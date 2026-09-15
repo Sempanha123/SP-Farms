@@ -1,0 +1,203 @@
+SP-FARMS — PHASE 57
+TITLE: Final Production Review and v1.0.0
+
+
+SP-FARMS — SHARED AUTONOMOUS AGENT RULES
+
+Repository:
+https://github.com/Sempanha123/SP-Farms
+
+Target:
+Production-ready Windows 11 Python desktop application.
+
+Core stack:
+- Python 3.12.x
+- repository-local `.venv`
+- PySide6
+- SQLAlchemy 2.x
+- Alembic
+- SQLite WAL
+- httpx
+- pytest
+- Ruff
+- mypy/pyright
+- pre-commit
+- OS keyring / Windows Credential Manager
+- ADB
+- LDPlayer / MuMu / physical Android provider adapters
+
+AUTONOMOUS EXECUTION:
+- Do not ask the user whether to continue.
+- Do not stop between phases.
+- After every phase: test, lint, type-check, fix, update docs, commit, push, continue.
+- Use working branch: `ai/full-production-build`.
+- Commit format: `phase(XX): <short description>`.
+- Push after every passing phase.
+- If GitHub push is blocked, keep local commits, write `docs/PUSH_BLOCKED.md`, retry later, and continue.
+- Missing Meta credentials, signing certificates, or optional API keys are not hard blockers. Build adapters, fakes, config validation, tests, docs, then continue.
+- Never invent or hardcode secrets.
+
+`.venv`:
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
+```
+After project metadata exists:
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
+Never commit `.venv/`.
+
+UI GOAL:
+Preserve the compact speed of the supplied demo screenshots:
+- device rail on the left
+- dense management table in center
+- compact top navigation
+- clear running/queued/failed/completed state
+- fast selection and context actions
+- compact dialogs
+But create an original SP-Farms design:
+- cute, clean, modern
+- soft white/gray surfaces
+- mint/lime primary accent
+- soft amber warning accent
+- red only for destructive/error
+- 8–12 px radii
+- low visual noise
+- no neon glow
+- light + dark theme
+- 13–14 px base typography
+- keyboard-friendly
+- scalable dense tables
+
+SAFETY / PLATFORM CONSTRAINTS:
+SP-Farms is for assets the operator owns or is explicitly authorized to manage.
+
+Do NOT implement:
+- bulk Facebook account creation
+- 5sim/temporary-number Facebook signup automation
+- disposable-email Facebook signup automation
+- CAPTCHA bypass
+- checkpoint/security challenge bypass
+- suspension/lock bypass
+- fake IMEI/MEID/Android ID/GSF ID/advertising ID/serial/SIM identity
+- anti-detect fingerprint rotation
+- features intended to hide automation from Facebook
+- mass friend requests
+- mass likes/comments/story views
+- unsolicited bulk messaging
+- credential theft/session hijacking
+- plaintext secrets
+
+Prefer official Meta APIs where supported.
+Use transparent operator-approved device automation only.
+
+ARCHITECTURE RULES:
+- UI never accesses the database directly.
+- Domain layer never imports UI.
+- Infrastructure implements interfaces.
+- Application services orchestrate use cases.
+- No giant `main_window.py`.
+- No blocking disk/network/device operations on the UI thread.
+- Long-running operations become persistent jobs.
+- Secrets never appear in logs or normal exports.
+
+PROGRESS RULES:
+Before finishing each phase:
+1. focused tests pass
+2. regression tests pass
+3. lint passes
+4. type checks pass
+5. migrations included if needed
+6. no secrets committed
+7. `docs/PROGRESS.md` updated
+8. important choices written to `docs/DECISIONS.md`
+9. commit created
+10. push attempted
+11. immediately continue to next phase
+
+If a phase introduces failing tests, fix them now.
+Do not defer known regressions.
+
+
+======================================================================
+PHASE 57 — FINAL PRODUCTION REVIEW AND V1.0.0
+======================================================================
+
+Perform the final release gate.
+
+REVIEW UX AGAINST ORIGINAL GOAL:
+- fast demo-like workflow
+- compact device rail
+- dense tables
+- clear start/stop/restart
+- clear running/queue/failed/completed
+- easy selection
+- clean dialogs
+- cute modern original SP-Farms design
+
+RUN:
+- complete unit tests
+- complete integration tests
+- UI smoke tests
+- lint
+- type checks
+- clean DB migration
+- upgrade migration
+- backup/restore
+- crash recovery
+- packaging smoke
+- secret scan
+- security review
+- performance checks
+
+CREATE:
+- `docs/PRODUCTION_READINESS.md`
+- `docs/GO_LIVE_CHECKLIST.md`
+- `docs/EXTERNAL_GO_LIVE_REQUIREMENTS.md`
+- `CHANGELOG.md`
+- final release notes
+
+FIX:
+- every release-blocking issue before release
+
+BUILD:
+- final Windows artifact
+
+GIT:
+- commit final fixes/docs
+- push `ai/full-production-build`
+- if all required gates pass, safely merge/fast-forward into `main`
+- push `main`
+- tag `v1.0.0`
+- push tag
+
+FINAL STATUS:
+If external credentials or signing certificate were unavailable, report truthfully:
+- CODE READY
+- LIVE EXTERNAL VALIDATION PENDING
+
+Do not falsely claim live validation.
+
+STOP:
+Only after final completion report is generated.
+
+======================================================================
+FINAL COMPLETION CHECKLIST
+======================================================================
+
+- All implementation complete.
+- Full regression green.
+- Lint green.
+- Type checks green.
+- Migrations green.
+- Backup/restore green.
+- Packaging smoke green.
+- Security/secret review complete.
+- Production docs created.
+- Final Windows artifact created.
+- Working branch pushed if authentication permits.
+- Main updated only if all required gates pass.
+- `v1.0.0` tag created/pushed only if all required gates pass.
+- Final completion report generated.
+- STOP.

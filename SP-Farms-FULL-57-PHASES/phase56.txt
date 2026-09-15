@@ -1,0 +1,744 @@
+SP-FARMS — PHASE 56
+TITLE: Visual Reference Fidelity, Theme Lock, and Final UI Polish
+
+SP-FARMS — SHARED AUTONOMOUS AGENT RULES
+
+Repository:
+https://github.com/Sempanha123/SP-Farms
+
+Target:
+Production-ready Windows 11 Python desktop application.
+
+IMPORTANT:
+The project contains a UI reference image that is the visual source of truth:
+
+`design/reference/sp-farms-ui-reference.png`
+
+The agent MUST inspect this image before implementing or polishing UI in this phase.
+
+Do not treat it as a decorative screenshot.
+Treat it as the primary reference for:
+- layout proportions
+- dark theme direction
+- yellow accent usage
+- panel hierarchy
+- table density
+- top navigation
+- left Device Manager
+- bottom status bar
+- modal geometry
+- tab arrangement
+- button sizing
+- border treatment
+- spacing
+- compactness
+- visual rhythm
+
+Do not copy third-party branding or unrelated product assets.
+Implement an original SP-Farms UI that follows the supplied reference closely.
+
+======================================================================
+PHASE 56 — VISUAL REFERENCE FIDELITY + THEME LOCK
+======================================================================
+
+GOAL:
+Bring the implemented SP-Farms UI into close visual alignment with the supplied reference image while
+preserving all architecture, accessibility, performance, and responsive behavior established earlier.
+
+The final app should feel like the reference image immediately when opened.
+
+======================================================================
+1. REFERENCE IMAGE DISCOVERY
+======================================================================
+
+Primary expected path:
+
+`design/reference/sp-farms-ui-reference.png`
+
+If not found, search in this order:
+- `design/reference/`
+- `resources/reference/`
+- `docs/reference/`
+- project root
+
+Do not silently continue without checking for the reference.
+
+If the file is missing:
+- use the theme specification in this phase
+- write `docs/UI_REFERENCE_MISSING.md`
+- continue implementation
+- do not block the project
+
+======================================================================
+2. THEME DIRECTION
+======================================================================
+
+Default theme should follow the supplied dark reference.
+
+Base:
+- near-black / charcoal application background
+- slightly lighter panel surfaces
+- thin muted borders
+- high-contrast white/off-white text
+- yellow/gold primary action accent
+- green success/online accent
+- blue informational accent
+- red destructive/error accent
+- gray inactive/offline states
+
+Do not use:
+- neon glow
+- oversized gradients
+- glassmorphism
+- huge rounded cards
+- large empty whitespace
+- overly soft mobile-style UI
+
+The look should be:
+- compact
+- sharp
+- professional
+- cute through icons, spacing, and micro-details
+- desktop-first
+- information-dense
+
+======================================================================
+3. PRIMARY COLOR TOKENS
+======================================================================
+
+Create semantic tokens, not hardcoded widget-by-widget colors.
+
+Suggested direction:
+
+- `bg_app`: very dark charcoal
+- `bg_surface`: dark charcoal panel
+- `bg_surface_2`: slightly lighter panel
+- `bg_input`: dark neutral
+- `border_default`: muted gray/yellow-tinted neutral
+- `border_focus`: yellow/gold
+- `text_primary`: off-white
+- `text_secondary`: muted light gray
+- `text_disabled`: muted gray
+
+Primary:
+- yellow/gold action accent
+
+Success:
+- green
+
+Info:
+- blue
+
+Warning:
+- amber/orange
+
+Danger:
+- red
+
+Selected row:
+- dark yellow/olive tint, not bright neon
+
+Keep color usage restrained.
+
+======================================================================
+4. TOP BAR
+======================================================================
+
+Match reference structure:
+
+LEFT:
+- SP-FARMS logo/wordmark
+- version
+- short subtitle/tagline
+
+CENTER / MAIN NAV:
+- Home
+- Accounts
+- Pages
+- Groups
+- Content
+- Automation
+- Devices
+- Analytics
+- Settings
+
+RIGHT:
+- window controls
+- optional compact system/status controls
+
+Active navigation:
+- yellow/gold filled state
+
+Inactive:
+- dark button with subtle border
+
+Avoid oversized tabs.
+
+======================================================================
+5. LEFT DEVICE MANAGER
+======================================================================
+
+Match the reference's left column hierarchy:
+
+Section 1:
+Device Manager header
+- online device count
+- Refresh
+- Add Device
+- filter dropdown
+- Show IP toggle
+
+Section 2:
+compact device table
+- checkbox
+- index
+- Device Name
+- Status
+
+Section 3:
+selected device card
+- preview thumbnail/device icon
+- device name
+- provider/model
+- bound account
+- network
+- CPU
+- RAM
+- Open Device
+- Stop
+- Restart
+- ADB
+- Install APK
+- Shell
+
+Section 4:
+Quick Actions
+- Start All Devices
+- Stop All Devices
+- Backup Selected
+- Automation Builder
+- Network Settings
+
+Keep the width compact and fixed/resizable within reasonable limits.
+
+======================================================================
+6. MAIN HEADER METRICS
+======================================================================
+
+The reference shows compact top metrics.
+
+Implement:
+- Total Accounts
+- Total Pages
+- Devices Online
+- Running Tasks
+
+Use compact cards with:
+- icon
+- number
+- label
+- subtle borders
+
+Do not turn them into large dashboard cards.
+
+======================================================================
+7. ACCOUNTS / PAGES / GROUPS TABS
+======================================================================
+
+Under the metrics, implement compact module tabs:
+
+- Accounts
+- Pages
+- Groups
+
+Active tab:
+- yellow/gold fill
+
+Below:
+- search
+- category filter
+- status filter
+- device filter
+- network filter
+- Add Account / relevant action button
+
+Keep filters aligned in one dense toolbar when screen width allows.
+
+======================================================================
+8. DATA TABLE STYLE
+======================================================================
+
+Match the reference's high-density desktop table.
+
+Columns may include:
+- selection checkbox
+- #
+- Avatar
+- Name
+- UID
+- Category
+- Device
+- Network
+- Status
+- 2FA
+- Pages
+- additional compact status/count columns
+- Last Active
+- Actions
+
+Requirements:
+- compact row height
+- crisp header
+- subtle separators
+- selected row tint
+- status pills
+- no QWidget per cell
+- use delegates/model-view
+
+Actions button:
+- yellow/gold compact button
+- optional overflow menu
+
+======================================================================
+9. CONTEXT ACTION MODAL
+======================================================================
+
+The supplied reference's modal is a major design target.
+
+Geometry:
+- large centered modal
+- dark panel
+- thin yellow/gold outline
+- compact title/header
+- no excessive shadow
+
+Header:
+- avatar
+- `Account Actions - <Name>`
+- online status
+- UID
+- Device
+- Network
+- 2FA
+- Pages count
+
+LEFT TAB RAIL:
+- Overview
+- Post
+- Reel
+- Story
+- Comments
+- Inbox
+- Account Info
+- Security
+- Email
+- Password
+- 2FA
+- Network
+- Device
+- Backup
+
+Add maintenance/security tabs already specified in earlier phases.
+
+Active tab:
+- yellow/gold highlight
+
+Inactive:
+- dark row with white icon/text
+
+======================================================================
+10. POST CONTENT TAB
+======================================================================
+
+Follow the supplied reference's structure:
+
+Top secondary tabs:
+- General
+- Media
+- Caption
+- Destination
+- Schedule
+- Advanced
+
+Main body columns:
+A. Post type
+B. Media files
+C. Post settings
+D. Preview
+
+Post Type:
+- Text Post
+- Image Post
+- Video Post
+- Reel Post
+- Story Post
+- Link Post
+
+Selected type:
+- yellow/gold state
+
+Media:
+- drag/drop area
+- thumbnails
+- Add tile
+
+Post Settings:
+- Caption
+- Hashtag Set
+- Location / Check-in
+- Tag People where supported
+- authorized distribution options
+- Allow Comments where supported
+- related supported toggles
+
+Preview:
+- compact social-post preview
+- no need to mimic Facebook pixel-for-pixel
+- show enough to preview layout/content
+
+Footer:
+- Load Preset
+- Preview before publish
+- Save as preset
+- Dry Run
+- Run Now
+
+======================================================================
+11. CUTE WITHOUT LOSING DENSITY
+======================================================================
+
+"Cute" should come from:
+- friendly rounded icons
+- small status dots
+- subtle pill shapes
+- consistent small radii
+- polished spacing
+- tiny micro-animations
+- gentle hover transitions
+- clean typography
+- friendly empty states
+
+Do NOT make it:
+- childish
+- pastel-heavy
+- bubbly/mobile-like
+- oversized
+
+The supplied reference is the primary style direction.
+
+======================================================================
+12. LIGHT THEME
+======================================================================
+
+Keep an optional light theme, but dark theme is the reference/default.
+
+Light theme should preserve:
+- same layout
+- same density
+- same yellow accent
+- same hierarchy
+
+Do not redesign layout separately for light mode.
+
+======================================================================
+13. RESPONSIVENESS
+======================================================================
+
+Support:
+- 1366x768
+- 1600x900
+- 1920x1080
+- larger displays
+
+At smaller sizes:
+- inspector/modal content may scroll internally
+- keep top nav compact
+- never hide critical actions without an overflow alternative
+
+Do not break the reference-like layout at 1366x768.
+
+======================================================================
+14. NON-BLOCKING VISUAL STATES
+======================================================================
+
+During long tasks:
+- keep modal interactive
+- show inline progress
+- show status text
+- show progress bar only where useful
+- update task state through signals/events
+
+Example:
+`Connecting VPN...`
+`ADB Ready`
+`Restoring Workspace...`
+`Opening App...`
+`Ready`
+
+Do not freeze the UI.
+
+======================================================================
+15. ICONOGRAPHY
+======================================================================
+
+Use one coherent icon family.
+
+Icons should be:
+- simple
+- compact
+- legible at 14–18 px
+- mostly outline/duotone
+- consistent stroke weight
+
+Avoid mixing multiple unrelated icon packs.
+
+======================================================================
+16. TYPOGRAPHY
+======================================================================
+
+Use a clean UI font available/licensed for the application.
+
+Scale:
+- app title: compact
+- section title: medium-bold
+- table text: compact
+- secondary metadata: smaller muted text
+
+Avoid huge headings.
+
+Keep baseline alignment exact.
+
+======================================================================
+17. SPACING SYSTEM
+======================================================================
+
+Use a restrained spacing scale, for example:
+- 4
+- 6
+- 8
+- 12
+- 16
+- 20
+
+Do not use large 32/48 px gaps in normal management screens.
+
+The reference is dense and should stay dense.
+
+======================================================================
+18. BORDER / RADIUS SYSTEM
+======================================================================
+
+Suggested:
+- 1 px borders
+- 4–8 px radius for most controls
+- 8–10 px for larger panels/modal
+
+Do not make everything 16–24 px rounded.
+
+Modal yellow outline should be thin, not glowing.
+
+======================================================================
+19. HOVER / ACTIVE STATES
+======================================================================
+
+Buttons:
+- subtle lighter/darker hover
+- no strong glow
+
+Active:
+- clear yellow/gold fill or border
+
+Table rows:
+- subtle hover tint
+- selected state distinct but restrained
+
+Focus:
+- accessible visible outline
+
+======================================================================
+20. STATUS COLORS
+======================================================================
+
+Examples:
+
+Online / Ready:
+- green dot + green text/pill
+
+Running:
+- blue pill
+
+Restoring:
+- amber/orange
+
+Offline:
+- gray
+
+Failed:
+- red
+
+2FA On:
+- green
+
+2FA Off:
+- red/pink
+
+Do not rely on color alone; include text/icon.
+
+======================================================================
+21. BOTTOM STATUS BAR
+======================================================================
+
+Follow reference structure.
+
+Left:
+- SP-FARMS identity/tagline
+
+Center:
+- Total
+- Online
+- Running
+- Success
+- Failed
+- Queue
+
+Right:
+- CPU
+- RAM
+- optional network/worker indicator
+
+Keep compact.
+
+======================================================================
+22. MODAL TAB REUSE
+======================================================================
+
+All account/page action tabs must use the same theme/layout system.
+
+Examples:
+- Restore
+- Post
+- Reel
+- Story
+- Comments
+- Inbox
+- Account Info
+- Security
+- Email
+- Password
+- 2FA
+- Primary Info
+- Sessions
+- Device
+- Network
+- Backup
+- Analytics
+
+Do not create visually inconsistent sub-dialogs.
+
+======================================================================
+23. VISUAL REGRESSION PROCESS
+======================================================================
+
+Create a manual visual checklist comparing implementation against:
+
+`design/reference/sp-farms-ui-reference.png`
+
+Checklist:
+- overall silhouette
+- dark theme
+- yellow accent
+- top nav proportions
+- left sidebar width
+- table density
+- modal size
+- modal tab rail
+- preview position
+- footer/button locations
+- status bar density
+
+Create:
+`docs/UI_REFERENCE_CHECKLIST.md`
+
+======================================================================
+24. SCREENSHOT REVIEW
+======================================================================
+
+If the development environment supports screenshots:
+
+- capture Home
+- Accounts
+- Devices
+- Automation Builder
+- Account Action modal/Post tab
+- Network tab
+- Security tab
+
+Save to:
+`docs/screenshots/`
+
+Compare manually against the reference.
+
+Do not require pixel-perfect screenshot tests if platform rendering makes them brittle.
+
+======================================================================
+25. THEME LOCK
+======================================================================
+
+After this phase:
+- no later phase may casually redesign the application shell
+- visual changes should use existing semantic tokens/components
+- avoid late one-off color overrides
+- keep reference fidelity through final release
+
+======================================================================
+26. TESTS
+======================================================================
+
+Add/adjust:
+- theme token tests
+- dark theme startup default
+- light theme switch
+- modal/tab component smoke tests
+- compact table model test
+- responsive layout smoke test
+- no-blocking UI tests remain green
+- accessibility/focus states remain intact
+
+======================================================================
+27. DOCUMENTATION
+======================================================================
+
+Create/update:
+
+`docs/UI_DESIGN_SYSTEM.md`
+`docs/UI_REFERENCE_CHECKLIST.md`
+`docs/UI_LAYOUT_GUIDE.md`
+`docs/THEME_TOKENS.md`
+
+Include the reference image path in documentation.
+
+======================================================================
+PHASE 56 COMPLETION CHECKLIST
+======================================================================
+
+- Agent inspected `design/reference/sp-farms-ui-reference.png`.
+- Dark theme matches the reference direction closely.
+- Yellow/gold accent is used consistently.
+- Device Manager layout follows reference.
+- Main metrics/table follow reference.
+- Account Action modal follows reference.
+- Post tab follows reference.
+- Bottom status bar follows reference.
+- UI remains compact and cute, not cluttered.
+- Light theme remains available.
+- UI remains responsive and non-blocking.
+- Accessibility remains usable.
+- Reference checklist completed.
+- Tests pass.
+- Lint/type checks pass.
+- Docs updated.
+- Commit:
+  `phase(56): align UI to SP-Farms reference theme`
+- Push:
+  `git push origin ai/full-production-build`
+- Immediately continue to `phase57.txt` without asking the user.

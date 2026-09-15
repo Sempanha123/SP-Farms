@@ -1,0 +1,195 @@
+SP-FARMS — SHARED AUTONOMOUS AGENT RULES
+
+Repository:
+https://github.com/Sempanha123/SP-Farms
+
+Target:
+Production-ready Windows 11 Python desktop application.
+
+Core stack:
+- Python 3.12.x
+- repository-local `.venv`
+- PySide6
+- SQLAlchemy 2.x
+- Alembic
+- SQLite WAL
+- httpx
+- pytest
+- Ruff
+- mypy/pyright
+- pre-commit
+- OS keyring / Windows Credential Manager
+- ADB
+- LDPlayer / MuMu / physical Android provider adapters
+
+AUTONOMOUS EXECUTION:
+- Do not ask the user whether to continue.
+- Do not stop between phases.
+- After every phase: test, lint, type-check, fix, update docs, commit, push, continue.
+- Use working branch: `ai/full-production-build`.
+- Commit format: `phase(XX): <short description>`.
+- Push after every passing phase.
+- If GitHub push is blocked, keep local commits, write `docs/PUSH_BLOCKED.md`, retry later, and continue.
+- Missing Meta credentials, signing certificates, or optional API keys are not hard blockers. Build adapters, fakes, config validation, tests, docs, then continue.
+- Never invent or hardcode secrets.
+
+`.venv`:
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
+```
+After project metadata exists:
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
+Never commit `.venv/`.
+
+UI GOAL:
+Preserve the compact speed of the supplied demo screenshots:
+- device rail on the left
+- dense management table in center
+- compact top navigation
+- clear running/queued/failed/completed state
+- fast selection and context actions
+- compact dialogs
+But create an original SP-Farms design:
+- cute, clean, modern
+- soft white/gray surfaces
+- mint/lime primary accent
+- soft amber warning accent
+- red only for destructive/error
+- 8–12 px radii
+- low visual noise
+- no neon glow
+- light + dark theme
+- 13–14 px base typography
+- keyboard-friendly
+- scalable dense tables
+
+SAFETY / PLATFORM CONSTRAINTS:
+SP-Farms is for assets the operator owns or is explicitly authorized to manage.
+
+GLOBAL SCOPE RULES
+
+Build SP-Farms for accounts, Pages, Groups, devices, and apps the operator owns
+or is authorized to manage/test.
+
+Prefer official Meta APIs where supported.
+
+LSPosed / synthetic device profiles are for QA/testing apps the operator owns
+or is authorized to test.
+
+Do not add security-bypass, anti-detect, artificial-engagement, credential-theft,
+or unauthorized bulk-account behavior.
+
+If a requested feature could cross that boundary, implement the safe supported
+version and continue without stopping.
+
+Prefer official Meta APIs where supported.
+Use transparent operator-approved device automation only.
+
+
+LSPOSED QA EXCEPTION FOR OWN APPS:
+- SP-Farms may include a separate QA Device Profile Lab for applications the operator owns or is explicitly authorized to test.
+- Synthetic identifiers must live in QAProfile, never replace actual Device data.
+- Overrides must require an explicit package allowlist.
+- The QA bridge must reject Facebook/Facebook Lite/Instagram and other third-party/security-sensitive targets.
+- Hot reload through the user's own LSPosed test module is allowed only for authorized QA targets.
+
+ARCHITECTURE RULES:
+- UI never accesses the database directly.
+- Domain layer never imports UI.
+- Infrastructure implements interfaces.
+- Application services orchestrate use cases.
+- No giant `main_window.py`.
+- No blocking disk/network/device operations on the UI thread.
+- Long-running operations become persistent jobs.
+- Secrets never appear in logs or normal exports.
+
+PROGRESS RULES:
+Before finishing each phase:
+1. focused tests pass
+2. regression tests pass
+3. lint passes
+4. type checks pass
+5. migrations included if needed
+6. no secrets committed
+7. `docs/PROGRESS.md` updated
+8. important choices written to `docs/DECISIONS.md`
+9. commit created
+10. push attempted
+11. immediately continue to next phase
+
+If a phase introduces failing tests, fix them now.
+Do not defer known regressions.
+
+
+MULTI-ACCOUNT DEVICE POOL:
+- SP-Farms may queue many selected authorized accounts onto a smaller pool of healthy available devices.
+- Device reservations and account leases must be atomic and crash-recoverable.
+- "Next account" automation may start only after the prior account/device job is safely released.
+
+LIGHTWEIGHT ACCOUNT WORKSPACE BACKUP:
+- Prefer tiny SP-Farms workspace snapshots instead of full emulator images.
+- Back up metadata, bindings, safe preferences, and references.
+- Do not copy Facebook private app storage, authentication databases, raw cookies, plaintext passwords, or raw tokens.
+- Large media is referenced by hash/path instead of duplicated by default.
+
+
+FULL AUTOMATION BUILDER:
+- User controls functions through checkboxes, target selection, presets, schedules, and per-function setup.
+- Publishing may include text, images, multi-image, videos, reels, stories, and links where officially supported.
+- Per-function setup may include caption, tags/mentions, location/check-in, destination, schedule, approval, content mapping, retries, and device policy.
+- Comments/inbox workflows must be limited to authorized assets and official permissions.
+- Reaction types/counts may be read for analytics but must not be generated in bulk.
+- No mass reaction, follow, engagement-share, or unsolicited messaging automation.
+- Dry Run must validate the complete workflow without side effects.
+
+
+CONTEXT-AWARE ACTION UX:
+- Selection in Accounts/Pages/Devices tables is the target context.
+- Do not force users to select the same account/Page/device again inside each function.
+- Use a reusable tabbed Context Action Modal.
+- Page selection should infer connected authorized account and legitimate AccountDeviceBinding.
+- Account and Page workflows share configuration schemas with Automation Builder.
+
+PER-ACCOUNT DEVICE WORKSPACE:
+- Every account may remember its legitimate preferred/bound device and safe workspace preferences.
+- Restore must use bound device first, then configured fallback.
+- Page actions use the connected account's device workspace automatically.
+- Synthetic LSPosed QA profiles remain restricted to apps the operator owns/has authorization to test and must not target Facebook.
+
+NO-FREEZE REQUIREMENT:
+- ADB, emulator lifecycle, HTTP/API calls, backup/restore, media processing, logging collection, and health checks must never execute on Qt GUI thread.
+- Use persistent jobs/workers and signal/event-driven incremental UI updates.
+
+
+PER-ACCOUNT NETWORK WORKSPACE:
+- Every authorized account may have a persistent NetworkProfile and AccountNetworkBinding.
+- Supported profile types: System, VPN, HTTP Proxy, HTTPS Proxy, SOCKS5.
+- Network application happens before Restore Workspace when enabled.
+- Required network failure must block restore rather than silently continuing.
+- Pages inherit the connected account's network profile unless an explicit Page override exists.
+- Network credentials stay in the secure vault and must not appear in normal backups/logs.
+- Account queues must clean up the previous account's network state before the next account.
+- Network connect/verify/disconnect operations must run off the Qt GUI thread.
+- Do not implement random proxy/IP rotation or country hopping for platform-security evasion.
+
+
+ACCOUNT MAINTENANCE + SECURITY AUTOMATION:
+- Context modal includes Account Info, Security, Email, Password, 2FA, Primary Info, Sessions.
+- Read-only checks may run across multiple selected authorized accounts.
+- Sensitive write actions such as password/email/2FA/session changes must default to approval-required.
+- All secrets go to secure vault only; never normal DB/log/export.
+- Every write action should verify result when the provider supports verification.
+- Do not implement checkpoint bypass, recovery-code interception, session injection, or security challenge bypass.
+- Maintenance actions integrate with device/network restore pipeline only when the capability actually requires a device.
+
+
+VISUAL REFERENCE SOURCE OF TRUTH:
+- The pack contains `design/reference/sp-farms-ui-reference.png`.
+- The agent must inspect it before implementing UI.
+- It is the primary reference for shell layout, Device Manager, table density, dark theme, yellow/gold accent, modal layout, tab arrangement, and status bar.
+- Do not replace this direction with a generic SaaS dashboard, pastel mobile UI, glassmorphism, or oversized cards.
+- Keep the implementation original SP-Farms branding while closely following the reference layout/theme.
+- Phase 56 performs a dedicated visual-fidelity pass and locks the theme before final release.

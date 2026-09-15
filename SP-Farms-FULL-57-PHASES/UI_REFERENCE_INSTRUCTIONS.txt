@@ -1,0 +1,38 @@
+SP-FARMS UI REFERENCE INSTRUCTIONS
+
+REFERENCE FILE:
+design/reference/sp-farms-ui-reference.png
+design/reference/each-tab.png
+
+This image is the intended visual source of truth.
+
+The AI coding agent MUST inspect it before building the UI.
+
+Follow closely:
+- overall dark charcoal theme
+- yellow/gold primary actions
+- green online/success states
+- compact top navigation
+- left Device Manager column
+- compact device rows
+- account/page/group tab toolbar
+- high-density account table
+- large Account Actions modal
+- left modal tab rail
+- Post Content sub-tabs
+- preview card on the right
+- compact bottom status bar
+- thin borders
+- restrained corner radius
+- small icons
+- dense spacing
+
+DO NOT:
+- replace with generic web/SaaS dashboard styling
+- make it pastel/mobile-like
+- use glassmorphism
+- use large card gaps
+- create giant rounded buttons
+- add strong glow
+
+The result may improve typography, alignment, accessibility, and consistency, but the visual silhouette and interaction hierarchy should clearly match the reference.

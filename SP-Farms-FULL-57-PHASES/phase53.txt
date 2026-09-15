@@ -1,0 +1,711 @@
+SP-FARMS — PHASE 53
+TITLE: Context-Aware Account/Page Action Modal, Stored Device Workspace, and Non-Blocking UI
+
+SP-FARMS — SHARED AUTONOMOUS AGENT RULES
+
+Repository:
+https://github.com/Sempanha123/SP-Farms
+
+Target:
+Production-ready Windows 11 Python desktop application.
+
+IMPORTANT SECURITY RULE:
+For Facebook/Facebook Lite/Page workflows, restore only the account's legitimate stored device assignment,
+safe app/display preferences, and supported authorization state.
+
+Do NOT apply LSPosed synthetic device identities to Facebook/Facebook Lite/Instagram or other third-party
+security-sensitive apps. LSPosed QA profiles remain restricted to apps the operator owns or is explicitly
+authorized to test.
+
+======================================================================
+PHASE 53 — CONTEXT-AWARE ACCOUNT/PAGE ACTION MODAL + STORED WORKSPACE
+======================================================================
+
+GOAL:
+Make SP-Farms extremely easy to operate from the main tables.
+
+The user should NOT need to repeatedly select the same account/Page/device inside every function.
+
+Selection in the table is the source of context.
+
+Examples:
+
+Accounts table:
+- select Account A
+- click Actions
+- open one modal
+- configure Restore / Post / Reel / Story / Comments / Inbox / Backup / Release / Analytics in tabs
+
+Pages table:
+- select Page A
+- SP-Farms already knows its owning/connected account and stored device binding
+- click Actions
+- open the same contextual modal, preloaded for Page A
+- no second Page/account selector unless the user explicitly chooses "Change target"
+
+Multi-select:
+- select Account A, B, C
+- open Bulk Actions modal
+- selected rows are automatically the targets
+- only compatible tabs/actions are enabled
+
+======================================================================
+1. SELECTION CONTEXT SERVICE
+======================================================================
+
+Create:
+
+SelectionContext
+- source_module
+- selected_account_ids
+- selected_page_ids
+- selected_group_ids
+- selected_device_ids
+- primary_target_type
+- primary_target_id
+- inferred_account_ids
+- inferred_device_ids
+- capability_summary
+
+Rules:
+- Context comes from the current table selection.
+- Action dialogs consume SelectionContext.
+- Do not ask the user to select the same target again.
+- "Change target" is optional and explicit.
+- When Page selected, infer connected account and stored device binding.
+- When multiple Pages belong to different accounts, show a compact mapping summary.
+
+Add tests for:
+- one account
+- many accounts
+- one Page
+- many Pages
+- Page -> owning account inference
+- mixed capability selection
+
+======================================================================
+2. UNIVERSAL ACTION MODAL
+======================================================================
+
+Create a reusable modal:
+
+`ContextActionDialog`
+
+Header:
+- selected count
+- target names
+- account/device summary
+- health badges
+- authorization state
+- current device state
+
+Tabs appear based on context/capabilities.
+
+ACCOUNT CONTEXT TABS:
+- Overview
+- Restore
+- Content
+- Post
+- Video
+- Reel
+- Story
+- Comments
+- Inbox
+- Analytics
+- Backup
+- Device
+- Security
+- Advanced
+
+PAGE CONTEXT TABS:
+- Overview
+- Content
+- Post
+- Video
+- Reel
+- Story
+- Comments
+- Inbox
+- Analytics
+- Schedule
+- Backup
+- Connected Account
+- Device
+- Advanced
+
+DEVICE CONTEXT TABS:
+- Overview
+- Assigned Account
+- Launch App
+- Health
+- Screenshot
+- Logs
+- Backup
+- Release
+- QA Profile Lab (only for authorized test apps)
+- Advanced
+
+Do not show irrelevant tabs.
+
+======================================================================
+3. NO RE-SELECTION INSIDE TABS
+======================================================================
+
+For normal use:
+- selected row(s) are the targets
+- device/account/Page selectors are hidden
+
+Show a target selector only if:
+- user clicks "Change target"
+- current context is ambiguous
+- selected targets have incompatible capabilities
+- user chooses an explicit cross-target workflow
+
+Each tab should show a compact read-only "Using:" summary, e.g.:
+
+Using:
+Account: Shop Account 01
+Page: SP Cambo Store
+Device: LD-03
+App: Facebook
+State: Ready
+
+======================================================================
+4. ACCOUNT PROFILE ACTIONS
+======================================================================
+
+The system is not Page-only.
+
+Account profile context can expose safe/authorized actions such as:
+- Restore Workspace
+- Launch preferred app
+- Open account profile
+- Open connected Page list
+- Open content composer
+- Sync authorized metadata
+- Security health
+- Comments/inbox for assets available to the account
+- Analytics
+- Backup lightweight workspace
+- Release device
+- Start next queued account
+- Export safe metadata
+
+Do not add artificial engagement actions.
+
+======================================================================
+5. PAGE ACTIONS
+======================================================================
+
+When a Page row is selected:
+
+SP-Farms should automatically resolve:
+- Page
+- owning/connected authorized account
+- AccountDeviceBinding
+- current/bound device
+- preferred app
+- Page permissions
+- publishing capabilities
+- latest lightweight workspace snapshot
+
+Then the Page modal can offer:
+- Post text
+- Post image
+- Post multiple images
+- Post video
+- Post Reel
+- Post Story where supported
+- Schedule
+- Comments
+- Inbox where permitted
+- Analytics
+- Backup/restore workspace metadata
+- Open Page in preferred app/browser
+- Open connected account
+
+No second target selection is required.
+
+======================================================================
+6. STORED DEVICE PER ACCOUNT
+======================================================================
+
+Every account must have:
+
+AccountDeviceBinding:
+- account_id
+- preferred_device_id
+- preferred_provider
+- preferred_app
+- last_good_device_id
+- last_used_device_id
+- binding_status
+- created_at
+- updated_at
+
+Also retain:
+- actual device profile
+- safe display/app preferences
+- last successful restore metadata
+- latest lightweight snapshot ref
+
+When restoring:
+1. use preferred/bound device if healthy
+2. otherwise use configured fallback policy
+3. reserve device atomically
+4. start device if needed
+5. wait for ADB
+6. restore safe workspace preferences
+7. launch preferred app
+8. show auth state
+9. mark Ready / Needs Re-auth / Failed
+
+======================================================================
+7. PAGE -> ACCOUNT -> DEVICE RESOLUTION
+======================================================================
+
+For Page actions:
+
+Page
+  -> AssetPermission / Account connection
+  -> Account
+  -> AccountDeviceBinding
+  -> Device
+
+If the account is currently active on a healthy device:
+- reuse it
+
+If not:
+- restore the account workspace to its preferred/available device according to policy
+
+After Page action completes:
+- keep device reserved if more steps remain
+- otherwise release according to preset
+
+======================================================================
+8. LSPOSED QA PROFILE RULE
+======================================================================
+
+Maintain two separate systems:
+
+A. Production Facebook workspace:
+- actual device identity
+- actual provider/ADB data
+- safe stored display/app preferences
+- supported auth state
+
+B. QA Device Profile Lab:
+- synthetic test values
+- user's own LSPosed QA module
+- only apps/packages the operator owns or is authorized to test
+- hot reload without restart
+
+Never automatically apply QA/synthetic profile to Facebook/Facebook Lite/Page actions.
+
+The UI should make this distinction obvious:
+"Production Workspace" vs "QA Profile Lab".
+
+======================================================================
+9. HOT RELOAD FOR AUTHORIZED QA APPS
+======================================================================
+
+For QA Profile Lab only:
+- account/device selection can carry assigned QA profile reference
+- Push + Reload
+- Verify Loaded
+- Restore Default
+- no emulator restart required when user's QA bridge supports hot reload
+
+Do not make Page/Facebook actions depend on QA profile injection.
+
+======================================================================
+10. MODAL TAB DESIGN
+======================================================================
+
+Use a clean tabbed modal/drawer.
+
+Desktop layout:
+- width around 900–1100 px depending on screen
+- left compact tab rail or top tabs
+- sticky footer actions
+- scroll only inside active tab
+- preserve state when switching tabs
+- no nested modal chains when avoidable
+
+Footer:
+- Cancel
+- Save Preset
+- Dry Run
+- Run
+- Run & Close
+
+For simple one-click actions:
+- allow direct execution from context menu without opening full modal
+
+======================================================================
+11. PER-TAB CONFIG EXAMPLES
+======================================================================
+
+POST TAB:
+- content type
+- caption
+- media
+- tags/mentions if supported
+- location/check-in if supported
+- feed/Page/authorized Group destination
+- schedule
+- approval
+- duplicate check
+
+REEL TAB:
+- video
+- caption
+- cover
+- schedule
+- approval
+
+STORY TAB:
+- image/video
+- capability state
+- schedule if supported
+- approval
+
+COMMENTS TAB:
+- sync
+- filters
+- selected comment replies
+- moderation actions where permitted
+- saved reply
+- approval
+
+BACKUP TAB:
+- Backup current lightweight workspace
+- latest snapshot
+- snapshot size
+- Verify
+- Restore metadata/preferences
+- Export snapshot
+- no raw Facebook private app data
+
+DEVICE TAB:
+- current bound device
+- provider
+- state
+- Start / Stop / Restart
+- Release
+- Rebind
+- fallback policy
+
+======================================================================
+12. MULTI-SELECT MODAL
+======================================================================
+
+If multiple rows selected:
+
+Header:
+"12 Accounts selected"
+
+Show:
+- common capabilities
+- mixed capabilities
+- available devices
+- bound devices
+- accounts needing re-auth
+- incompatible targets
+
+Tabs operate in batch only where safe.
+
+Example:
+Post tab:
+- "Apply this configuration to all 12 selected accounts' eligible Pages"
+- preview mapping table before Run
+
+Device tab:
+- bound-device-first
+- any available
+- provider preference
+- max concurrent devices
+
+Backup tab:
+- one small snapshot per selected account
+
+======================================================================
+13. ACTION PREVIEW
+======================================================================
+
+Before Run:
+
+Show a compact plan:
+
+Account A -> LD-01 -> Page A -> Image Post
+Account B -> LD-02 -> Page B -> Reel
+Account C -> Waiting Device
+Account D -> Needs Re-auth
+
+Capabilities:
+- Story unsupported on 2 targets
+- Check-in unavailable on 1 target
+
+Allow:
+- Run eligible only
+- Cancel
+- Fix issues
+
+======================================================================
+14. ZERO-RESELECT WORKFLOW
+======================================================================
+
+Required UX:
+
+Accounts table:
+select rows -> Actions -> configure -> Run
+
+Pages table:
+select rows -> Actions -> configure -> Run
+
+Devices table:
+select rows -> Actions -> configure -> Run
+
+Do not send the user through:
+Select account -> select Page -> select device -> select account again.
+
+Infer what is already known.
+
+======================================================================
+15. NON-BLOCKING UI / NO FREEZE
+======================================================================
+
+This is mandatory.
+
+Never run on the Qt GUI thread:
+- ADB commands
+- LDPlayer/MuMu lifecycle calls
+- HTTP/Meta API calls
+- database-heavy operations
+- media metadata extraction
+- thumbnail generation
+- backup compression
+- restore work
+- log collection
+- health checks
+- packaging/export work
+
+Use:
+- persistent job engine
+- worker supervisor
+- Qt signals/events
+- async service boundaries
+- bounded executors where appropriate
+
+UI thread responsibilities:
+- render
+- selection
+- lightweight model updates
+- user input
+
+======================================================================
+16. RESPONSIVE MODEL UPDATES
+======================================================================
+
+Use:
+- QTableView
+- model/view
+- batch model update
+- debounced filters
+- thumbnail cache
+- paged/lazy data
+- incremental status events
+
+Do not:
+- reload whole table every heartbeat
+- recreate thousands of row widgets
+- call `processEvents()` as a substitute for correct async design
+
+======================================================================
+17. CANCELLATION
+======================================================================
+
+Every long operation must expose safe cancellation when possible.
+
+Modal:
+- Run button becomes running state
+- progress appears in footer
+- Cancel Job available
+- user can close modal without killing background job
+- notification center keeps reporting progress
+
+No modal should lock the entire application during long work.
+
+======================================================================
+18. STATUS STREAMING
+======================================================================
+
+Example:
+
+LD-01
+Starting...
+ADB Ready
+Restoring Workspace...
+Opening Facebook...
+Ready
+
+Page A
+Uploading image 42%
+Publishing...
+Published
+
+Use event-driven status updates.
+
+Throttle very frequent updates to avoid rendering overload.
+
+======================================================================
+19. DEVICE HEARTBEAT ARCHITECTURE
+======================================================================
+
+Device status polling must:
+- run in background
+- use bounded cadence
+- stagger devices
+- avoid launching one thread per row
+- emit changed state only
+- stop cleanly on shutdown
+
+For many devices:
+- batch provider queries where possible
+- cache stable metadata
+- query fast-changing fields separately
+
+======================================================================
+20. MODAL STATE PERSISTENCE
+======================================================================
+
+Remember:
+- last used tab
+- last safe configuration per action type
+- column selection
+- window size
+- non-sensitive defaults
+
+Do not silently reuse high-impact destructive settings.
+
+======================================================================
+21. PRESET INTEGRATION
+======================================================================
+
+The Context Action Modal and Automation Builder share the same schemas.
+
+A user can:
+- configure action in modal
+- Save as Preset
+- later run the preset from selected rows
+
+No duplicated Post/Reel/Story configuration system.
+
+======================================================================
+22. ERROR HANDLING
+======================================================================
+
+Errors should attach to:
+- selected account/Page/device
+- active modal tab
+- underlying job
+
+Show:
+- friendly message
+- technical details expandable
+- Retry
+- Open Error Center
+
+Do not freeze or close the modal because one target failed.
+
+For batch actions:
+- continue eligible targets according to policy
+- mark failed row
+- show summary
+
+======================================================================
+23. TESTS
+======================================================================
+
+Add tests for:
+
+CONTEXT:
+- account selection context
+- Page selection context
+- Page -> account -> device inference
+- multi-select mapping
+- no duplicate target selection
+
+MODAL:
+- correct tabs per context
+- unsupported tabs hidden/disabled
+- tab state persistence
+- configuration validation
+- preset reuse
+
+RESTORE:
+- bound device healthy
+- fallback device
+- device reservation
+- account lease
+- re-auth required
+- release after action
+
+PAGE:
+- Page action uses inferred account/device
+- Page opens with current authorized workspace
+- capability gating
+
+PERFORMANCE:
+- long ADB operation does not block GUI
+- long HTTP operation does not block GUI
+- backup compression does not block GUI
+- 1,000-row model selection/filter test
+- frequent job updates throttled
+- modal remains interactive while jobs execute
+- closing modal does not cancel job unexpectedly
+
+QA:
+- LSPosed QA profile remains restricted to authorized test packages
+- Facebook target rejects synthetic QA override
+
+======================================================================
+24. DOCUMENTATION
+======================================================================
+
+Create:
+
+`docs/CONTEXT_ACTION_MODAL.md`
+`docs/SELECTION_CONTEXT.md`
+`docs/ACCOUNT_PAGE_DEVICE_RESOLUTION.md`
+`docs/UI_ASYNC_PERFORMANCE.md`
+
+Document diagrams for:
+- Account -> Device
+- Page -> Account -> Device
+- Modal -> Job Engine
+- Job Engine -> UI status events
+
+======================================================================
+PHASE 53 COMPLETION CHECKLIST
+======================================================================
+
+- Account actions are not Page-only.
+- Page actions infer connected account/device.
+- User does not need to reselect targets already selected in table.
+- Universal action modal uses tabs.
+- Multi-select works.
+- Every account stores legitimate device binding.
+- Page actions reuse/restore that account's device workspace.
+- LSPosed synthetic profiles remain QA-only and do not target Facebook.
+- Long-running work never blocks the Qt GUI thread.
+- Modal remains interactive during running jobs.
+- Background jobs survive modal close.
+- Tests pass.
+- Lint/type checks pass.
+- Docs updated.
+- Commit:
+  `phase(53): add context-aware action modal and non-blocking workspace restore`
+- Push:
+  `git push origin ai/full-production-build`
+- Immediately continue to `phase54.txt` without asking the user.

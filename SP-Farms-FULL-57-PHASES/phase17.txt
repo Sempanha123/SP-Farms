@@ -1,0 +1,326 @@
+SP-FARMS — PHASE 17
+TITLE: LSPosed QA Device Profile Lab and Hot Reload
+
+SP-FARMS — SHARED AUTONOMOUS AGENT RULES
+
+Repository:
+https://github.com/Sempanha123/SP-Farms
+
+Target:
+Production-ready Windows 11 Python desktop application.
+
+Core stack:
+- Python 3.12.x
+- repository-local `.venv`
+- PySide6
+- SQLAlchemy 2.x
+- Alembic
+- SQLite WAL
+- httpx
+- pytest
+- Ruff
+- mypy/pyright
+- pre-commit
+- OS keyring / Windows Credential Manager
+- ADB
+- LDPlayer / MuMu / physical Android provider adapters
+
+AUTONOMOUS EXECUTION:
+- Do not ask the user whether to continue.
+- Do not stop between phases.
+- After every phase: test, lint, type-check, fix, update docs, commit, push, continue.
+- Use working branch: `ai/full-production-build`.
+- Commit format: `phase(XX): <short description>`.
+- Push after every passing phase.
+- Missing credentials or optional external integrations are not hard blockers.
+
+IMPORTANT QA SCOPE RULE:
+This phase is ONLY for software/packages the operator owns or is explicitly authorized to test.
+Do NOT use LSPosed profile overrides to spoof Facebook, Facebook Lite, Instagram, banking apps,
+payment apps, identity services, anti-fraud systems, or other third-party services.
+
+The module must enforce a QA target allowlist and must refuse known third-party targets.
+
+======================================================================
+PHASE 17 — LSPOSED QA DEVICE PROFILE LAB AND HOT RELOAD
+======================================================================
+
+GOAL:
+Add a reusable test-only Device Profile Lab that lets SP-Farms push synthetic device test data
+to the user's own LSPosed QA module and hot-reload it without restarting LDPlayer/MuMu/Android.
+
+This system exists for compatibility testing, localization testing, device-matrix testing,
+and development of apps the operator controls.
+
+IMPLEMENT:
+
+1. QA PROFILE MODEL
+
+Create a separate QAProfile domain model. Never overwrite the actual hardware/device record.
+
+Fields may include:
+- uuid
+- profile_name
+- manufacturer
+- model
+- market_name
+- product
+- hardware
+- board
+- bootloader
+- build_fingerprint
+- test_android_id
+- test_serial_number
+- test_imei
+- test_meid
+- test_gsf_id
+- test_advertising_id
+- test_mac
+- test_bluetooth_mac
+- test_wifi_ssid
+- test_wifi_bssid
+- test_network_generation
+- test_imsi
+- test_sim_id
+- test_mobile_number
+- test_esim_eid
+- test_sim_operator
+- test_sim_operator_name
+- test_sim_country_iso
+- timezone
+- latitude
+- longitude
+- created_at
+- updated_at
+
+All synthetic identity fields MUST be clearly named `test_*` in Python/domain/database APIs.
+
+2. REAL DEVICE PROFILE MUST REMAIN SEPARATE
+
+The real device record stores only actual information reported by ADB/provider:
+- provider
+- instance
+- adb serial
+- actual manufacturer/model
+- Android version
+- actual resolution
+- actual DPI
+- actual locale
+- real connection state
+
+Never replace real device inventory with synthetic values.
+
+3. QA TARGET ALLOWLIST
+
+Create QATargetPackage model/config:
+- package_id
+- display_name
+- ownership_note
+- enabled
+- last_verified
+- test_profile_id
+
+The LSPosed QA bridge MUST only apply overrides to explicitly allowlisted packages.
+
+Block known third-party/social/security-sensitive packages by default.
+At minimum, release builds must refuse targets such as:
+- Facebook / Facebook Lite
+- Instagram
+- banking/payment apps
+- identity/authenticator apps
+- Play Integrity / anti-fraud test targets that are not owned by the operator
+
+Provide a clear UI error:
+"QA identity override is restricted to applications you own or are authorized to test."
+
+4. PROFILE GENERATOR
+
+Implement deterministic and random QA generators:
+- random digits
+- random hex
+- UUID helpers
+- test-only IMEI-format generator for local QA data
+- locale/timezone presets
+- device catalog presets
+
+Generated values are TEST DATA and must never be presented as real device information.
+
+Support:
+- Create
+- Clone
+- Randomize
+- Edit
+- Save preset
+- Delete
+- Export/import QA profile JSON
+
+5. PROFILE SERIALIZATION
+
+Use JSON by default.
+
+Example remote path:
+`/data/local/tmp/sp_farms_qa/profile.json`
+
+Do not use world-writable permissions unless absolutely required by the user's own QA module.
+
+Preferred:
+`chmod 600`
+
+If the test module requires another permission, document the reason and use the least-permissive mode that works.
+
+6. ADB PUSH SERVICE
+
+Create a safe service equivalent to:
+
+- write local temporary QA profile
+- `adb push` to test profile path
+- verify exit code
+- set restrictive permissions
+- verify remote file exists
+- delete local temporary file in a `finally` block
+- return typed result/error
+
+Do not build raw shell commands from unescaped user strings.
+Use subprocess argument arrays or the project's ADB abstraction.
+
+7. HOT RELOAD BRIDGE
+
+Support hot reload WITHOUT emulator restart for the user's own QA module.
+
+Define bridge contract such as one or more of:
+- broadcast intent to the user's QA module
+- local socket
+- ContentProvider signal
+- file watcher
+- explicit "Reload QA Profile" command
+
+The exact mechanism must be abstracted behind:
+`QAProfileReloadBridge`
+
+Required UI actions:
+- Push Profile
+- Push + Reload
+- Verify Loaded
+- Restore Default
+- Compare Active vs Saved
+
+8. LSPOSED QA MODULE CONTRACT
+
+Document a contract for the user's own LSPosed module:
+- expected profile file path
+- JSON schema/version
+- reload action/broadcast
+- acknowledgement/status response
+- package allowlist
+- test-only banner/logging
+
+SP-Farms should not require direct coupling to a specific module implementation.
+Use a versioned bridge interface.
+
+9. DEVICE ASSIGNMENT
+
+Allow:
+- LD-01 -> QA Profile A
+- LD-02 -> QA Profile B
+- MuMu-01 -> QA Profile C
+- Physical QA device -> QA Profile D
+
+Assignments are independent of Facebook account assignments.
+
+10. UI
+
+Create:
+Devices > QA Profile Lab
+
+Layout:
+LEFT:
+- devices
+- provider/status
+- assigned QA profile
+
+CENTER:
+- QA profiles table
+- profile editor
+
+RIGHT:
+- target package allowlist
+- bridge status
+- active profile verification
+
+TOP ACTIONS:
+- New
+- Clone
+- Randomize
+- Save
+- Push
+- Push + Reload
+- Verify
+- Restore Default
+
+BOTTOM:
+- selected devices
+- pushed
+- reloaded
+- verified
+- failed
+
+11. AUDIT AND LOGGING
+
+Audit:
+- who/what pushed profile
+- target device
+- target QA package
+- profile UUID
+- timestamp
+- result
+
+Never log full sensitive-looking test identifiers unnecessarily.
+Mask long test identifiers in normal logs.
+
+12. TESTS
+
+Add:
+- profile schema tests
+- generator tests
+- JSON serialization tests
+- ADB push fake tests
+- cleanup-on-failure tests
+- permission command tests
+- hot reload bridge fake tests
+- target allowlist tests
+- known third-party target rejection tests
+- device/profile assignment tests
+- UI smoke tests
+
+13. DOCUMENTATION
+
+Create:
+- `docs/QA_DEVICE_PROFILE_LAB.md`
+- `docs/LSPOSED_QA_BRIDGE.md`
+
+Clearly state:
+"This subsystem is for applications/devices the operator owns or is explicitly authorized to test.
+It is not intended for platform evasion, account creation, or bypassing third-party security systems."
+
+======================================================================
+PHASE 17 COMPLETION CHECKLIST
+======================================================================
+
+- Real device inventory and QA profiles are separate.
+- Synthetic identifiers are clearly marked test-only.
+- Package allowlist is enforced.
+- Third-party/social/security-sensitive targets are blocked.
+- ADB push uses safe argument handling.
+- Local temp files are always cleaned up.
+- Permissions use least privilege.
+- Hot reload works through abstract bridge/fake tests.
+- Restore Default works.
+- Tests pass.
+- Lint/type checks pass.
+- Docs updated.
+- `docs/PROGRESS.md` updated.
+- Commit:
+  `phase(17): add LSPosed QA device profile lab`
+- Push:
+  `git push origin ai/full-production-build`
+- Immediately continue to `phase18.txt` without asking the user.

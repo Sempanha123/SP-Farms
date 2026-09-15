@@ -1,0 +1,83 @@
+SP-Farms Automation Builder overview
+
+The operator chooses exactly what runs.
+
+Example:
+
+TARGETS
+☑ Selected Accounts
+☑ Available Devices
+☑ Selected Pages
+☐ Selected Groups
+
+FUNCTIONS
+☑ Restore Workspace
+☑ Health Check
+☑ Publish Image Post
+☑ Publish Reel
+☑ Publish Story
+☐ Publish Video Post
+☑ Read Comments
+☑ Reply to Selected Comments
+☑ Collect Analytics
+☑ Backup Workspace
+☑ Release Device
+☑ Start Next Account
+
+Each checked function has its own setup page.
+
+Publishing setup supports, where the connected provider/destination officially permits it:
+- text
+- single image
+- multiple images
+- video
+- Reel
+- Story
+- link
+- caption templates
+- hashtag rules
+- tags/mentions
+- location/check-in
+- Page/feed destination
+- authorized Group destination
+- schedule
+- approval
+- content rotation/mapping
+- retries
+- per-destination overrides
+
+Community setup supports authorized:
+- comment reading
+- selected comment replies
+- moderation
+- inbox sync
+- saved replies
+- internal assignment/notes
+- resolve state
+
+Analytics can read:
+- reactions by type
+- comments
+- shares
+- reach/impressions
+- views
+- Page/follower metrics where supported
+
+Not included:
+- automatic reaction farming
+- configurable numbers of Love/Sad/etc.
+- mass follow/unfollow
+- repeated sharing for engagement inflation
+- unsolicited bulk messaging
+- mass comments
+
+The automation builder integrates with:
+- multi-account selection
+- available-device queue
+- workspace restore
+- lightweight backups
+- scheduler
+- approval queue
+- persistent jobs
+- error center
+- audit trail

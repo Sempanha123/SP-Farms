@@ -1,0 +1,66 @@
+SP-Farms — Per-Account Network + Restore Workflow
+
+Account A
+├─ Device: LD-01
+├─ Preferred App: Facebook
+├─ Network: Work VPN US East
+├─ Require Network: Yes
+└─ Lightweight Snapshot
+
+Account B
+├─ Device: LD-02
+├─ Preferred App: Facebook Lite
+├─ Network: SOCKS5 Cambodia
+├─ Require Network: Yes
+└─ Lightweight Snapshot
+
+RESTORE PIPELINE
+
+Select Account or Page
+    ↓
+SP-Farms resolves Account
+    ↓
+Resolves bound/available Device
+    ↓
+Resolves per-account Network Profile
+    ↓
+Connect VPN/Proxy
+    ↓
+Health Check / optional region verification
+    ↓
+Network healthy?
+    ├─ No + required -> STOP before app launch
+    └─ Yes
+         ↓
+Restore Workspace
+         ↓
+Launch Preferred App
+         ↓
+Run Automation
+         ↓
+Backup
+         ↓
+Disconnect account network if configured
+         ↓
+Release Device
+         ↓
+Next queued account
+
+UI
+
+Account/Page Action Modal:
+Overview | Restore | Post | Reel | Story | Comments | Backup | Device | Network | Security
+
+Network:
+[x] Apply before restore
+Profile: Work VPN US East
+Type: VPN
+Country: US
+Require success: [x]
+Verify before app: [x]
+Fallback: Stop
+
+All network operations run in background jobs so the PySide6 UI remains responsive.
+
+This system remembers stable operator-configured account network profiles.
+It does not implement random proxy rotation/country hopping for bypassing Facebook security.

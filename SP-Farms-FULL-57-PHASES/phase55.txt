@@ -1,0 +1,776 @@
+SP-FARMS — PHASE 55
+TITLE: Account Maintenance, Security, Profile Info, Email, Password, and 2FA Automation
+
+SP-FARMS — SHARED AUTONOMOUS AGENT RULES
+
+Repository:
+https://github.com/Sempanha123/SP-Farms
+
+Target:
+Production-ready Windows 11 Python desktop application.
+
+IMPORTANT SECURITY / PLATFORM RULE:
+This phase supports legitimate account maintenance for accounts the operator owns or is explicitly
+authorized to manage.
+
+Do NOT implement:
+- checkpoint bypass
+- locked/suspended account bypass
+- recovery-code interception
+- CAPTCHA/security challenge bypass
+- credential theft
+- session hijacking
+- mass unauthorized account changes
+- bulk changes that evade platform safeguards
+
+Sensitive maintenance operations must be capability-aware, permission-aware, auditable,
+and approval-gated by default.
+
+======================================================================
+PHASE 55 — ACCOUNT MAINTENANCE + SECURITY AUTOMATION
+======================================================================
+
+GOAL:
+Add a complete account-maintenance workflow into the same context-aware modal and Automation Builder.
+
+The user should be able to select one or many accounts from the Accounts table and configure:
+
+- account health check
+- authorization/session check
+- primary email/phone check
+- 2FA status
+- connected Pages/Groups check
+- profile/info refresh
+- supported email changes
+- supported password changes
+- supported 2FA enablement
+- supported profile/info changes
+- session/logout controls
+- post-change verification
+- secure vault update
+- backup/audit
+
+The user must NOT need to reselect the same account inside each function.
+
+======================================================================
+1. CONTEXT MODAL TABS
+======================================================================
+
+For Account context, add or confirm these tabs:
+
+- Overview
+- Restore
+- Account Info
+- Security
+- Email
+- Password
+- 2FA
+- Primary Info
+- Sessions
+- Device
+- Network
+- Backup
+- Advanced
+
+Only show tabs that the current provider/integration can support.
+
+For multi-select:
+- show common supported actions
+- show mixed/unsupported capability counts
+- do not enable destructive operations blindly
+
+======================================================================
+2. ACCOUNT HEALTH CHECK
+======================================================================
+
+Create a unified action:
+
+`Account Health Check`
+
+Collect, where supported:
+- account status
+- authorization/session state
+- token/session expiry metadata
+- 2FA enabled state
+- primary email state
+- primary phone state
+- connected Pages count
+- connected Groups count
+- device binding state
+- network profile state
+- last login metadata where supported
+- last verified time
+- provider/API permission health
+
+Result states:
+- Healthy
+- NeedsAttention
+- NeedsReAuth
+- PermissionIssue
+- MissingPrimaryContact
+- Missing2FA
+- DeviceIssue
+- NetworkIssue
+- Unknown
+
+Never label an account "Live" based on unsupported heuristics.
+Use "Healthy" only from known checks.
+
+======================================================================
+3. PRIMARY INFO CHECK
+======================================================================
+
+Add:
+
+`Check Primary Info`
+
+Where supported, show:
+- primary email
+- primary phone
+- primary connected Page
+- preferred device
+- preferred app
+- primary locale/timezone
+- current category/tags
+
+Mask email/phone in normal grid.
+
+Store:
+- last_primary_check_at
+- last_primary_check_status
+
+======================================================================
+4. EMAIL MANAGEMENT
+======================================================================
+
+Add an Email tab with capability-aware actions:
+
+- Add Email
+- Remove Email
+- Change Primary Email
+- Verify Ownership
+- Refresh Email Status
+
+Configuration:
+- new email
+- make primary after verification
+- remove old email after successful switch
+- require approval
+- verify result afterward
+- store safe metadata only
+
+Do not:
+- automate disposable email creation
+- bypass email verification
+- intercept unrelated mailbox data
+
+If verification requires operator action or official flow:
+- pause job at WaitingApproval / WaitingExternalVerification
+- resume after supported confirmation
+
+======================================================================
+5. PHONE MANAGEMENT
+======================================================================
+
+Add optional supported actions:
+
+- Add Phone
+- Remove Phone
+- Change Primary Phone
+- Verify Phone Status
+
+Do NOT integrate temporary-number services for automated Facebook signup.
+
+Use manual/authorized phone ownership workflow only.
+
+Phone numbers should be masked in normal UI.
+
+======================================================================
+6. PASSWORD MANAGEMENT
+======================================================================
+
+Add a Password tab.
+
+Supported flow:
+- Change Password
+- Generate Secure Password
+- Verify post-change access where supported
+
+Configuration:
+- length
+- uppercase
+- lowercase
+- numbers
+- symbols
+- custom allowed characters if safe
+- require approval
+- update vault after success
+- verify afterward
+- invalidate old local secret reference after successful rotation
+
+Rules:
+- never show password in main table
+- never log password
+- never store plaintext in SQLite/JSON
+- use secure vault
+- allow copy/reveal only through explicit short-lived secure UI control if implemented
+
+Password changes must default to:
+`Require Approval = ON`
+
+======================================================================
+7. 2FA MANAGEMENT
+======================================================================
+
+Add a 2FA tab.
+
+Supported actions:
+- Check 2FA Status
+- Enable 2FA through supported account flow
+- Refresh 2FA Status
+- Disable 2FA only if officially supported and after strong confirmation
+
+Configuration:
+- supported method selector
+- require approval
+- verify result afterward
+- store status metadata
+- store secrets/recovery material only in encrypted vault if the platform legitimately provides them to the account owner
+
+Never:
+- intercept recovery codes
+- bypass 2FA
+- disable 2FA silently
+- expose recovery secrets in logs
+
+======================================================================
+8. PROFILE / ACCOUNT INFO MANAGEMENT
+======================================================================
+
+Add Account Info tab.
+
+Supported fields only where the provider/platform officially permits changes:
+
+- Display Name
+- First Name
+- Last Name
+- Birthday
+- Gender
+- Country
+- Locale
+- Timezone
+- Current City
+- Hometown
+- Bio/About
+- Avatar
+- Cover
+- other supported profile metadata
+
+Configuration:
+- change selected fields only
+- preview old vs new
+- approval required for high-impact fields
+- verify after change
+- rollback metadata state if provider rejects change
+
+Do not attempt unsupported profile-field manipulation.
+
+======================================================================
+9. AVATAR / COVER MANAGEMENT
+======================================================================
+
+Add dedicated profile-media subpanel.
+
+Avatar:
+- current preview
+- choose image
+- crop/validate where needed
+- approval
+- verify after upload
+
+Cover:
+- current preview
+- choose image
+- validate dimensions
+- approval
+- verify after upload
+
+Use Content Library integration.
+
+Do not overwrite local original image.
+
+======================================================================
+10. SESSION / DEVICE SECURITY
+======================================================================
+
+Add Sessions tab.
+
+Supported actions:
+- Refresh session metadata
+- Show known current authorized session state
+- Show current device binding
+- Re-authenticate
+- Logout current local workspace
+- Logout other sessions only where officially supported and with confirmation
+- revoke locally stored authorization if user requests
+
+Sensitive actions:
+- require explicit confirmation
+- audit every request
+
+Do not manipulate private session databases or inject stolen cookies.
+
+======================================================================
+11. ACCOUNT INFO REFRESH
+======================================================================
+
+Add:
+
+`Refresh Account Info`
+
+Update known fields from authorized provider data:
+- display name
+- UID
+- avatar ref
+- connected Pages
+- connected Groups
+- permission state
+- 2FA indicator where available
+- contact status where available
+- profile metadata where available
+
+Track:
+- last_info_refresh_at
+- refresh source
+- changed fields
+
+Show diff:
+Before -> After
+
+======================================================================
+12. AUTOMATION BUILDER STEPS
+======================================================================
+
+Add these checkbox-enabled step types:
+
+- Account Health Check
+- Check Primary Info
+- Refresh Account Info
+- Check 2FA
+- Add Email
+- Change Primary Email
+- Remove Email
+- Add Phone
+- Change Primary Phone
+- Remove Phone
+- Change Password
+- Enable 2FA
+- Update Profile Info
+- Update Avatar
+- Update Cover
+- Refresh Sessions
+- Re-Authenticate
+- Logout Other Sessions where supported
+- Backup Workspace
+- Export Result Report
+
+Each step opens its own setup panel.
+
+======================================================================
+13. SAFE DEFAULTS FOR BULK OPERATIONS
+======================================================================
+
+Read-only checks may be run across multiple selected accounts.
+
+High-impact write operations must default to:
+- Require Approval = ON
+- Preview Changes = ON
+- Max Concurrent Changes = conservative value
+- Stop on repeated failures
+- No automatic retry on authentication/security rejection unless provider says retry is safe
+
+Examples:
+
+Safe for bulk:
+- Health Check
+- Check Primary Info
+- Refresh Info
+- Check 2FA Status
+- Collect connected asset counts
+
+Approval-gated:
+- Change Password
+- Change Primary Email
+- Enable/Disable 2FA
+- Remove Email
+- Remove Phone
+- Logout Other Sessions
+- Update Profile Name/Birthday
+- Change Avatar/Cover
+
+======================================================================
+14. CHANGE PREVIEW
+======================================================================
+
+Before a write action, show:
+
+Account
+Field
+Current Value
+New Value
+Capability
+Approval Status
+
+Example:
+
+Account A
+Primary Email
+old@example.com
+new@example.com
+Supported
+Waiting Approval
+
+For multi-select:
+- provide one row per account/change
+- allow deselecting individual rows before execution
+
+======================================================================
+15. VERIFY AFTER CHANGE
+======================================================================
+
+Every supported write action should optionally verify success.
+
+Verification examples:
+- email appears and primary state updated
+- password-change action returned success and subsequent supported authorization check passes
+- 2FA status changed
+- avatar/cover metadata changed
+- profile field reflects expected value
+
+Do not mark Success based only on clicking a UI button.
+
+======================================================================
+16. ROLLBACK / RECOVERY POLICY
+======================================================================
+
+Where a provider supports reversible metadata changes:
+- record previous metadata before change
+- allow manual restore action
+
+Do not automatically reverse security changes such as password/2FA without explicit user request.
+
+For failed changes:
+- retain previous local metadata
+- mark NeedsAttention
+- provide safe remediation
+
+======================================================================
+17. NETWORK + DEVICE + RESTORE INTEGRATION
+======================================================================
+
+Account maintenance may require the normal workspace pipeline.
+
+Recommended order:
+
+1. Resolve selected Account
+2. Resolve Device
+3. Apply required Network Profile
+4. Restore Workspace
+5. Verify authorization
+6. Run maintenance step
+7. Verify result
+8. Update vault if needed
+9. Backup lightweight workspace
+10. Release Device
+11. Start next queued Account
+
+If a read-only API action does not need a device:
+- do not unnecessarily start an emulator
+
+Capability engine decides execution path.
+
+======================================================================
+18. PAGE CONTEXT INTEGRATION
+======================================================================
+
+If user starts from a Page row:
+
+Page
+-> resolve connected authorized Account
+-> show Connected Account tab
+-> allow opening Account Maintenance modal for that account
+
+Do not duplicate maintenance settings per Page.
+
+======================================================================
+19. STATUS / RESULT MODEL
+======================================================================
+
+MaintenanceResult fields:
+- account_id
+- action_type
+- started_at
+- completed_at
+- status
+- provider_result_code
+- changed_fields
+- verification_status
+- approval_id
+- job_id
+- error_code
+- safe_message
+
+Statuses:
+- Pending
+- WaitingApproval
+- WaitingExternalVerification
+- Running
+- Verifying
+- Succeeded
+- Failed
+- NeedsAttention
+- Cancelled
+
+======================================================================
+20. AUDIT
+======================================================================
+
+Audit every sensitive account-maintenance action.
+
+Record:
+- account
+- action
+- fields changed
+- initiator
+- approval
+- timestamp
+- result
+- verification result
+- device
+- network profile
+- job id
+
+Do NOT record:
+- raw password
+- email verification code
+- 2FA secret
+- recovery code
+- raw token/cookie
+
+======================================================================
+21. ERROR CENTER
+======================================================================
+
+Map maintenance errors into clear categories:
+
+- PermissionDenied
+- RequiresReAuth
+- VerificationRequired
+- UnsupportedAction
+- ValidationFailed
+- RateLimited
+- NetworkFailed
+- DeviceUnavailable
+- VaultWriteFailed
+- ProviderRejected
+- Unknown
+
+UI:
+- Retry when safe
+- Re-authenticate
+- Open Security Center
+- Open Network
+- Open Device
+- Edit Requested Change
+- Cancel
+
+======================================================================
+22. NON-BLOCKING UI
+======================================================================
+
+All account-maintenance work must run outside the Qt GUI thread.
+
+This includes:
+- API calls
+- ADB/device commands
+- media uploads
+- password generation/storage
+- email verification polling
+- post-change verification
+- backup
+- network checks
+
+UI remains responsive.
+
+Long-running modal can be closed while job continues.
+
+======================================================================
+23. ACCOUNT TABLE OPTIONAL COLUMNS
+======================================================================
+
+Add optional columns:
+
+- Health
+- Primary Email Status
+- Primary Phone Status
+- 2FA
+- Last Security Check
+- Last Info Refresh
+- Needs Attention
+- Password Stored
+- Session State
+
+Do not add raw password/email secrets.
+
+======================================================================
+24. SAVED PRESETS
+======================================================================
+
+Example safe presets:
+
+A. Account Health Audit
+- Health Check
+- Check Primary Info
+- Check 2FA
+- Refresh Account Info
+- Export report
+
+B. Security Hardening Review
+- Health Check
+- Check 2FA
+- Check Primary Email
+- Check Session State
+- Wait for approval before any change
+
+C. Profile Refresh
+- Refresh Account Info
+- Sync connected Pages/Groups
+- Update local metadata
+- Backup
+
+D. Approved Credential Rotation
+- Change Password
+- Verify
+- Store new secret in vault
+- Backup metadata
+- Require approval
+
+Presets must never store plaintext secrets.
+
+======================================================================
+25. DRY RUN
+======================================================================
+
+Dry Run validates:
+- selected accounts
+- required capability
+- permissions
+- current auth state
+- required device/network
+- required vault refs
+- requested fields
+- approval requirement
+- unsupported actions
+
+Dry Run must never:
+- change password
+- change email
+- change 2FA
+- update profile
+- logout sessions
+
+======================================================================
+26. TESTS
+======================================================================
+
+Add extensive tests:
+
+READ-ONLY:
+- health check
+- primary info
+- 2FA status
+- refresh info
+- connected assets
+
+WRITE CONFIG:
+- email change config validation
+- password generator rules
+- 2FA config
+- profile change preview
+- avatar/cover config
+
+APPROVAL:
+- sensitive actions default to approval
+- approval required before execution
+- reject cancels safely
+
+VAULT:
+- password stored only in vault
+- no secret in DB/logs/normal backup
+- secret rotation updates refs correctly
+
+PIPELINE:
+- network -> restore -> maintenance -> verify -> backup -> release
+- no unnecessary device startup for API-only read action
+
+MULTI-SELECT:
+- bulk read-only checks
+- write action preview
+- mixed capability handling
+
+UI:
+- tabs load from SelectionContext
+- no repeated account selector
+- modal stays responsive during long jobs
+
+SECURITY:
+- no checkpoint bypass
+- no recovery-code interception
+- no session injection
+- no plaintext password storage
+
+======================================================================
+27. DOCUMENTATION
+======================================================================
+
+Create:
+
+`docs/ACCOUNT_MAINTENANCE.md`
+`docs/ACCOUNT_SECURITY_AUTOMATION.md`
+`docs/CREDENTIAL_ROTATION.md`
+`docs/ACCOUNT_INFO_CAPABILITIES.md`
+
+Document each action as:
+- capability
+- configuration
+- approval requirement
+- provider dependency
+- verification behavior
+- audit behavior
+
+======================================================================
+PHASE 55 COMPLETION CHECKLIST
+======================================================================
+
+- Account Health Check exists.
+- Primary email/phone checks exist where supported.
+- 2FA status and supported management flow exist.
+- Email management is capability-aware.
+- Password-change flow is secure and vault-backed.
+- Supported profile info/avatar/cover changes exist.
+- Session/security actions are approval-gated.
+- Automation Builder includes maintenance steps.
+- Multi-select works safely.
+- Sensitive actions default to approval.
+- Post-change verification exists.
+- Dry Run has zero side effects.
+- No bypass/recovery-code/session-hijack feature exists.
+- UI remains responsive.
+- Tests pass.
+- Lint/type checks pass.
+- Docs updated.
+- Commit:
+  `phase(55): add account maintenance and security automation`
+- Push:
+  `git push origin ai/full-production-build`
+- Immediately continue to `phase56.txt` without asking the user.

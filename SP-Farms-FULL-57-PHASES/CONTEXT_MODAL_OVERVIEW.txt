@@ -1,0 +1,30 @@
+SP-Farms Context Workflow
+
+ACCOUNTS TABLE
+Select Account(s)
+    -> Actions
+    -> modal already knows Account + bound Device
+    -> choose tab: Restore / Post / Reel / Story / Comments / Inbox / Backup / Analytics
+    -> Run
+
+PAGES TABLE
+Select Page(s)
+    -> Actions
+    -> SP-Farms resolves Page -> Authorized Account -> AccountDeviceBinding -> Device
+    -> modal opens with correct target preloaded
+    -> no second Page/account/device selection required
+
+MULTI-SELECT
+Select 20 accounts
+    -> Actions
+    -> Bulk modal
+    -> available device pool
+    -> queue/restore/run/release/start next
+
+NON-BLOCKING:
+ADB, API, emulator, backup, media, health checks -> persistent jobs/workers
+Qt GUI thread -> rendering and user input only
+
+LSPosed:
+Synthetic QA profiles remain only for apps/packages the operator owns or is authorized to test.
+Facebook/Page production actions use legitimate stored device binding and safe workspace preferences.

@@ -1,0 +1,2 @@
+[console_scripts]
+sp-farms = sp_farms.app.main:main

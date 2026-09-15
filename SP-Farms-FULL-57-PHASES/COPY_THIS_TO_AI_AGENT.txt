@@ -1,0 +1,40 @@
+SP-FARMS AUTORUN LAUNCHER
+
+Repository: https://github.com/Sempanha123/SP-Farms
+
+Use the prompt pack in this folder.
+
+Open and follow:
+1. 00_START_HERE.txt
+2. 00_MASTER_RULES.txt
+3. phase01.txt
+4. phase02.txt
+...
+50. phase57.txt
+
+Execute every phase automatically.
+Do not ask me to continue between phases.
+Use `.venv`.
+Test, lint, type-check, fix, commit, and push after each phase.
+Keep working on `ai/full-production-build`.
+Only merge/push `main` and tag `v1.0.0` after all final gates pass.
+If external credentials/certificates are missing, use mocks/fakes, document the requirement, and continue.
+
+QA NOTE: Phase 17 adds LSPosed hot-reload device-profile testing only for apps/packages you own or are authorized to test; it must not target Facebook or other third-party security-sensitive apps.
+
+This version adds Phase 21: multi-account device-pool restore queue + small per-account SP-Farms workspace backups.
+
+This version adds Phase 52: full checkbox-driven Automation Builder with detailed per-function setup, capability-aware publishing, comments/inbox workflows, analytics, device queue integration, and presets.
+
+This version adds Phase 53: context-aware modal tabs, no repeated target selection, per-account legitimate device bindings, Page->Account->Device inference, and strict non-blocking UI/job execution.
+
+This version adds Phase 54: persistent per-account VPN/Proxy profiles, country/region labels, pre-restore connectivity checks, queue cleanup, and network automation integrated with Context Modals and Automation Builder.
+
+This version adds Phase 55: Account Maintenance + Security Automation for health checks, primary info, email, password, 2FA, profile info, sessions, approvals, verification, and secure vault handling.
+
+IMPORTANT UI REFERENCE:
+Before any UI implementation, inspect:
+`design/reference/sp-farms-ui-reference.png`
+
+Follow that image as the main theme/layout reference throughout the build.
+Phase 56 is the dedicated visual-fidelity and theme-lock phase.

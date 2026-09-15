@@ -1,0 +1,171 @@
+SP-FARMS — PHASE 32
+TITLE: Caption Templates and Multilingual AI Assist
+
+
+SP-FARMS — SHARED AUTONOMOUS AGENT RULES
+
+Repository:
+https://github.com/Sempanha123/SP-Farms
+
+Target:
+Production-ready Windows 11 Python desktop application.
+
+Core stack:
+- Python 3.12.x
+- repository-local `.venv`
+- PySide6
+- SQLAlchemy 2.x
+- Alembic
+- SQLite WAL
+- httpx
+- pytest
+- Ruff
+- mypy/pyright
+- pre-commit
+- OS keyring / Windows Credential Manager
+- ADB
+- LDPlayer / MuMu / physical Android provider adapters
+
+AUTONOMOUS EXECUTION:
+- Do not ask the user whether to continue.
+- Do not stop between phases.
+- After every phase: test, lint, type-check, fix, update docs, commit, push, continue.
+- Use working branch: `ai/full-production-build`.
+- Commit format: `phase(XX): <short description>`.
+- Push after every passing phase.
+- If GitHub push is blocked, keep local commits, write `docs/PUSH_BLOCKED.md`, retry later, and continue.
+- Missing Meta credentials, signing certificates, or optional API keys are not hard blockers. Build adapters, fakes, config validation, tests, docs, then continue.
+- Never invent or hardcode secrets.
+
+`.venv`:
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
+```
+After project metadata exists:
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
+Never commit `.venv/`.
+
+UI GOAL:
+Preserve the compact speed of the supplied demo screenshots:
+- device rail on the left
+- dense management table in center
+- compact top navigation
+- clear running/queued/failed/completed state
+- fast selection and context actions
+- compact dialogs
+But create an original SP-Farms design:
+- cute, clean, modern
+- soft white/gray surfaces
+- mint/lime primary accent
+- soft amber warning accent
+- red only for destructive/error
+- 8–12 px radii
+- low visual noise
+- no neon glow
+- light + dark theme
+- 13–14 px base typography
+- keyboard-friendly
+- scalable dense tables
+
+SAFETY / PLATFORM CONSTRAINTS:
+SP-Farms is for assets the operator owns or is explicitly authorized to manage.
+
+Do NOT implement:
+- bulk Facebook account creation
+- 5sim/temporary-number Facebook signup automation
+- disposable-email Facebook signup automation
+- CAPTCHA bypass
+- checkpoint/security challenge bypass
+- suspension/lock bypass
+- fake IMEI/MEID/Android ID/GSF ID/advertising ID/serial/SIM identity
+- anti-detect fingerprint rotation
+- features intended to hide automation from Facebook
+- mass friend requests
+- mass likes/comments/story views
+- unsolicited bulk messaging
+- credential theft/session hijacking
+- plaintext secrets
+
+Prefer official Meta APIs where supported.
+Use transparent operator-approved device automation only.
+
+ARCHITECTURE RULES:
+- UI never accesses the database directly.
+- Domain layer never imports UI.
+- Infrastructure implements interfaces.
+- Application services orchestrate use cases.
+- No giant `main_window.py`.
+- No blocking disk/network/device operations on the UI thread.
+- Long-running operations become persistent jobs.
+- Secrets never appear in logs or normal exports.
+
+PROGRESS RULES:
+Before finishing each phase:
+1. focused tests pass
+2. regression tests pass
+3. lint passes
+4. type checks pass
+5. migrations included if needed
+6. no secrets committed
+7. `docs/PROGRESS.md` updated
+8. important choices written to `docs/DECISIONS.md`
+9. commit created
+10. push attempted
+11. immediately continue to next phase
+
+If a phase introduces failing tests, fix them now.
+Do not defer known regressions.
+
+
+======================================================================
+PHASE 32 — CAPTION TEMPLATES AND MULTILINGUAL AI ASSIST
+======================================================================
+
+Add reusable writing tools without forcing AI.
+
+IMPLEMENT:
+- Caption templates.
+- Hashtag sets.
+- Khmer, English, Thai, Vietnamese Unicode-safe handling.
+- Optional AI provider interface for:
+  rewrite, translate, spelling cleanup, tone variants, hashtag suggestions.
+- AI key stored in vault.
+- Human review.
+- No auto-publish unless an explicit authorized policy allows it.
+
+TEST:
+- templates
+- multilingual storage/rendering
+- fake AI provider
+- secret handling
+
+DONE WHEN:
+- content creation is faster while keeping operator control.
+
+======================================================================
+PHASE 32 COMPLETION CHECKLIST
+======================================================================
+
+- Inspect current repository before modifying files.
+- Reuse existing abstractions.
+- Keep UI/domain/application/infrastructure separated.
+- Use `.venv` for every Python command.
+- Add/modify migrations when persistent schema changes.
+- Add focused tests for this phase.
+- Run focused tests.
+- Run current regression suite.
+- Run lint.
+- Run type checks.
+- Fix every introduced failure.
+- Verify no secrets are committed.
+- Update `docs/PROGRESS.md`.
+- Update `docs/DECISIONS.md` if architectural decisions were made.
+- Review changed files.
+- Commit:
+  `phase(32): caption templates and multilingual ai assist`
+- Push:
+  `git push origin ai/full-production-build`
+- Immediately open `phase33.txt` and continue without asking the user.

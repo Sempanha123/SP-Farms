@@ -1,0 +1,22 @@
+SP-Farms lightweight backup design
+
+YES, the new phase pack supports:
+- one account -> one available device
+- multiple selected accounts -> multiple available devices
+- queued accounts waiting for a free device
+- automatic next-account assignment after release
+- bound-device-first, any-available, LRU, round-robin, preferred-provider policies
+- batch backup and batch restore
+- small per-account workspace snapshots
+
+Small backup means SP-Farms metadata/preferences/references, not a full emulator image.
+
+Excluded from normal snapshots:
+- Facebook private app data
+- cookies
+- plaintext passwords
+- raw access tokens
+- 2FA recovery secrets
+- large media files
+
+This keeps snapshots typically in KBs to low MBs depending on optional metadata/thumbnails.
