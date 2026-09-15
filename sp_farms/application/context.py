@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from sp_farms.application.i18n_service import I18nService
     from sp_farms.application.job_service import JobService
     from sp_farms.application.licensing_service import LicensingService
+    from sp_farms.application.maintenance_service import MaintenanceService
     from sp_farms.application.meta_client import MetaClientPort
     from sp_farms.application.meta_service import MetaIntegrationService
     from sp_farms.application.network_service import NetworkService
@@ -90,6 +91,7 @@ class ApplicationContext:
     automation_builder_service: "AutomationBuilderService | None" = None
     selection_context_service: "SelectionContextService | None" = None
     network_service: "NetworkService | None" = None
+    maintenance_service: "MaintenanceService | None" = None
     _shutdown_hooks: list[ShutdownHook] = field(default_factory=list)
     _closed: bool = False
 

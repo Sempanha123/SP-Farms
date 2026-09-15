@@ -874,6 +874,20 @@ class ContextActionDialog(QDialog):
 
         def run_action(ctx: SelectionContext, progress_cb: Callable[[int, str], None]) -> tuple[bool, str]:
             total = max(1, ctx.target_count)
+            if "Maintenance" in current_tab_text and self.app_context and self.app_context.maintenance_service:
+                from sp_farms.domain.maintenance import MaintenanceTaskType
+                m_svc = self.app_context.maintenance_service
+                for idx, acc_id in enumerate(ctx.inferred_account_ids):
+                    percent = int(((idx + 1) / max(1, len(ctx.inferred_account_ids))) * 100)
+                    progress_cb(percent, f"Running maintenance on account {acc_id}...")
+                    act = m_svc.create_action(
+                        account_id=acc_id,
+                        task_type=MaintenanceTaskType.PROFILE_AUDIT,
+                        requires_operator_approval=False,
+                    )
+                    m_svc.execute_action(act.id)
+                return True, f"Successfully executed maintenance on {len(ctx.inferred_account_ids)} accounts."
+
             for idx, target in enumerate(ctx.resolved_targets):
                 percent = int(((idx + 1) / total) * 100)
                 progress_cb(percent, f"Processing {target.target_type.value} '{target.display_name}'...")

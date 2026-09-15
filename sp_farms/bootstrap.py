@@ -27,6 +27,7 @@ from sp_farms.application.hybrid_publishing_service import HybridPublishingServi
 from sp_farms.application.i18n_service import I18nService
 from sp_farms.application.job_service import JobService
 from sp_farms.application.licensing_service import LicensingService
+from sp_farms.application.maintenance_service import MaintenanceService
 from sp_farms.application.media_prep_job import MediaPrepJobHandler
 from sp_farms.application.media_prep_service import MediaPreparationService
 from sp_farms.application.meta_client import MetaClientPort
@@ -384,6 +385,13 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         device_service=device_service,
     )
 
+    maintenance_service = MaintenanceService(
+        account_service=account_service,
+        security_service=security_service,
+        secret_service=secret_service,
+        adb=adb,
+    )
+
     context = ApplicationContext(
         clock=clock,
         unit_of_work=database.unit_of_work,
@@ -426,6 +434,7 @@ def create_application(config_path: Path | None = None) -> ApplicationContext:
         automation_builder_service=automation_builder_service,
         selection_context_service=selection_context_service,
         network_service=network_service,
+        maintenance_service=maintenance_service,
     )
     context.add_shutdown_hook(crash_recovery_service.record_clean_shutdown)
     context.add_shutdown_hook(log_handler.close)
