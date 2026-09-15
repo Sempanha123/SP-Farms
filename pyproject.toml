@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sp-farms"
+version = "1.0.0"
+description = "Windows desktop workspace for managing authorized social assets"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "LicenseRef-Proprietary"
+authors = [{ name = "SP-Farms" }]
+dependencies = [
+    "alembic>=1.14,<2",
+    "cryptography>=44,<47",
+    "httpx>=0.28,<1",
+    "keyring>=25,<26",
+    "platformdirs>=4.3,<5",
+    "PySide6>=6.8,<7",
+    "SQLAlchemy>=2.0,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2,<2",
+    "mypy>=1.14,<2",
+    "pre-commit>=4,<5",
+    "pyinstaller>=6.10,<7",
+    "pytest>=8.3,<9",
+    "pytest-cov>=6,<7",
+    "ruff>=0.9,<1",
+]
+
+[project.scripts]
+sp-farms = "sp_farms.app.main:main"
+
+[tool.setuptools.packages.find]
+include = ["sp_farms*"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --strict-config"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["sp_farms"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["sp_farms"]
