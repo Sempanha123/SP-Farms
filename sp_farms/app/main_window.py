@@ -30,6 +30,7 @@ from sp_farms.app.operational_workspaces import (
     UnavailableWorkspace,
 )
 from sp_farms.app.qa_profile_lab import QAProfileLab
+from sp_farms.app.quick_automation_workspace import QuickAutomationWorkspace
 from sp_farms.app.scheduler_workspace import SchedulerWorkspace
 from sp_farms.app.shortcut_help import ShortcutHelpDialog
 from sp_farms.app.theme import ThemeMode, style_sheet
@@ -157,6 +158,11 @@ class MainWindow(QMainWindow):
             if self._context.automation_builder_service
             else None
         )
+        self.quick_automation_workspace: QuickAutomationWorkspace | None = (
+            QuickAutomationWorkspace(self._context.automation_builder_service)
+            if self._context.automation_builder_service
+            else None
+        )
         if self.error_center_workspace:
             self.error_center_workspace.route_requested.connect(self.navigate)
         self.setObjectName("mainWindow")
@@ -208,6 +214,8 @@ class MainWindow(QMainWindow):
             self.groups_workspace.refresh()
         elif section == "Automation":
             self.job_queue_view.refresh()
+            if self.quick_automation_workspace is not None:
+                self.quick_automation_workspace.refresh_presets()
         elif section == "Devices" and self.device_manager_view.model.rowCount() == 0:
             self.device_manager_view.refresh()
         elif section == "Analytics":
@@ -310,9 +318,12 @@ class MainWindow(QMainWindow):
             elif section == "Accounts":
                 self._pages.addWidget(self._workspace)
             elif section == "Automation":
-                automation_tabs = QTabWidget()
+                self.automation_tabs = QTabWidget()
+                automation_tabs = self.automation_tabs
+                if self.quick_automation_workspace is not None:
+                    automation_tabs.addTab(self.quick_automation_workspace, "Quick Mode")
                 if self.automation_builder_workspace is not None:
-                    automation_tabs.addTab(self.automation_builder_workspace, "Automation Builder")
+                    automation_tabs.addTab(self.automation_builder_workspace, "Advanced Builder")
                 if self.campaign_workspace is not None:
                     automation_tabs.addTab(self.campaign_workspace, "Campaigns")
                 if self.scheduler_workspace is not None:
@@ -321,6 +332,14 @@ class MainWindow(QMainWindow):
                     automation_tabs.addTab(self.approval_workspace, "Approval Queue")
                 self.job_queue_view = JobQueueView(self._context.job_service)
                 automation_tabs.addTab(self.job_queue_view, "Job Execution Queue")
+                if self.quick_automation_workspace is not None:
+                    self.quick_automation_workspace.advanced_requested.connect(
+                        lambda: automation_tabs.setCurrentWidget(
+                            self.automation_builder_workspace
+                        )
+                        if self.automation_builder_workspace is not None
+                        else None
+                    )
                 self._pages.addWidget(automation_tabs)
             elif section == "Devices":
                 self._pages.addWidget(self.devices_workspace)

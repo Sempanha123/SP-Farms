@@ -248,7 +248,7 @@ class MediaInspectorPanel(Panel):
         layout.setSpacing(12)
 
         header = QLabel("Asset Inspector")
-        header.setStyleSheet("font-size: 15px; font-weight: 600;")
+        header.setProperty("sectionTitle", True)
         layout.addWidget(header)
 
         # Preview Thumbnail Box
@@ -273,7 +273,7 @@ class MediaInspectorPanel(Panel):
 
         self.name_label = QLabel("—")
         self.name_label.setWordWrap(True)
-        self.name_label.setStyleSheet("font-weight: 600;")
+        self.name_label.setProperty("sectionTitle", True)
         form.addRow("File:", self.name_label)
 
         self.type_chip = StatusChip("Unknown", "neutral")
@@ -317,7 +317,7 @@ class MediaInspectorPanel(Panel):
         self.archive_btn = SecondaryButton("Archive")
         self.archive_btn.clicked.connect(self._on_toggle_archive)
         self.delete_btn = SecondaryButton("Delete")
-        self.delete_btn.setStyleSheet("color: #ef4444;")
+        self.delete_btn.setProperty("danger", True)
         self.delete_btn.clicked.connect(self._on_delete)
         action_row.addWidget(self.archive_btn)
         action_row.addWidget(self.delete_btn)
@@ -496,6 +496,39 @@ class ContentWorkspace(QWidget):
         top_bar.addWidget(self.composer_btn)
 
         layout.addLayout(top_bar)
+
+        # Clear content lifecycle for normal operators.
+        content_flow = Panel()
+        content_flow.setProperty("flowPanel", True)
+        content_flow_layout = QHBoxLayout(content_flow)
+        content_flow_layout.setContentsMargins(8, 6, 8, 6)
+        content_flow_layout.setSpacing(5)
+        content_flow_title = QLabel("CONTENT FLOW")
+        content_flow_title.setProperty("sectionTitle", True)
+        content_flow_layout.addWidget(content_flow_title)
+        for index, (name, detail) in enumerate(
+            (
+                ("Media", "Import / choose"),
+                ("Compose", "Caption + preview"),
+                ("Destination", "Authorized asset"),
+                ("Dry Run", "Validate"),
+                ("Publish", "Now / schedule"),
+            ),
+            start=1,
+        ):
+            step = SecondaryButton(f"{index}  {name}\n    {detail}")
+            step.setProperty("flowStep", True)
+            if index == 1:
+                step.setProperty("flowState", "next")
+                step.clicked.connect(self._on_import_dialog)
+            else:
+                step.clicked.connect(self._on_open_composer)
+            content_flow_layout.addWidget(step, stretch=1)
+            if index < 5:
+                arrow = QLabel("→")
+                arrow.setProperty("flowArrow", True)
+                content_flow_layout.addWidget(arrow)
+        layout.addWidget(content_flow)
 
         # Tab Widget
         self.tabs = QTabWidget()

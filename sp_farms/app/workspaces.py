@@ -42,8 +42,8 @@ class DeviceRail(Panel):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("deviceRail")
-        self.setMinimumWidth(235)
-        self.setMaximumWidth(285)
+        self.setMinimumWidth(220)
+        self.setMaximumWidth(270)
         self._controller = controller
         self._model = model
         layout = QVBoxLayout(self)
@@ -330,7 +330,7 @@ class WorkspaceLayout(QWidget):
         status.setObjectName("statusBarContent")
         status_layout = QHBoxLayout(status)
         status_layout.setContentsMargins(10, 4, 10, 4)
-        status_layout.setSpacing(18)
+        status_layout.setSpacing(11)
         brand = QLabel("SP-FARMS")
         brand.setStyleSheet("font-weight: 800;")
         status_layout.addWidget(brand)

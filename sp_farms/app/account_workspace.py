@@ -194,6 +194,37 @@ class AccountWorkspace(QWidget):
         )
         listing_layout.addWidget(self.metrics)
 
+        # Normal operator flow: select -> resolve -> restore -> actions -> monitor.
+        account_flow = Panel()
+        account_flow.setProperty("flowPanel", True)
+        account_flow_layout = QHBoxLayout(account_flow)
+        account_flow_layout.setContentsMargins(8, 6, 8, 6)
+        account_flow_layout.setSpacing(5)
+        flow_caption = QLabel("ACCOUNT FLOW")
+        flow_caption.setProperty("sectionTitle", True)
+        account_flow_layout.addWidget(flow_caption)
+        for index, (name, detail) in enumerate(
+            (
+                ("Select", "Account"),
+                ("Resolve", "Device + Network"),
+                ("Restore", "Workspace"),
+                ("Actions", "Content / Maintenance"),
+                ("Monitor", "Job Queue"),
+            ),
+            start=1,
+        ):
+            step = QPushButton(f"{index}  {name}\n    {detail}")
+            step.setProperty("flowStep", True)
+            if index == 1:
+                step.setProperty("flowState", "next")
+            step.setEnabled(False)
+            account_flow_layout.addWidget(step, stretch=1)
+            if index < 5:
+                arrow = QLabel("→")
+                arrow.setProperty("flowArrow", True)
+                account_flow_layout.addWidget(arrow)
+        listing_layout.addWidget(account_flow)
+
         local_nav = Panel()
         local_nav_layout = QHBoxLayout(local_nav)
         local_nav_layout.setContentsMargins(4, 3, 4, 3)

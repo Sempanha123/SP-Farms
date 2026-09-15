@@ -153,7 +153,7 @@ class AutomationBuilderWorkspace(QWidget):
 
         # 1. Top Action & Preset Selection Bar
         top_bar = QFrame()
-        top_bar.setStyleSheet("background-color: #1e293b; border-radius: 8px; padding: 6px;")
+        top_bar.setProperty("panel", True)
         top_layout = QHBoxLayout(top_bar)
         top_layout.setContentsMargins(8, 4, 8, 4)
 
@@ -190,12 +190,12 @@ class AutomationBuilderWorkspace(QWidget):
         top_layout.addWidget(btn_validate)
 
         btn_dry_run = QPushButton("Dry Run (Simulate)")
-        btn_dry_run.setStyleSheet("background-color: #0369a1; color: white; font-weight: bold;")
+        btn_dry_run.setProperty("infoAction", True)
         btn_dry_run.clicked.connect(self._on_dry_run)
         top_layout.addWidget(btn_dry_run)
 
         btn_run = QPushButton("Run Workflow")
-        btn_run.setStyleSheet("background-color: #15803d; color: white; font-weight: bold;")
+        btn_run.setProperty("successAction", True)
         btn_run.clicked.connect(self._on_run_workflow)
         top_layout.addWidget(btn_run)
 
@@ -221,10 +221,10 @@ class AutomationBuilderWorkspace(QWidget):
 
         # 3. Bottom Summary Status Bar
         bottom_bar = QFrame()
-        bottom_bar.setStyleSheet("background-color: #0f172a; border-radius: 6px; padding: 4px;")
+        bottom_bar.setProperty("softPanel", True)
         bot_layout = QHBoxLayout(bottom_bar)
         self._lbl_status = QLabel("Ready. Select or build a workflow preset.")
-        self._lbl_status.setStyleSheet("color: #94a3b8;")
+        self._lbl_status.setProperty("muted", True)
         bot_layout.addWidget(self._lbl_status)
         bot_layout.addStretch()
 
@@ -330,7 +330,7 @@ class AutomationBuilderWorkspace(QWidget):
         layout.setContentsMargins(4, 4, 4, 4)
 
         header = QLabel("Workflow Functions (Check to Enable, Configure on Right)")
-        header.setStyleSheet("font-weight: bold; color: #f1f5f9;")
+        header.setProperty("sectionTitle", True)
         layout.addWidget(header)
 
         self._functions_list = QListWidget()
@@ -390,7 +390,7 @@ class AutomationBuilderWorkspace(QWidget):
         layout.setContentsMargins(4, 4, 4, 4)
 
         self._setup_title = QLabel("Function Configuration")
-        self._setup_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #38bdf8;")
+        self._setup_title.setProperty("sectionTitle", True)
         layout.addWidget(self._setup_title)
 
         self._setup_stack = QStackedWidget()
