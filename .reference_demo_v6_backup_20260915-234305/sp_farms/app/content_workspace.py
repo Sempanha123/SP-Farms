@@ -498,6 +498,38 @@ class ContentWorkspace(QWidget):
         layout.addLayout(top_bar)
 
         # Clear content lifecycle for normal operators.
+        content_flow = Panel()
+        content_flow.setProperty("flowPanel", True)
+        content_flow_layout = QHBoxLayout(content_flow)
+        content_flow_layout.setContentsMargins(8, 6, 8, 6)
+        content_flow_layout.setSpacing(5)
+        content_flow_title = QLabel("CONTENT FLOW")
+        content_flow_title.setProperty("sectionTitle", True)
+        content_flow_layout.addWidget(content_flow_title)
+        for index, (name, detail) in enumerate(
+            (
+                ("Media", "Import / choose"),
+                ("Compose", "Caption + preview"),
+                ("Destination", "Authorized asset"),
+                ("Dry Run", "Validate"),
+                ("Publish", "Now / schedule"),
+            ),
+            start=1,
+        ):
+            step = SecondaryButton(f"{index}  {name}\n    {detail}")
+            step.setProperty("flowStep", True)
+            if index == 1:
+                step.setProperty("flowState", "next")
+                step.clicked.connect(self._on_import_dialog)
+            else:
+                step.clicked.connect(self._on_open_composer)
+            content_flow_layout.addWidget(step, stretch=1)
+            if index < 5:
+                arrow = QLabel("→")
+                arrow.setProperty("flowArrow", True)
+                content_flow_layout.addWidget(arrow)
+        layout.addWidget(content_flow)
+
         # Tab Widget
         self.tabs = QTabWidget()
 

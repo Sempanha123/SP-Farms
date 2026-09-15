@@ -707,7 +707,7 @@ class FarmReelActionListWorkspace(QWidget):
         self._building_tree = False
 
         quick_select = QHBoxLayout()
-        select_safe = SecondaryButton("Common Actions")
+        select_safe = SecondaryButton("Common Flow")
         select_safe.clicked.connect(self._select_common_flow)
         clear = SecondaryButton("Clear")
         clear.clicked.connect(self.clear_actions)

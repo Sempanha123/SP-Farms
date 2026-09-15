@@ -195,6 +195,58 @@ class AccountWorkspace(QWidget):
         )
         listing_layout.addWidget(self.metrics)
 
+        # Real operator flow: selected context moves forward without re-selecting.
+        account_flow = Panel()
+        account_flow.setProperty("flowPanel", True)
+        account_flow_layout = QHBoxLayout(account_flow)
+        account_flow_layout.setContentsMargins(8, 6, 8, 6)
+        account_flow_layout.setSpacing(5)
+
+        flow_caption = QLabel("ACCOUNT FLOW")
+        flow_caption.setProperty("sectionTitle", True)
+        account_flow_layout.addWidget(flow_caption)
+
+        self.account_flow_select = QPushButton("1  Select\n    Account")
+        self.account_flow_select.setProperty("flowStep", True)
+        self.account_flow_select.setProperty("flowState", "next")
+        self.account_flow_select.setEnabled(False)
+
+        self.account_flow_resolve = QPushButton("2  Resolve\n    Device + Network")
+        self.account_flow_resolve.setProperty("flowStep", True)
+        self.account_flow_resolve.clicked.connect(self.open_context_actions)
+
+        self.account_flow_restore = QPushButton("3  Restore\n    Workspace")
+        self.account_flow_restore.setProperty("flowStep", True)
+        self.account_flow_restore.clicked.connect(self.restore_selected_workspace)
+
+        self.account_flow_actions = QPushButton("4  Actions\n    Build Workflow")
+        self.account_flow_actions.setProperty("flowStep", True)
+        self.account_flow_actions.clicked.connect(
+            lambda: self.action_list_requested.emit(self.selected_account_ids)
+        )
+
+        self.account_flow_monitor = QPushButton("5  Monitor\n    Job Queue")
+        self.account_flow_monitor.setProperty("flowStep", True)
+        self.account_flow_monitor.clicked.connect(
+            lambda: self.local_navigation_requested.emit("Automation")
+        )
+
+        self.account_flow_buttons = (
+            self.account_flow_select,
+            self.account_flow_resolve,
+            self.account_flow_restore,
+            self.account_flow_actions,
+            self.account_flow_monitor,
+        )
+        for index, button in enumerate(self.account_flow_buttons):
+            account_flow_layout.addWidget(button, stretch=1)
+            if index < len(self.account_flow_buttons) - 1:
+                arrow = QLabel("→")
+                arrow.setProperty("flowArrow", True)
+                account_flow_layout.addWidget(arrow)
+
+        listing_layout.addWidget(account_flow)
+
         local_nav = Panel()
         local_nav_layout = QHBoxLayout(local_nav)
         local_nav_layout.setContentsMargins(4, 3, 4, 3)
@@ -236,12 +288,12 @@ class AccountWorkspace(QWidget):
         self.status_chip = StatusChip("Ready", state="neutral")
         self.status_chip.setObjectName("accountStatusChip")
 
-        self.actions_btn = PrimaryButton("Account Actions")
+        self.actions_btn = PrimaryButton("Actions...")
         self.actions_btn.setObjectName("contextActionsButton")
         self.actions_btn.setEnabled(False)
         self.actions_btn.clicked.connect(self.open_context_actions)
 
-        self.workflow_btn = SecondaryButton("Action List")
+        self.workflow_btn = SecondaryButton("Action List...")
         self.workflow_btn.setObjectName("actionListButton")
         self.workflow_btn.setEnabled(False)
         self.workflow_btn.clicked.connect(
@@ -872,6 +924,25 @@ class AccountWorkspace(QWidget):
         self.backup_btn.setEnabled(bool(count >= 1 and self._snapshot_service is not None))
         self.release_btn.setEnabled(bool(count >= 1 and self._pool_service is not None))
         self.workflow_btn.setEnabled(bool(count >= 1))
+
+        if hasattr(self, "account_flow_buttons"):
+            states = (
+                "done" if count else "next",
+                "next" if count else "",
+                "",
+                "",
+                "",
+            )
+            for button, state in zip(self.account_flow_buttons, states, strict=True):
+                button.setProperty("flowState", state)
+                button.style().unpolish(button)
+                button.style().polish(button)
+            self.account_flow_resolve.setEnabled(bool(count))
+            self.account_flow_restore.setEnabled(
+                bool(count == 1 and self._restore_service is not None)
+            )
+            self.account_flow_actions.setEnabled(bool(count))
+            self.account_flow_monitor.setEnabled(True)
 
         # Update Inspector
         primary_id = self.selected_account_id

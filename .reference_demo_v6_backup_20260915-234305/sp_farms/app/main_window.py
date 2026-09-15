@@ -371,8 +371,10 @@ class MainWindow(QMainWindow):
                 automation_tabs = self.automation_tabs
                 if self.action_list_workspace is not None:
                     automation_tabs.addTab(self.action_list_workspace, "Action List")
+                if self.quick_automation_workspace is not None:
+                    automation_tabs.addTab(self.quick_automation_workspace, "Quick Mode")
                 if self.automation_builder_workspace is not None:
-                    automation_tabs.addTab(self.automation_builder_workspace, "Task Builder")
+                    automation_tabs.addTab(self.automation_builder_workspace, "Advanced Builder")
                 if self.campaign_workspace is not None:
                     automation_tabs.addTab(self.campaign_workspace, "Campaigns")
                 if self.scheduler_workspace is not None:
@@ -381,6 +383,22 @@ class MainWindow(QMainWindow):
                     automation_tabs.addTab(self.approval_workspace, "Approval Queue")
                 self.job_queue_view = JobQueueView(self._context.job_service)
                 automation_tabs.addTab(self.job_queue_view, "Job Execution Queue")
+                if self.quick_automation_workspace is not None:
+                    self.quick_automation_workspace.action_list_requested.connect(
+                        lambda tabs=automation_tabs: tabs.setCurrentWidget(
+                            self.action_list_workspace
+                        )
+                        if self.action_list_workspace is not None
+                        else None
+                    )
+                if self.quick_automation_workspace is not None:
+                    self.quick_automation_workspace.advanced_requested.connect(
+                        lambda tabs=automation_tabs: tabs.setCurrentWidget(
+                            self.automation_builder_workspace
+                        )
+                        if self.automation_builder_workspace is not None
+                        else None
+                    )
                 self._pages.addWidget(automation_tabs)
             elif section == "Devices":
                 self._pages.addWidget(self.devices_workspace)
